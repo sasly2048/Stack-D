@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Stack'd | Session</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  </head>
+  <body class="app-body">
+    <div id="spotlight" class="spotlight"></div>
+    <nav class="navbar">
+      <div class="navbar-inner">
+        <a href="index.html" class="logo-link">STACK’D</a>
+        <a href="index.html" class="btn-secondary-ghost">Exit</a>
+      </div>
+    </nav>
+
+    <div class="app-container">
+      <div
+        id="ritualOverlay"
+        class="hidden"
+        style="text-align: center; position: absolute; z-index: 10"
+      >
+        <div
+          id="ritualCountdown"
+          style="font-size: 8rem; font-weight: 800; color: var(--accent)"
+        >
+          3
+        </div>
+        <p
+          style="
+            margin-top: 2rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+          "
+        >
+          Prepare to Stack
+        </p>
+      </div>
+
+      <div id="setup" class="glass-card setup-card" style="padding: 4rem">
+        <h2
+          style="
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 2.5rem;
+            text-align: center;
+          "
+        >
+          Initiate Protocol
+        </h2>
+        <div style="text-align: left; margin-bottom: 1.5rem">
+          <label
+            style="
+              font-size: 0.65rem;
+              color: var(--text-muted);
+              letter-spacing: 0.1em;
+              display: block;
+              margin-bottom: 0.5rem;
+            "
+            >IDENTITY</label
+          >
+          <input
+            id="username"
+            type="text"
+            placeholder="Full Name"
+            style="
+              width: 100%;
+              padding: 1.2rem;
+              background: rgba(255, 255, 255, 0.03);
+              border: 1px solid var(--border);
+              color: white;
+              border-radius: 16px;
+              outline: none;
+            "
+          />
+        </div>
+        <div style="text-align: left; margin-bottom: 2.5rem">
+          <label
+            style="
+              font-size: 0.65rem;
+              color: var(--text-muted);
+              letter-spacing: 0.1em;
+              display: block;
+              margin-bottom: 0.5rem;
+            "
+            >ACCESS KEY</label
+          >
+          <input
+            id="room"
+            type="text"
+            placeholder="Blank to Host"
+            style="
+              width: 100%;
+              padding: 1.2rem;
+              background: rgba(255, 255, 255, 0.03);
+              border: 1px solid var(--border);
+              color: white;
+              border-radius: 16px;
+              outline: none;
+            "
+          />
+        </div>
+        <button
+          id="connectBtn"
+          class="btn-primary-pill"
+          style="width: 100%; padding: 1.2rem"
+          onclick="initSession()"
+        >
+          Connect
+        </button>
+      </div>
+
+      <div id="session" class="hidden" style="text-align: center">
+        <div class="section-label" id="roomBadge">SYNCING...</div>
+        <h2
+          id="roomTitle"
+          style="font-size: 1.5rem; opacity: 0.6; margin: 1.5rem 0 3rem"
+        ></h2>
+        <div class="presence-circle-container">
+          <svg width="280" height="280" viewBox="0 0 200 200">
+            <circle
+              cx="100"
+              cy="100"
+              r="90"
+              style="
+                fill: none;
+                stroke: rgba(255, 255, 255, 0.05);
+                stroke-width: 8;
+              "
+            />
+            <circle
+              cx="100"
+              cy="100"
+              r="90"
+              class="circle-progress"
+              id="progressCircle"
+            />
+          </svg>
+          <div class="timer-display">
+            <span id="timer">00:00</span>
+            <label
+              style="
+                font-size: 0.6rem;
+                text-transform: uppercase;
+                color: var(--text-muted);
+              "
+              >Active Focus</label
+            >
+          </div>
+        </div>
+        <ul
+          id="scoreList"
+          style="
+            list-style: none;
+            margin: 2rem auto;
+            width: 100%;
+            max-width: 320px;
+          "
+        ></ul>
+        <p
+          style="
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            letter-spacing: 0.1em;
+            margin-top: 2rem;
+          "
+        >
+          PLACE PHONE FACE-DOWN TO START TRACKING
+        </p>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

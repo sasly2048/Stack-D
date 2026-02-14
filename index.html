@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stack'd | Presence Reinvented</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="spotlight" class="spotlight" aria-hidden="true"></div>
+    <nav class="navbar">
+      <div class="navbar-inner">
+        <a href="index.html" class="logo-link">STACK’D</a>
+        <div class="nav-links">
+          <a href="dashboard.html" class="btn-secondary-ghost">Analytics</a>
+          <a
+            href="app.html"
+            class="btn-primary-pill"
+            style="font-size: 0.8rem; padding: 0.6rem 1.4rem"
+            >Get Started</a
+          >
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <section class="hero">
+        <div class="section-label">PROTOCOL OF PRESENCE</div>
+        <h1
+          style="
+            font-size: clamp(3rem, 8vw, 5rem);
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            line-height: 1;
+            margin-bottom: 2rem;
+          "
+        >
+          Presence is <br /><span class="text-gradient">the new Luxury.</span>
+        </h1>
+        <p
+          style="
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            max-width: 650px;
+            margin: 0 auto 4rem;
+          "
+        >
+          A multi-sensor protocol designed to turn digital disconnection into
+          shared human value. Built for groups that value deep focus.
+        </p>
+        <a
+          href="app.html"
+          class="btn-primary-pill"
+          style="padding: 1.4rem 3.5rem; font-size: 1.1rem"
+          >Initiate Session</a
+        >
+      </section>
+
+      <section class="features-grid">
+        <div class="feature-card reveal">
+          <div style="font-size: 1.5rem; margin-bottom: 1.5rem">⚡</div>
+          <h3>Kinetic Validation</h3>
+          <p>
+            Proprietary sensor fusion algorithms detect even the slightest
+            device shift using the Z-axis accelerometer.
+          </p>
+        </div>
+
+        <div class="feature-card reveal">
+          <div style="font-size: 1.5rem; margin-bottom: 1.5rem">🔗</div>
+          <h3>Atomic Sync</h3>
+          <p>
+            Peer-to-peer state management ensures zero-latency accountability
+            across the collective table via 6-char keys.
+          </p>
+        </div>
+
+        <div class="feature-card reveal">
+          <div style="font-size: 1.5rem; margin-bottom: 1.5rem">📊</div>
+          <h3>Deep Insights</h3>
+          <p>
+            Quantify focus. Track the evolution of team presence over time with
+            session analytics.
+          </p>
+        </div>
+      </section>
+
+      <section style="padding: 100px 2rem; text-align: center">
+        <h2 style="font-size: 2.5rem; margin-bottom: 4rem">
+          The Ritual of Focus.
+        </h2>
+        <div class="features-grid">
+          <div class="feature-card reveal">
+            <h4 style="color: var(--accent); margin-bottom: 1rem">01. SYNC</h4>
+            <p>
+              Join the session using a compact 6-character access key for
+              instant P2P linking.
+            </p>
+          </div>
+          <div class="feature-card reveal">
+            <h4 style="color: var(--accent); margin-bottom: 1rem">02. STACK</h4>
+            <p>
+              Place devices face-down. Our sensors automatically arm and
+              calibrate for the goal.
+            </p>
+          </div>
+          <div class="feature-card reveal">
+            <h4 style="color: var(--accent); margin-bottom: 1rem">
+              03. ENGAGE
+            </h4>
+            <p>
+              Uninterrupted presence. Any breach is instantly broadcasted to the
+              entire collective.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style="
+          padding-bottom: 150px;
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 0 2rem 150px;
+        "
+      >
+        <div class="glass-card" style="padding: 4rem; text-align: center">
+          <h2 style="font-size: 2.5rem; margin-bottom: 1.5rem">
+            Technical Foundations.
+          </h2>
+          <p style="color: var(--text-muted); margin-bottom: 3.5rem">
+            Engineered for zero-trust environments where attention is the
+            ultimate currency.
+          </p>
+          <div
+            style="
+              display: flex;
+              justify-content: center;
+              gap: 4rem;
+              flex-wrap: wrap;
+            "
+          >
+            <div style="max-width: 300px">
+              <h4 style="color: var(--accent); margin-bottom: 0.8rem">
+                Zero-Backend
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted)">
+                P2P architecture ensures focus data never hits a central server.
+              </p>
+            </div>
+            <div style="max-width: 300px">
+              <h4 style="color: var(--accent); margin-bottom: 0.8rem">
+                Haptic UI
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted)">
+                Sensory confirmation via Web Vibrations for status updates.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="landing.js"></script>
+    <script>
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) entry.target.classList.add("reveal");
+          });
+        },
+        { threshold: 0.1 },
+      );
+      document
+        .querySelectorAll(".feature-card")
+        .forEach((card) => observer.observe(card));
+    </script>
+  </body>
+</html>
