@@ -44,4 +44,4 @@ All sessions run peer-to-peer.
 
 ## 🚀 Run It
 
-``` https://stack-d.netlify.app/
+``` stack-d.netlify.app
