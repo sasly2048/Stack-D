@@ -2,28 +2,30 @@
 
 > Put your phone down. Prove you did.
 
-Stack’d is a real-time, multi-sensor presence engine built for the web.
+Stack’d is a real-time, multi-sensor presence engine built for the web.  
+Flip your phone face-down. Stay present.  
+First person to move? The session ends.
 
-Flip your phone face-down.  
-Stay present.  
-First one to move? Session ends.
+No accounts.  
+No backend required.  
+Just real presence.
 
 ---
 
-## ⚡ What It Does
+## 🚀 Test It
 
-- 📱 Detects movement using gyroscope + accelerometer
-- 🔗 Syncs participants in real-time (WebRTC via PeerJS)
-- ⏱ Live session timer + group scoreboard
-- 🏆 Zen points + badge system
-- 📊 Local analytics dashboard
-- 📦 Installable PWA
+👉 **Launch here:**  
+https://stack-d.netlify.app/
+---
 
-No backend required.  
-No accounts.  
-No tracking.
+## ⚡ What Stack’d Does
 
-Just presence.
+- 📱 Detects device movement using gyroscope + accelerometer
+- 🔗 Syncs participants in real-time using WebRTC (PeerJS)
+- ⏱ Runs live session timer + group scoreboard
+- 🏆 Awards Zen points + badges
+- 📊 Tracks presence analytics locally
+- 📦 Installable as a Progressive Web App
 
 ---
 
@@ -31,17 +33,31 @@ Just presence.
 
 Stack’d monitors:
 
-- Device orientation
-- Acceleration magnitude
-- Rotation thresholds
-- Tab visibility changes
+- Device orientation (face-down validation)
+- Acceleration magnitude (movement spikes)
+- Rotation thresholds (gyroscope)
+- Tab visibility (switching apps ends session)
 
-Movement spike → break event → broadcast to all peers.
+Movement spike → `BREAK` event → broadcast to all peers.
 
 All sessions run peer-to-peer.
+No central game server required.
 
 ---
 
-## 🚀 Test It
+## 🛠 Tech Stack
 
-``` https://stack-d.netlify.app .
+- HTML5
+- CSS3 (custom SaaS design system)
+- Vanilla JavaScript
+- PeerJS (WebRTC abstraction)
+- DeviceMotion & DeviceOrientation APIs
+- LocalStorage analytics
+- PWA (manifest + service worker)
+
+---
+
+🎯 Why It Exists
+
+Because conversations shouldn’t compete with notifications.
+
