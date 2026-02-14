@@ -44,5 +44,4 @@ All sessions run peer-to-peer.
 
 ## 🚀 Run It
 
-```bash
-npx serve .
+```https://stack-d.netlify.app/
