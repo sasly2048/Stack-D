@@ -16,6 +16,7 @@ Just real presence.
 
 👉 **Launch here:**  
 https://stack-d.netlify.app/
+
 ---
 
 ## ⚡ What Stack’d Does
