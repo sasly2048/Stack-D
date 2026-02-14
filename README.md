@@ -58,7 +58,7 @@ No central game server required.
 
 ---
 
-🎯 Why It Exists
+## 🎯 Why It Exists
 
 Because conversations shouldn’t compete with notifications.
 
