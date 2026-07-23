@@ -122,3 +122,5 @@ tests/visual/                # Playwright screenshot + geometry regression suite
 Actively developed. Core loop, scoring integrity, RLS coverage, and progressive disclosure are solid. Known gaps: no native mobile shell yet (Android planned first, ARM64 dev machine has no iOS build path), and automated test coverage beyond visual regression is still thin relative to the reward-critical server logic.
 
 ## License
+
+MIT — see [LICENSE](./LICENSE). 
