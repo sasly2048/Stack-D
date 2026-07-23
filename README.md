@@ -82,10 +82,15 @@ Minor breaches cost 10 points, severe breaches cost 40. Abandoning past a 15-sec
 
 ## Tech stack
 
-- **Frontend** — React 19, TanStack Start + TanStack Router (file-based, SSR), TypeScript, Tailwind CSS v4, Framer-adjacent motion via GSAP + custom FX primitives, Lenis smooth scroll, shadcn/ui + Radix primitives.
-- **Backend** — Supabase (Postgres, Auth, Realtime), ~40 tables with row-level security enabled on every one, SECURITY DEFINER RPCs for anything score/XP/reward-adjacent.
-- **Mobile** — Capacitor core + motion plugin are integrated as dependencies; the native Android/iOS project shell is not yet scaffolded (web + PWA-ready today).
-- **Other** — Zod validation throughout server functions, jsPDF for exports, QR code generation, Playwright for visual regression testing.
+| Layer          | Technology                                                                                               |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| **Frontend**   | React 19, TanStack Start, TanStack Router, TypeScript, Tailwind CSS v4, GSAP, Lenis, shadcn/ui, Radix UI |
+| **Backend**    | Supabase (Postgres, Auth, Realtime), Row-Level Security, SECURITY DEFINER PostgreSQL RPCs                |
+| **Mobile**     | Capacitor (core + motion plugin), PWA-first architecture, native Android/iOS planned                     |
+| **Validation** | Zod                                                                                                      |
+| **Utilities**  | jsPDF, QR Code generation                                                                                |
+| **Testing**    | Playwright Visual Regression                                                                             |
+
 
 ## Getting started
 
@@ -108,14 +113,23 @@ Database schema and RLS policies live in `supabase/migrations/` — apply them t
 
 ```
 src/
-  routes/_authenticated/   # one file per top-level page (room, dashboard, achievements, …)
-  lib/*.functions.ts       # server functions — one module per domain (auth, rooms, social, ai, …)
-  components/               # UI, including fx/ (motion primitives) and rooms/ (session UI)
-  hooks/                    # use-sensors, use-nav-tier, use-low-power, …
-  integrations/supabase/    # typed client + auth middleware
-supabase/migrations/        # full schema + RLS history, chronological
-tests/visual/                # Playwright screenshot + geometry regression suite
+├── routes/_authenticated/      # Application pages
+├── components/                 # Shared UI components
+├── hooks/                      # Custom hooks
+├── lib/                        # Shared utilities and server functions
+├── integrations/               # Supabase client and middleware
+└── ...
+
+supabase/
+└── migrations/                 # Database schema and RLS history
+
+tests/
+└── visual/                     # Playwright visual regression suite
 ```
+
+## Contributing
+
+Contributions are welcome. Please read CONTRIBUTING.md before opening an issue or submitting a pull request. Discussions, bug reports, feature requests, and documentation improvements are all appreciated.
 
 ## Status
 
