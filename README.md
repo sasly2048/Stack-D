@@ -129,7 +129,7 @@ tests/
 
 ## Contributing
 
-Contributions are welcome. Please read CONTRIBUTING.md before opening an issue or submitting a pull request. Discussions, bug reports, feature requests, and documentation improvements are all appreciated.
+Contributions are welcome. Please read [CONTRIBUTING.md](./Contibuting.md) before opening an issue or submitting a pull request. Discussions, bug reports, feature requests, and documentation improvements are all appreciated.
 
 ## Status
 
