@@ -31,24 +31,20 @@
 
 ---
 
+
 ## How it works
 
-1. **Start or join a session** — a host spins up a room and gets a 6-character code (ambiguity-free alphabet, no `0/O` or `1/I`); others join with that code.
-2. **Stack your phones** — once everyone's in, the room enters a synced focus block with a shared countdown.
-3. **Sensors enforce presence** — device orientation and motion are watched continuously:
-   - **Tilt** — sustained device angle change beyond a threshold
-   - **Lift** — sharp orientation delta (phone picked up)
-   - **Shake** — accelerometer magnitude spike
-   - **Tab hidden** — app backgrounded / switched away from
-   - **Wake lock lost** — screen allowed to sleep
-4. **Breaches are scored, not just flagged** — minor and severe breaches carry different penalties, and a grace window absorbs brief slips before an "abandonment" penalty kicks in.
-5. **Focus becomes a score, then XP** — a deterministic scoring engine converts time-on-task and breach history into a 0–100 focus score, a tier (*Flow State* → *Protocol Compromised*), and XP for the room leaderboard.
+1. **Start or join a room** with a target duration and enforcement mode (`gentle` or `absolute`).
+2. **Sensors arm** on session start — orientation, motion, tab visibility, and Screen Wake Lock are all monitored through a single adapter (`use-sensors.ts`) so the same logic runs on web and the future Capacitor build.
+3. **Breach a rule** (tilt past threshold, pick the phone up, shake it, switch tabs, lose the wake lock) and it's logged with a severity — minor or severe.
+4. **Session ends** → the client computes a provisional score locally for instant feedback, then calls a Postgres RPC (`finalize_focus_session`) that **independently recomputes** duration, breach count, and XP server-side and takes the *lower* of client vs. server XP. A modified client can only shortchange itself, never inflate its score.
+5. **Result lands** with a full cinematic completion sequence — animated XP count-up, tier reveal, streak, unlocked achievements — that fires the moment your session finalizes, whether that's instant or synced later from an offline queue.
 
-## Focus scoring model
+## Scoring model
 
 ```
-S_focus = max(0, min(100, (T_focus / T_target) × 100 − Σ P_breach))
-XP      = floor(S_focus × (T_focus / 60) × M_tier)
+S_focus = max(0, min(100, (T_focus / T_target) * 100 − Σ P_breach))
+XP      = floor(S_focus * (T_focus / 60) * M_tier)
 ```
 
 | Tier | Score range | XP multiplier |
@@ -56,82 +52,73 @@ XP      = floor(S_focus × (T_focus / 60) × M_tier)
 | Flow State | 95–100 | 1.5× |
 | Pristine Focus | 85–94 | 1.0× |
 | Steady Ambient | 70–84 | 0.5× |
-| Fragmented Attention | 40–69 | 0.0× |
-| Protocol Compromised | 0–39 | 0.0× |
+| Fragmented Attention | 40–69 | 0× |
+| Protocol Compromised | 0–39 | 0× |
 
-Scoring logic lives in [`src/lib/focus-score.ts`](src/lib/focus-score.ts) as pure, dependency-free functions — durations are carried at millisecond precision through the calculation and only floored at the database boundary.
+Minor breaches cost 10 points, severe breaches cost 40. Abandoning past a 15-second grace window after a severe breach adds a continuous penalty. The pure scoring function lives in `src/lib/focus-score.ts` with no React or DB dependencies, so it's independently testable.
 
 ## Features
 
-- 🔑 **6-character room codes** with format validation, rate limiting, and clear retry states on the join flow
-- 📡 **Realtime room sync** via Supabase — no host machine required
-- 📱 **Multi-signal sensor detection** (orientation, motion, visibility, wake lock) behind a platform-agnostic `SensorAdapter`, so the same hook drives both the web build and the Capacitor mobile shell
-- 🏆 **Groups & leaderboard** for tracking accumulated focus time and XP across sessions
-- 🌓 **Light/dark theming**, accessible focus states, `aria-live` status regions on interactive flows
-- 🔐 **Auth-gated rooms** with Supabase auth middleware and session handling
+**Core loop** — rooms, real-time presence, live activity rail, session workspace, ambient soundscapes, QR-code room invites, floating persistent timer.
+
+**Progression & identity** — XP, streaks, tiers, achievements, challenges, seasons, prestige, narrative rank titles, profile cards, DNA (behavioral pattern breakdown), memory vault, session replay, time capsules.
+
+**Social** — friends, groups/circles, activity feed, leaderboards, mentor relationships, live session reactions, shared goal bars for group rooms.
+
+**Companion** — **Atlas**, an ambient AI coach that surfaces context-aware, data-grounded recommendations (next session length, best focus hour, burnout risk) as a small dismissible card on Dashboard and Insights — not a chatbot you have to seek out, though a full conversational companion page exists at `/companion` for direct Q&A. Grounded in real session history via a system-prompt guardrail against inventing statistics.
+
+**Trust & safety** — user reporting, moderation queue, blocking, room moderators, IP + device-fingerprint rate limiting on auth, CAPTCHA (Turnstile) on suspicious activity.
+
+**Progressive navigation** — the nav isn't flat. Routes are gated behind Starter / Intermediate / Advanced tiers computed from real usage (lifetime XP, streak, session count), not a settings toggle, with a power-user override for anyone who wants everything immediately (`use-nav-tier.ts`).
+
+**Low Power Mode** — trims particles, meteors, and parallax FX; auto-enables on `prefers-reduced-motion` or low battery.
+
+**Ecosystem** — an `/integrations` directory cataloging what's shipped (Webhooks, TypeScript SDK, MCP server) vs. what's planned (Calendar, Notion, Discord, Slack, Raycast), each honestly status-labeled.
+
+**Extensibility** —
+- **Webhooks** — subscribe to session/room events, with delivery logs and retry.
+- **Public TypeScript SDK** (`@stackd/sdk`) — zero-dependency client for webhook signature verification.
+- **MCP server** — Stack'D exposes its own [Model Context Protocol](https://modelcontextprotocol.io) endpoint (`/mcp`) so agents like Claude or Cursor can read a user's focus history, groups, and profile directly.
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| Framework | [TanStack Start](https://tanstack.com/start) (React 19) + [TanStack Router](https://tanstack.com/router) |
-| Styling | Tailwind CSS v4, shadcn/ui (Radix primitives) |
-| Backend / Realtime / Auth | Supabase |
-| Mobile shell | Capacitor (`@capacitor/core`, `@capacitor/motion`) |
-| Forms & validation | React Hook Form + Zod |
-| Tooling | Vite, ESLint, Prettier, TypeScript |
-| Package manager | Bun |
+- **Frontend** — React 19, TanStack Start + TanStack Router (file-based, SSR), TypeScript, Tailwind CSS v4, Framer-adjacent motion via GSAP + custom FX primitives, Lenis smooth scroll, shadcn/ui + Radix primitives.
+- **Backend** — Supabase (Postgres, Auth, Realtime), ~40 tables with row-level security enabled on every one, SECURITY DEFINER RPCs for anything score/XP/reward-adjacent.
+- **Mobile** — Capacitor core + motion plugin are integrated as dependencies; the native Android/iOS project shell is not yet scaffolded (web + PWA-ready today).
+- **Other** — Zod validation throughout server functions, jsPDF for exports, QR code generation, Playwright for visual regression testing.
+
+## Getting started
+
+```bash
+git clone https://github.com/sasly2048/Stack-D.git
+cd Stack-D
+bun install        # or npm install
+
+cp .env.example .env
+# fill in your Supabase project URL + publishable key
+
+bun run dev         # vite dev
+```
+
+Other scripts: `build`, `build:dev`, `preview`, `lint`, `format`.
+
+Database schema and RLS policies live in `supabase/migrations/` — apply them to a fresh Supabase project via the Supabase CLI or dashboard SQL editor.
 
 ## Project structure
 
 ```
 src/
-├── components/          # UI components (nav, code input, theme toggle, ui/ = shadcn primitives)
-├── hooks/
-│   ├── use-auth.ts      # Auth state
-│   ├── use-mobile.tsx   # Responsive breakpoint hook
-│   └── use-sensors.ts   # Multi-signal breach detection (orientation/motion/visibility/wake-lock)
-├── integrations/
-│   ├── lovable/         # Lovable platform integration
-│   └── supabase/        # Supabase client, auth middleware/attacher, generated types
-├── lib/
-│   ├── focus-score.ts   # Scoring engine (pure functions)
-│   ├── room.ts           # Room code generation, duration formatting
-│   ├── room.functions.ts # Server functions for room validation/lifecycle
-│   ├── sensor-adapter.ts # Web/Capacitor sensor abstraction
-│   ├── invite-channel.ts # Room invite/broadcast logic
-│   └── finalize-queue.ts # Session finalization
-└── routes/
-    ├── index.tsx                     # Landing page
-    ├── auth.tsx                      # Auth flow
-    └── _authenticated/
-        ├── start.tsx                 # Create a session
-        ├── room.$code.tsx            # Active focus room
-        ├── groups.tsx                # Groups management
-        ├── dashboard.tsx              # User dashboard
-        └── leaderboard.tsx            # XP / focus-time leaderboard
+  routes/_authenticated/   # one file per top-level page (room, dashboard, achievements, …)
+  lib/*.functions.ts       # server functions — one module per domain (auth, rooms, social, ai, …)
+  components/               # UI, including fx/ (motion primitives) and rooms/ (session UI)
+  hooks/                    # use-sensors, use-nav-tier, use-low-power, …
+  integrations/supabase/    # typed client + auth middleware
+supabase/migrations/        # full schema + RLS history, chronological
+tests/visual/                # Playwright screenshot + geometry regression suite
 ```
 
-## Getting started
+## Status
 
-**Prerequisites:** [Bun](https://bun.sh)
-
-```bash
-# Install dependencies
-bun install
-
-# Start the dev server
-bun run dev
-
-# Type-check + lint
-bun run lint
-
-# Production build
-bun run build
-```
-
-You'll need a Supabase project configured via environment variables (see `.env`) for auth and realtime room sync to work locally.
+Actively developed. Core loop, scoring integrity, RLS coverage, and progressive disclosure are solid. Known gaps: no native mobile shell yet (Android planned first, ARM64 dev machine has no iOS build path), and automated test coverage beyond visual regression is still thin relative to the reward-critical server logic.
 
 ## License
-
-MIT — see [LICENSE](LICENSE).
