@@ -23,7 +23,7 @@
 ![Last Commit](https://img.shields.io/github/last-commit/sasly2048/Stack-D)
 ![License](https://img.shields.io/badge/License-MIT-informational.svg)
 ![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4-red)
-![Platform](https://img.shields.io/badge/?logo=android,ios)
+![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-blue)
 </div>
 
 
