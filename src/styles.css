@@ -1,0 +1,464 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   STACK'D — Obsidian Ritualist
+   Hard, monochrome, ceremonial. Display sans + monospace.
+   ============================================================ */
+
+@theme inline {
+  --color-obsidian: #0A0A0A;
+  --color-obsidian-2: #111111;
+  --color-obsidian-3: #181818;
+  --color-silver: #E2E2E2;
+  --color-silver-dim: #9A9A9A;
+  --color-muted: #404040;
+  --color-muted-2: #2A2A2A;
+  --color-breach: #FF3B30;
+  --color-pulse: #34D399;
+  --color-ember: #F0A968;
+  --color-ember-glow: #FFC48A;
+
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --ease-ritual: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* ============================================================
+     Spacing scale — 4px baseline. Use across mobile/tablet/desktop
+     so section rhythm stays proportional at every breakpoint.
+     ============================================================ */
+  --space-1: 0.25rem;   /* 4px  */
+  --space-2: 0.5rem;    /* 8px  */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+  --space-24: 6rem;     /* 96px */
+
+  /* Dot indicator — the ember period after "luxury", live nodes,
+     status dots. One source of truth so mobile/tablet/desktop
+     never drift. */
+  --dot-size: 0.5rem;          /* 8px  — inline dot */
+  --dot-size-sm: 0.375rem;     /* 6px  — status pip */
+  --dot-size-lg: 0.625rem;     /* 10px — accent dot */
+  --dot-color: var(--color-ember);
+  --dot-glow: 0 0 12px rgba(240, 169, 104, 0.55);
+
+  /* shadcn token bridge */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-bg: var(--muted-bg);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #0A0A0A;
+  --foreground: #E2E2E2;
+  --card: #111111;
+  --card-foreground: #E2E2E2;
+  --popover: #111111;
+  --popover-foreground: #E2E2E2;
+  --primary: #E2E2E2;
+  --primary-foreground: #0A0A0A;
+  --secondary: #181818;
+  --secondary-foreground: #E2E2E2;
+  --muted-bg: #181818;
+  --muted-foreground: #9A9A9A;
+  --accent: #C9874A;
+  --accent-foreground: #0A0A0A;
+  --destructive: #FF3B30;
+  --destructive-foreground: #0A0A0A;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: rgba(201, 135, 74, 0.5);
+
+  /* ============================================================
+     Join button — centralized tokens.
+     Every visible Join state reads from these variables. Tweak
+     here (or per-theme below) to retune globally. Verified by
+     scripts/check-join-contrast.mjs for WCAG AA on the rendered
+     surface (obsidian for dark, paper for light).
+     ============================================================ */
+  /* Default / rest — SOLID WHITE FILL with visible border */
+  --join-text: #0A0A0A;
+  --join-bg: #FFFFFF;
+  --join-border: rgba(255, 255, 255, 0.95);
+  --join-fill: #FFFFFF;
+  --join-text-glow: rgba(255, 255, 255, 0);
+  /* Hover — invert to transparent-on-white glow effect */
+  --join-text-hover: #0A0A0A;
+  --join-border-hover: #FFFFFF;
+  --join-glow: rgba(255, 255, 255, 0.55);
+  --join-glow-inner: rgba(255, 255, 255, 0.25);
+  /* Active (pressed) */
+  --join-text-active: #0A0A0A;
+  --join-border-active: #FFFFFF;
+  --join-scale-active: 0.97;
+  /* Focus */
+  --join-focus-ring: rgba(255, 255, 255, 0.8);
+  --join-focus-ring-width: 2px;
+  /* Loading */
+  --join-loading-text: rgba(10, 10, 10, 0.75);
+  --join-loading-border: rgba(255, 255, 255, 0.85);
+  --join-loading-spinner: #0A0A0A;
+  /* Disabled */
+  --join-disabled-text: rgba(10, 10, 10, 0.55);
+  --join-disabled-bg: rgba(255, 255, 255, 0.55);
+  --join-disabled-border: rgba(255, 255, 255, 0.7);
+}
+
+/* Light theme overrides — keeps contrast against a paper surface. */
+:root.light,
+:root[data-theme="light"] {
+  --join-text: #0A0A0A;
+  --join-border: rgba(10, 10, 10, 0.85);
+  --join-fill: #0A0A0A;
+  --join-text-glow: rgba(10, 10, 10, 0.18);
+  --join-text-hover: #FFFFFF;
+  --join-border-hover: #0A0A0A;
+  --join-glow: rgba(10, 10, 10, 0.35);
+  --join-glow-inner: rgba(10, 10, 10, 0.12);
+  --join-text-active: #FFFFFF;
+  --join-border-active: #0A0A0A;
+  --join-focus-ring: rgba(10, 10, 10, 0.7);
+  --join-loading-text: rgba(10, 10, 10, 0.85);
+  --join-loading-border: rgba(10, 10, 10, 0.6);
+  --join-loading-spinner: #0A0A0A;
+  --join-disabled-text: rgba(10, 10, 10, 0.65);
+  --join-disabled-border: rgba(10, 10, 10, 0.55);
+}
+
+@keyframes breathing {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.015); }
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glitch {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1px, 2px); }
+  80% { transform: translate(1px, -2px); }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.6); }
+  100% { box-shadow: 0 0 0 24px rgba(255, 59, 48, 0); }
+}
+@keyframes ember-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(0); }
+}
+@keyframes char-in {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.7); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+@keyframes caret-blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes shiny-sweep {
+  0%   { background-position: 200% 50%; }
+  100% { background-position: -100% 50%; }
+}
+@keyframes ceremony-glow {
+  0% { opacity: 0; transform: scale(0.6); }
+  40% { opacity: 1; }
+  100% { opacity: 0.35; transform: scale(1.15); }
+}
+@keyframes ripple-pulse {
+  0%   { transform: scale(0.85); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes orbit-counter {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes skeleton-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes map-pulse {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  80%  { transform: scale(4);   opacity: 0; }
+  100% { transform: scale(4);   opacity: 0; }
+}
+
+@keyframes meteor {
+  0%   { transform: rotate(215deg) translateX(0);      opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: rotate(215deg) translateX(-120vw); opacity: 0; }
+}
+
+@keyframes rays-breathe {
+  0%,100% { transform: scale(0.92); opacity: 0.55; }
+  50%     { transform: scale(1.06); opacity: 1; }
+}
+
+
+@utility animate-breathing { animation: breathing 4s var(--ease-ritual) infinite; }
+@utility animate-entrance  { animation: fade-in 0.8s var(--ease-ritual) both; }
+@utility animate-glitch    { animation: glitch 0.4s linear infinite; }
+@utility animate-pulse-ring { animation: pulse-ring 1.4s ease-out infinite; }
+@utility animate-char-in   { animation: char-in 0.35s var(--ease-ritual) both; }
+@utility animate-shake     { animation: shake 0.45s var(--ease-ritual); }
+@utility animate-caret-blink { animation: caret-blink 1s steps(1) infinite; }
+
+@utility btn-ember {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color .45s var(--ease-ritual), border-color .45s var(--ease-ritual), letter-spacing .3s var(--ease-ritual), transform .25s var(--ease-ritual);
+  /* Sweeping gradient — animates once per hover */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background: linear-gradient(120deg, transparent 0%, var(--color-ember) 45%, var(--color-ember-glow) 55%, transparent 100%);
+    background-size: 200% 100%;
+    transform: translateX(-100%);
+    opacity: 0;
+    transition: opacity .2s var(--ease-ritual);
+  }
+  /* Solid ember fill — fades in as the sweep completes */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--color-ember);
+    opacity: 0;
+    transition: opacity .2s var(--ease-ritual);
+  }
+  &:hover {
+    color: var(--color-obsidian);
+    border-color: var(--color-ember-glow);
+    letter-spacing: 0.25em;
+  }
+  &:hover::before {
+    opacity: 1;
+    animation: ember-sweep 1.2s var(--ease-ritual) forwards;
+  }
+  &:hover::after {
+    opacity: 1;
+    /* delay matches sweep, longer fade smooths the lock-in */
+    transition: opacity .6s var(--ease-ritual) .95s;
+  }
+  &:active { transform: scale(0.97); }
+}
+
+@utility btn-silver-sweep {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color .45s var(--ease-ritual), border-color .45s var(--ease-ritual), letter-spacing .3s var(--ease-ritual), transform .25s var(--ease-ritual), box-shadow .45s var(--ease-ritual), background-color .35s var(--ease-ritual);
+  color: var(--join-text);
+  background-color: var(--join-bg);
+  border: 2px solid var(--join-border);
+  text-shadow: 0 0 10px var(--join-text-glow);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background: linear-gradient(120deg, transparent 0%, var(--join-fill) 45%, var(--join-fill) 55%, transparent 100%);
+    background-size: 200% 100%;
+    transform: translateX(-100%);
+    opacity: 0;
+    transition: opacity .2s var(--ease-ritual);
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--join-fill);
+    opacity: 0;
+    transition: opacity .2s var(--ease-ritual);
+  }
+  &:hover {
+    color: var(--join-text-hover);
+    border-color: var(--join-border-hover);
+    letter-spacing: 0.25em;
+    box-shadow: 0 0 32px var(--join-glow), inset 0 0 12px var(--join-glow-inner);
+    text-shadow: none;
+  }
+  &:hover::before {
+    opacity: 1;
+    animation: ember-sweep 1.2s var(--ease-ritual) forwards;
+  }
+  &:hover::after {
+    opacity: 1;
+    transition: opacity .6s var(--ease-ritual) .95s;
+  }
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 var(--join-focus-ring-width) var(--join-focus-ring);
+  }
+  &:active {
+    transform: scale(var(--join-scale-active));
+    color: var(--join-text-active);
+    border-color: var(--join-border-active);
+  }
+  &[aria-busy="true"] {
+    color: var(--join-loading-text);
+    border-color: var(--join-loading-border);
+  }
+  &[aria-busy="true"] > span > .inline-block,
+  &[aria-busy="true"] [data-spinner] {
+    color: var(--join-loading-spinner);
+  }
+}
+
+/* Responsive QA — keep glow/border legible on mobile + high-DPI.
+   Slightly tighten the hover glow on small screens (less bloom on
+   OLED panels) and crispen the border on >=2x DPR. */
+@media (max-width: 640px) {
+  .btn-silver-sweep:hover {
+    box-shadow: 0 0 22px var(--join-glow), inset 0 0 10px var(--join-glow-inner);
+  }
+}
+@media (min-resolution: 2dppx) {
+  .btn-silver-sweep {
+    border-width: 1px;
+    text-shadow: 0 0 8px var(--join-text-glow);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    scroll-behavior: smooth;
+    /* Brief §3 (hybrid): kill rubber-band/bounce inside native shells. */
+    overscroll-behavior: none;
+    /* Honor the notch / status bar — used together with viewport-fit=cover. */
+    background-color: var(--color-obsidian);
+  }
+  html, body {
+    background-color: var(--color-obsidian);
+    color: var(--color-silver);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  body {
+    /* Reserve room for hardware cutouts at the page edges. */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  ::selection {
+    background: var(--color-ember);
+    color: var(--color-obsidian);
+  }
+  input, button, textarea {
+    font-family: inherit;
+  }
+  /* Global focus outline — parallax + orbit transforms never suppress it.
+     Overrides any `outline:none` inside translated containers so keyboard
+     users always see where they are. */
+  :focus-visible {
+    outline: 2px solid var(--color-ember);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  /* Kill any tabindex="-1" traps that might get inherited via focus(). */
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+}
+
+/* Safe-area helpers — opt in on Nav / footers / fixed elements. */
+.safe-top    { padding-top:    env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-x      { padding-left:   env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.safe-inset {
+  padding-top:    env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left:   env(safe-area-inset-left);
+  padding-right:  env(safe-area-inset-right);
+}
+
+/* ============================================================
+   Glassmorphism surface — used on floating pills, insight
+   panels, and elevated cards. One token so the frost feels
+   consistent everywhere it appears.
+   ============================================================ */
+@utility glass {
+  background: color-mix(in oklab, var(--color-obsidian-2) 60%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@utility glass-strong {
+  background: color-mix(in oklab, var(--color-obsidian) 78%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-old(root) { animation-name: vt-fade-out; }
+::view-transition-new(root) { animation-name: vt-fade-in; }
+@keyframes vt-fade-out { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes vt-fade-in  { from { opacity: 0; transform: translateY(6px); } }

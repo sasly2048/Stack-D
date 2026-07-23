@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "sdk_version": "0.23.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://wmqyswkqdnfnpdcpdhan.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "stackd-mcp",
+      "version": "0.1.0",
+      "title": "Stack'd"
+    },
+    "tools": [
+      {
+        "name": "get_profile",
+        "title": "Get my profile",
+        "description": "Return the signed-in user's Stack'd profile: display name, avatar, lifetime XP, and current focus streak.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_focus_history",
+        "title": "List my focus sessions",
+        "description": "Return the signed-in user's recent focus sessions, most recent first, with score, tier, duration, breaches, and XP earned.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Maximum number of sessions to return. Defaults to 20, capped at 100."
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_groups",
+        "title": "List my focus groups",
+        "description": "Return the focus groups the signed-in user belongs to.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_rooms",
+        "title": "List rooms I created",
+        "description": "Return focus rooms the signed-in user created (host rooms), most recent first, with code and settings.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Maximum rooms to return. Defaults to 20, capped at 100."
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
