@@ -350,7 +350,7 @@ function Landing() {
           )}
         </div>
       )}
-      <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-3 flex flex-col gap-3 sm:mt-2 sm:flex-row">
         <button
           type="button"
           onClick={start}
@@ -391,7 +391,7 @@ function Landing() {
           id="main"
           index="01"
           label="The Crisis"
-          className="border-t-0 pb-16 pt-28 lg:pb-20 lg:pt-32"
+          className="border-t-0 pb-20 pt-32 lg:pb-20 lg:pt-32"
           glow="top-right"
           handoff={false}
           background={
@@ -463,7 +463,7 @@ function Landing() {
               handhelds so the whole exhibit reads inside one viewport
               instead of stretching the hook across four extra screens.
             */}
-            <div className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-white/5 bg-white/5 sm:mt-12 md:grid-cols-4">
+            <div className="mt-14 grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-white/5 bg-white/5 sm:mt-12 md:grid-cols-4">
               {STATS.map((s, i) => (
                 <div
                   key={s.l}
@@ -696,14 +696,14 @@ function Landing() {
 
         {/* Voices — the payoff, in other people's words. Its own room: a
             darker floor, a soft top cut, and a single dominant marquee. */}
-        <section className="relative overflow-hidden border-t border-white/5 bg-neutral-900/30 py-24 sm:py-24">
+        <section className="relative overflow-hidden border-t border-white/5 bg-neutral-900/30 py-28 sm:py-24">
           {/* Single top-only cut-in, matching Scene — the next section (05)
               owns its own fade-in, so this boundary isn't double-darkened. */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black to-transparent"
           />
-          <div className="mx-auto mb-12 flex max-w-6xl flex-wrap items-end justify-between gap-6 px-6">
+          <div className="mx-auto mb-14 flex max-w-6xl flex-wrap items-end justify-between gap-6 px-6 sm:mb-12">
             <TextReveal
               as="h2"
               className="max-w-xl text-balance text-3xl font-extrabold tracking-tight sm:text-4xl"
@@ -817,7 +817,7 @@ function Landing() {
             <div ref={ctaPx.targetRef} className="will-change-transform">
               {/* The culmination — the last thing the story shows is the win,
                   stacked over two ghost frames of past sessions. */}
-              <div className="relative mx-auto mb-8 mt-8 max-w-lg sm:mb-10 sm:mt-0">
+              <div className="relative mx-auto mb-10 mt-10 max-w-lg sm:mb-10 sm:mt-0">
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-x-8 -top-3 h-20 rotate-[1deg] rounded-3xl border border-white/8 bg-white/[0.015]"
@@ -856,7 +856,7 @@ function Landing() {
         </Scene>
       </main>
 
-      <footer className="border-t border-white/5 px-6 py-16">
+      <footer className="border-t border-white/5 px-6 py-20 sm:py-16">
         <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-4">
           <div className="max-w-sm md:col-span-2">
             <div className="mb-6 flex items-center gap-3">
