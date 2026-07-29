@@ -1,10 +1,21 @@
 <h1 align="center"> Stack'D </h1>
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/e0e729ac-fe21-4685-bbbd-a2aa9f51ede4"
-       alt="Stack'D Logo"
-       width="300">
-</p>
+<div align="center">
+  <picture>
+    <source
+      media="(prefers-color-scheme: dark)"
+      srcset="https://github.com/user-attachments/assets/21c15680-ded3-4210-845b-1f3bb00ee3df">
+    <source
+      media="(prefers-color-scheme: light)"
+      srcset="https://github.com/user-attachments/assets/c3e20f4e-e023-4602-99d4-4203522171a8">
+    <img
+      src="https://github.com/user-attachments/assets/21c15680-ded3-4210-845b-1f3bb00ee3df"
+      alt="Stack'D — Presence is the new Luxury"
+      width="300"
+      height="300">
+  </picture>
+</div>
+
 <p align="center">
   <strong>Presence is the new luxury.</strong>
 </p>
@@ -62,21 +73,21 @@ Minor breaches cost 10 points, severe breaches cost 40. Abandoning past a 15-sec
 
 ## Features
 
-**Core loop** — rooms, real-time presence, live activity rail, session workspace, ambient soundscapes, QR-code room invites, floating persistent timer.
+- **Core loop** — rooms, real-time presence, live activity rail, session workspace, ambient soundscapes, QR-code room invites, floating persistent timer.
 
-**Progression & identity** — XP, streaks, tiers, achievements, challenges, seasons, prestige, narrative rank titles, profile cards, DNA (behavioral pattern breakdown), memory vault, session replay, time capsules.
+- **Progression & identity** — XP, streaks, tiers, achievements, challenges, seasons, prestige, narrative rank titles, profile cards, DNA (behavioral pattern breakdown), memory vault, session replay, time capsules.
 
-**Social** — friends, groups/circles, activity feed, leaderboards, mentor relationships, live session reactions, shared goal bars for group rooms.
+- **Social** — friends, groups/circles, activity feed, leaderboards, mentor relationships, live session reactions, shared goal bars for group rooms.
 
-**Companion** — **Atlas**, an ambient AI coach that surfaces context-aware, data-grounded recommendations (next session length, best focus hour, burnout risk) as a small dismissible card on Dashboard and Insights — not a chatbot you have to seek out, though a full conversational companion page exists at `/companion` for direct Q&A. Grounded in real session history via a system-prompt guardrail against inventing statistics.
+- **Companion** — **Atlas**, an ambient AI coach that surfaces context-aware, data-grounded recommendations (next session length, best focus hour, burnout risk) as a small dismissible card on Dashboard and Insights — not a chatbot you have to seek out, though a full conversational companion page exists at `/companion` for direct Q&A. Grounded in real session history via a system-prompt guardrail against inventing statistics.
 
-**Trust & safety** — user reporting, moderation queue, blocking, room moderators, IP + device-fingerprint rate limiting on auth, CAPTCHA (Turnstile) on suspicious activity.
+- **Trust & safety** — user reporting, moderation queue, blocking, room moderators, IP + device-fingerprint rate limiting on auth, CAPTCHA (Turnstile) on suspicious activity.
 
-**Progressive navigation** — the nav isn't flat. Routes are gated behind Starter / Intermediate / Advanced tiers computed from real usage (lifetime XP, streak, session count), not a settings toggle, with a power-user override for anyone who wants everything immediately (`use-nav-tier.ts`).
+- **Progressive navigation** — the nav isn't flat. Routes are gated behind Starter / Intermediate / Advanced tiers computed from real usage (lifetime XP, streak, session count), not a settings toggle, with a power-user override for anyone who wants everything immediately (`use-nav-tier.ts`).
 
-**Low Power Mode** — trims particles, meteors, and parallax FX; auto-enables on `prefers-reduced-motion` or low battery.
+- **Low Power Mode** — trims particles, meteors, and parallax FX; auto-enables on `prefers-reduced-motion` or low battery.
 
-**Ecosystem** — an `/integrations` directory cataloging what's shipped (Webhooks, TypeScript SDK, MCP server) vs. what's planned (Calendar, Notion, Discord, Slack, Raycast), each honestly status-labeled.
+- **Ecosystem** — an `/integrations` directory cataloging what's shipped (Webhooks, TypeScript SDK, MCP server) vs. what's planned (Calendar, Notion, Discord, Slack, Raycast), each honestly status-labeled.
 
 **Extensibility** —
 
