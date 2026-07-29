@@ -565,6 +565,7 @@ function Landing() {
           label="The Protocol"
           tone="void"
           glow="bottom-right"
+          className="pt-20 sm:pt-0"
           background={
             <>
               <DepthLayers />
