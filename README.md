@@ -27,7 +27,7 @@
 </div>
 <div align="center">
 
-  [![Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/sasly204800)
+[![Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/sasly204800)
 
 </div>
 
@@ -35,13 +35,12 @@
 
 ---
 
-
 ## How it works
 
 1. **Start or join a room** with a target duration and enforcement mode (`gentle` or `absolute`).
 2. **Sensors arm** on session start — orientation, motion, tab visibility, and Screen Wake Lock are all monitored through a single adapter (`use-sensors.ts`) so the same logic runs on web and the future Capacitor build.
 3. **Breach a rule** (tilt past threshold, pick the phone up, shake it, switch tabs, lose the wake lock) and it's logged with a severity — minor or severe.
-4. **Session ends** → the client computes a provisional score locally for instant feedback, then calls a Postgres RPC (`finalize_focus_session`) that **independently recomputes** duration, breach count, and XP server-side and takes the *lower* of client vs. server XP. A modified client can only shortchange itself, never inflate its score.
+4. **Session ends** → the client computes a provisional score locally for instant feedback, then calls a Postgres RPC (`finalize_focus_session`) that **independently recomputes** duration, breach count, and XP server-side and takes the _lower_ of client vs. server XP. A modified client can only shortchange itself, never inflate its score.
 5. **Result lands** with a full cinematic completion sequence — animated XP count-up, tier reveal, streak, unlocked achievements — that fires the moment your session finalizes, whether that's instant or synced later from an offline queue.
 
 ## Scoring model
@@ -51,13 +50,13 @@ S_focus = max(0, min(100, (T_focus / T_target) * 100 − Σ P_breach))
 XP      = floor(S_focus * (T_focus / 60) * M_tier)
 ```
 
-| Tier | Score range | XP multiplier |
-|---|---|---|
-| Flow State | 95–100 | 1.5× |
-| Pristine Focus | 85–94 | 1.0× |
-| Steady Ambient | 70–84 | 0.5× |
-| Fragmented Attention | 40–69 | 0× |
-| Protocol Compromised | 0–39 | 0× |
+| Tier                 | Score range | XP multiplier |
+| -------------------- | ----------- | ------------- |
+| Flow State           | 95–100      | 1.5×          |
+| Pristine Focus       | 85–94       | 1.0×          |
+| Steady Ambient       | 70–84       | 0.5×          |
+| Fragmented Attention | 40–69       | 0×            |
+| Protocol Compromised | 0–39        | 0×            |
 
 Minor breaches cost 10 points, severe breaches cost 40. Abandoning past a 15-second grace window after a severe breach adds a continuous penalty. The pure scoring function lives in `src/lib/focus-score.ts` with no React or DB dependencies, so it's independently testable.
 
@@ -80,6 +79,7 @@ Minor breaches cost 10 points, severe breaches cost 40. Abandoning past a 15-sec
 **Ecosystem** — an `/integrations` directory cataloging what's shipped (Webhooks, TypeScript SDK, MCP server) vs. what's planned (Calendar, Notion, Discord, Slack, Raycast), each honestly status-labeled.
 
 **Extensibility** —
+
 - **Webhooks** — subscribe to session/room events, with delivery logs and retry.
 - **Public TypeScript SDK** (`@stackd/sdk`) — zero-dependency client for webhook signature verification.
 - **MCP server** — Stack'D exposes its own [Model Context Protocol](https://modelcontextprotocol.io) endpoint (`/mcp`) so agents like Claude or Cursor can read a user's focus history, groups, and profile directly.
@@ -94,7 +94,6 @@ Minor breaches cost 10 points, severe breaches cost 40. Abandoning past a 15-sec
 | **Validation** | Zod                                                                                                      |
 | **Utilities**  | jsPDF, QR Code generation                                                                                |
 | **Testing**    | Playwright Visual Regression                                                                             |
-
 
 ## Getting started
 
@@ -141,4 +140,4 @@ Actively developed. Core loop, scoring integrity, RLS coverage, and progressive 
 
 ## License
 
-MIT — see [LICENSE](./LICENSE). 
+MIT — see [LICENSE](./LICENSE).
