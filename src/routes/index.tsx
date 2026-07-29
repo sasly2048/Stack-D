@@ -463,7 +463,7 @@ function Landing() {
               handhelds so the whole exhibit reads inside one viewport
               instead of stretching the hook across four extra screens.
             */}
-            <div className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-white/5 bg-white/5 sm:mt-12 md:grid-cols-4">
+            <div className="mt-14 grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-white/5 bg-white/5 sm:mt-12 md:grid-cols-4">
               {STATS.map((s, i) => (
                 <div
                   key={s.l}
