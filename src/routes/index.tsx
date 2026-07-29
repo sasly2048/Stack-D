@@ -739,7 +739,7 @@ function Landing() {
 
               <div className="relative order-1 -mx-4 mt-8 sm:mx-0 sm:mt-0 lg:order-2">
                 <div className="relative">
-                  <div ref={mapSlotRef} data-visual="map" className="aspect-[76/34] w-full">
+                  <div ref={mapSlotRef} data-visual="map" className="aspect-[180/71] w-full">
                     {mapInView ? (
                       <Suspense fallback={<MapSkeleton />}>
                         <DottedMap className="opacity-90" />

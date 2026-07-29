@@ -9,7 +9,7 @@ export function MapSkeleton({ className = "" }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`relative w-full aspect-[76/34] rounded-xl overflow-hidden bg-white/[0.02] ${className}`}
+      className={`relative w-full aspect-[180/71] rounded-xl overflow-hidden bg-white/[0.02] ${className}`}
     >
       <div
         className="absolute inset-0 opacity-40"
