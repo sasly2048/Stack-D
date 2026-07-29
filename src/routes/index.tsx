@@ -38,9 +38,7 @@ import { MapSkeleton, MeteorSkeleton } from "@/components/fx/skeleton";
 
 // Heavy FX lazy-loaded so they don't ship in the initial hero bundle and
 // don't run their render loops until the section approaches the viewport.
-const DottedMap = lazy(() =>
-  import("@/components/fx/dotted-map").then((m) => ({ default: m.DottedMap })),
-);
+const DottedMap = lazy(() => import("@/components/fx/dotted-map").then((m) => ({ default: m.DottedMap })));
 const Meteors = lazy(() => import("@/components/fx/meteors").then((m) => ({ default: m.Meteors })));
 
 function Spinner({ className = "" }: { className?: string }) {
@@ -66,8 +64,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Stack'd — Presence is the new luxury" },
       {
         property: "og:description",
-        content:
-          "A real-time, multiplayer phone-stacking room. Every tilt, lift and screen wake is shared instantly.",
+        content: "A real-time, multiplayer phone-stacking room. Every tilt, lift and screen wake is shared instantly.",
       },
     ],
   }),
@@ -340,11 +337,7 @@ function Landing() {
             >
               {submitting ? <Spinner /> : null}
               <span>
-                {submitting
-                  ? "Retrying…"
-                  : error === "rate_limited" && cooldown > 0
-                    ? `Wait ${cooldown}s`
-                    : "Retry →"}
+                {submitting ? "Retrying…" : error === "rate_limited" && cooldown > 0 ? `Wait ${cooldown}s` : "Retry →"}
               </span>
             </button>
           )}
@@ -416,10 +409,9 @@ function Landing() {
               <div className="order-2 animate-entrance [animation-delay:120ms] lg:order-2">
                 <HeroStage />
                 <p className="sr-only">
-                  Product preview: four phones stacked face-down on a table, a live room timer at
-                  forty-two minutes with four members, a break-detection alert as one member lifts
-                  their phone, an experience gain of four hundred and twenty points, and a weekly
-                  leaderboard.
+                  Product preview: four phones stacked face-down on a table, a live room timer at forty-two minutes with
+                  four members, a break-detection alert as one member lifts their phone, an experience gain of four
+                  hundred and twenty points, and a weekly leaderboard.
                 </p>
               </div>
 
@@ -440,8 +432,8 @@ function Landing() {
                 </SceneTitle>
 
                 <SceneLede className="mb-6 sm:mb-8">
-                  It never arrives as a crisis. It arrives twenty-three seconds at a time, until an
-                  evening with people you love is something you half-remember.
+                  It never arrives as a crisis. It arrives twenty-three seconds at a time, until an evening with people
+                  you love is something you half-remember.
                 </SceneLede>
 
                 <div className="flex flex-wrap items-center gap-4">
@@ -451,6 +443,9 @@ function Landing() {
                   >
                     Read the story ↓
                   </a>
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  {" "}
                   <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                     Six scenes · Two minutes
                   </span>
@@ -508,8 +503,8 @@ function Landing() {
               <div className="grid gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
                 <TextReveal as="div">
                   <SceneLede>
-                    You already know what you should be doing. You have known all along. What you
-                    have never had is someone in the room who notices the moment you drift.
+                    You already know what you should be doing. You have known all along. What you have never had is
+                    someone in the room who notices the moment you drift.
                   </SceneLede>
                 </TextReveal>
 
@@ -526,25 +521,17 @@ function Landing() {
                     <p className="text-lg font-medium tracking-tight text-silver-dim">
                       A timer you can silence. A promise nobody hears you break.
                     </p>
-                    <span
-                      aria-hidden
-                      className="mt-5 block h-1 w-full overflow-hidden rounded-full bg-white/[0.06]"
-                    >
+                    <span aria-hidden className="mt-5 block h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
                       <span className="block h-full w-[18%] rounded-full bg-white/20" />
                     </span>
                   </div>
 
                   <div className="glass relative z-20 -mt-3 ml-4 rotate-[0.9deg] rounded-3xl border-ember/25 p-7 shadow-[0_40px_90px_-45px_rgba(240,169,104,0.5)] transition-transform duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:[transform:rotateY(4deg)_translateZ(12px)] sm:p-8">
-                    <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
-                      Together
-                    </div>
+                    <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-ember">Together</div>
                     <p className="text-lg font-medium tracking-tight text-silver">
                       Four people watching the same clock. Suddenly it holds.
                     </p>
-                    <span
-                      aria-hidden
-                      className="mt-5 block h-1 w-full overflow-hidden rounded-full bg-white/[0.06]"
-                    >
+                    <span aria-hidden className="mt-5 block h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
                       <span className="block h-full w-[94%] rounded-full bg-gradient-to-r from-ember to-ember-glow" />
                     </span>
                   </div>
@@ -562,8 +549,8 @@ function Landing() {
                   <BreachToast className="absolute -left-8 top-[38%] z-30 hidden w-[188px] sm:block" />
                   <XpChip className="absolute -bottom-2 -right-6 z-30 hidden w-[170px] sm:block" />
                   <p className="sr-only">
-                    Product preview: a solo session barely holding, a shared room holding at
-                    ninety-four percent, a break-detection alert and an experience gain.
+                    Product preview: a solo session barely holding, a shared room holding at ninety-four percent, a
+                    break-detection alert and an experience gain.
                   </p>
                 </div>
               </div>
@@ -601,8 +588,8 @@ function Landing() {
                   <span className="text-ember">live.</span>
                 </SceneTitle>
                 <SceneLede className="mb-8 sm:mb-8">
-                  Stack&apos;d is a real-time multiplayer room. Every tilt, lift and screen wake is
-                  detected on-device and broadcast to everyone at the table the instant it happens.
+                  Stack&apos;d is a real-time multiplayer room. Every tilt, lift and screen wake is detected on-device
+                  and broadcast to everyone at the table the instant it happens.
                 </SceneLede>
 
                 <ul className="space-y-px overflow-hidden rounded-3xl border border-white/5 bg-white/5">
@@ -610,9 +597,7 @@ function Landing() {
                     <li key={s.k} className="bg-obsidian p-6 sm:p-5">
                       <div className="mb-1.5 flex items-center gap-3">
                         <span className="size-[var(--dot-size-sm)] rounded-full bg-ember shadow-[var(--dot-glow)]" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
-                          {s.k}
-                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">{s.k}</span>
                       </div>
                       <p className="pl-[calc(var(--dot-size-sm)+0.75rem)] text-[0.95rem] leading-[1.6] text-silver-dim">
                         {s.d}
@@ -645,9 +630,8 @@ function Landing() {
                 <XpChip className="absolute -bottom-8 right-4 z-20 w-[150px] scale-90 origin-bottom-right sm:-bottom-10 sm:right-10 sm:w-[180px] sm:scale-100" />
 
                 <p className="sr-only">
-                  Product preview: a live Stack&apos;d room with a sixty-minute timer, four
-                  participants — three holding, one lifted — and real-time tilt, lift and screen
-                  wake detection.
+                  Product preview: a live Stack&apos;d room with a sixty-minute timer, four participants — three
+                  holding, one lifted — and real-time tilt, lift and screen wake detection.
                 </p>
               </div>
             </div>
@@ -663,8 +647,8 @@ function Landing() {
             Sessions become streaks. Streaks become who you are.
           </TextReveal>
           <SceneLede>
-            Hold the room, and the payoff compounds — experience, badges, and a table that expects
-            you to show up present.
+            Hold the room, and the payoff compounds — experience, badges, and a table that expects you to show up
+            present.
           </SceneLede>
         </Scene>
 
@@ -681,9 +665,7 @@ function Landing() {
               <AchievementCard />
             </div>
             <div className="flex h-[min(62vh,560px)] w-[86vw] shrink-0 flex-col justify-between rounded-3xl border border-ember/25 bg-gradient-to-br from-[#1a0f08] via-obsidian to-obsidian p-8 sm:w-[58vw] md:w-[42vw] lg:w-[32vw]">
-              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
-                The Return
-              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">The Return</span>
               <p className="text-balance text-[clamp(1.5rem,3.4vw,2.25rem)] font-extrabold leading-[1] tracking-tighter">
                 The room stands. Phones come back. Something in the air stayed different.
               </p>
@@ -704,15 +686,10 @@ function Landing() {
             className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black to-transparent"
           />
           <div className="mx-auto mb-14 flex max-w-6xl flex-wrap items-end justify-between gap-6 px-6 sm:mb-12">
-            <TextReveal
-              as="h2"
-              className="max-w-xl text-balance text-3xl font-extrabold tracking-tight sm:text-4xl"
-            >
+            <TextReveal as="h2" className="max-w-xl text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">
               The room speaks for itself.
             </TextReveal>
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
-              Field Reports / Ongoing
-            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">Field Reports / Ongoing</span>
           </div>
           <Marquee speedSeconds={55}>
             {[...VOICES, ...VOICES].map((v, i) => (
@@ -723,9 +700,7 @@ function Landing() {
                 <blockquote className="text-balance text-lg font-medium leading-snug tracking-tight">
                   &ldquo;{v.q}&rdquo;
                 </blockquote>
-                <figcaption className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
-                  {v.n}
-                </figcaption>
+                <figcaption className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">{v.n}</figcaption>
               </figure>
             ))}
           </Marquee>
@@ -753,9 +728,8 @@ function Landing() {
                   <MatrixText text="luxury." className="text-ember" />
                 </SceneTitle>
                 <SceneLede className="mb-8">
-                  Stack&apos;d isn&apos;t another focus timer — it&apos;s a shared commitment to
-                  being present. Non-digital space is a human right, and it is the one thing nobody
-                  can sell back to you.
+                  Stack&apos;d isn&apos;t another focus timer — it&apos;s a shared commitment to being present.
+                  Non-digital space is a human right, and it is the one thing nobody can sell back to you.
                 </SceneLede>
                 <Link
                   to="/philosophy"
@@ -783,8 +757,7 @@ function Landing() {
                 </div>
 
                 <p className="mt-12 max-w-[26ch] px-4 text-[0.95rem] leading-[1.6] text-silver-dim sm:mt-10 sm:max-w-md sm:px-0">
-                  Every dot is a table somewhere choosing presence over noise — anonymously,
-                  atomically, in sync.
+                  Every dot is a table somewhere choosing presence over noise — anonymously, atomically, in sync.
                 </p>
               </div>
             </div>
@@ -830,8 +803,7 @@ function Landing() {
                   <SessionCompleteCard />
                 </div>
                 <p className="sr-only">
-                  Product preview: a completed session — sixty minutes held, one break, a focus
-                  score of ninety-four.
+                  Product preview: a completed session — sixty minutes held, one break, a focus score of ninety-four.
                 </p>
               </div>
 
@@ -864,17 +836,15 @@ function Landing() {
               <span className="font-mono text-xs uppercase tracking-[0.3em]">Stack&apos;d</span>
             </div>
             <p className="mb-6 text-sm leading-relaxed text-silver-dim">
-              Designed for those who value the space between notifications. A private protocol for
-              shared, intentional offline time.
+              Designed for those who value the space between notifications. A private protocol for shared, intentional
+              offline time.
             </p>
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               © {new Date().getFullYear()} Stack&apos;d Protocol
             </p>
           </div>
           <div>
-            <div className="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Protocol
-            </div>
+            <div className="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Protocol</div>
             <ul className="space-y-3 text-sm">
               <li>
                 <Link to="/philosophy" className="transition-colors hover:text-ember">
@@ -894,9 +864,7 @@ function Landing() {
             </ul>
           </div>
           <div>
-            <div className="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Signal
-            </div>
+            <div className="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Signal</div>
             <ul className="space-y-3 text-sm">
               <li>
                 <a href="mailto:hello@stackd.app" className="transition-colors hover:text-ember">
@@ -923,4 +891,3 @@ function Landing() {
     </div>
   );
 }
-
