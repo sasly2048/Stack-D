@@ -436,7 +436,7 @@ function Landing() {
                   you love is something you half-remember.
                 </SceneLede>
 
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4 mb-10 sm:mb-0">
                   <a
                     href="#begin"
                     className="btn-ember inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-full border border-silver/40 px-10 font-mono text-xs uppercase tracking-widest text-silver sm:w-auto"
@@ -455,7 +455,7 @@ function Landing() {
               handhelds so the whole exhibit reads inside one viewport
               instead of stretching the hook across four extra screens.
             */}
-            <div className="mt-14 grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-white/5 bg-white/5 sm:mt-12 md:grid-cols-4">
+            <div className="mt-24 grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-white/5 bg-white/5 sm:mt-12 md:grid-cols-4">
               {STATS.map((s, i) => (
                 <div
                   key={s.l}
