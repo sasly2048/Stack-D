@@ -1,52 +1,47 @@
-## Stack'D — Polish Pass (Depth 3)
+# Redesign the dotted world map (Scene 05)
 
-Refinement-only. No new features, no rewrites of auth, Supabase, Atlas, focus sessions, progression, or public APIs. Ember/silver/obsidian branding preserved.
+The current map in `src/components/fx/dotted-map.tsx` builds its land mask from ~16 hand-written continent polygons. That's why shapes read wrong (Asia is a blob, no Mediterranean, missing islands) and why the silhouette doesn't match its container's aspect ratio (`aspect-[76/34]` vs the map's own lat/lon window), which causes the letterboxing/awkward fit.
 
----
+## What changes
 
-### 1. Design system consolidation
+Only the map component and the wrapper's sizing classes in Scene 05. No text, cards, markers/pulses behavior, LeaderboardPanel, animations, or spacing changes elsewhere.
 
-- Audit `src/styles.css` tokens; document the canonical scale (radius, spacing rhythm, ember/silver ramps) in a comment block at the top and remove any orphan tokens no `rg` reference points at.
-- Sweep components for hardcoded colors (`text-white`, `#FFFFFF`, `bg-black`, arbitrary hex) and replace with existing tokens (`text-silver`, `bg-obsidian`, `text-ember`). Report scope before touching — likely <15 files.
-- Normalize button states across `.btn-ember`, `.btn-silver-sweep`, and shadcn `<Button>`: same focus ring token, same disabled opacity, same hover timing curve.
-- Unify skeleton loaders — keep `src/components/fx/skeleton.tsx`, delete `src/components/skeleton.tsx` if unused (verified via `rg`).
+### 1. Real geographic land mask
 
-### 2. Navigation + empty/loading states
+Generate the dot grid from actual Natural Earth land data instead of hand-drawn polygons:
 
-- Verify `useNavTier` progressive nav still matches shipped routes; remove references to deleted routes if any.
-- Every `_authenticated/*` route: confirm it has a real empty state (not a blank div) and a skeleton on first paint. Fix only the ones that are missing.
-- Command palette (`command-palette.tsx`): dedupe entries, ensure every action has an icon + shortcut hint, and sort by section.
+- Offline (one-time, at implementation): fetch Natural Earth 110m land GeoJSON, rasterize it into an equirectangular land/no-land grid at a fixed resolution (~180 x 90 cells covering lon -180..180, lat -58..84).
+- Encode that grid as a compact base64/bit-packed string constant embedded in `dotted-map.tsx` (a few hundred bytes — no new runtime dependency, no network fetch, SSR-safe).
+- The component decodes it once in `useMemo` and emits one circle per land cell, exactly as today.
 
-### 3. Performance
+Result: recognizable Mediterranean, Indian subcontinent, Indonesian archipelago, Japan, UK, Scandinavia, Great Lakes, Red Sea, correct Africa/South America taper.
 
-- `rg` for `useEffect` fetches that should be `useQuery` with a loader — flag only, don't rewrite unless it's a one-line swap.
-- Lazy-load heavy FX (`DottedMap`, `Meteors`, `OrbitingCircles`, `LightRays`) if any are still statically imported on non-hero routes.
-- Audit `package.json` for deps with zero `rg` hits and remove them.
-- Add `React.memo` only to demonstrably re-rendering list items (session timeline rows, activity rail rows).
+### 2. Correct proportions, edge to edge
 
-### 4. Code health
+- The SVG `viewBox` is derived from the grid dimensions, so the intrinsic aspect ratio always matches the projection — no stretching.
+- The wrapper in `src/routes/index.tsx` changes from the fixed `aspect-[76/34]` to the map's true aspect so the dots fill the slot edge to edge with no dead bands. `MapSkeleton` gets the same aspect so the lazy-load swap stays silent.
+- `preserveAspectRatio="xMidYMid meet"` stays; the SVG remains `w-full h-auto`.
 
-- Remove dead files verified by `rg` returning zero importers.
-- Consolidate duplicated helpers: check for parallel `haptic`/`observability`/copy utilities and pick one canonical.
-- Fix any `any` types that trivially resolve to a known shape (no deep type surgery).
-- Standardize server-fn file naming (`*.functions.ts`) — flag any drift.
+### 3. Per-breakpoint composition
 
-### 5. Accessibility quick wins
+Dot density/size responds to viewport so the map reads cleanly at 394px as well as desktop:
 
-- Icon-only buttons: add `aria-label` where missing (Nav, palette triggers, close buttons).
-- Ensure `focus-visible` ring is visible on ember/silver buttons against obsidian bg.
-- Add `aria-live="polite"` to toast region if missing.
+- Mobile (<640px): coarser sampling (every other column/row) and slightly larger dot radius, so dots stay legible instead of turning into grey mush.
+- Tablet (640–1024px): intermediate density.
+- Desktop: full grid density.
 
----
+Implemented with a small matchMedia-driven density state inside the component (defaults to the desktop grid during SSR, so no hydration mismatch), not with CSS scaling.
 
-### Out of scope (explicit)
+### 4. Markers
 
-Auth flow, Supabase schema/RLS, Atlas prompt logic, focus scoring, room realtime, webhooks/SDK, branding colors, route paths, PWA/service worker.
+Keep the existing 10 city pulses and their look (ember fill, drop shadow, expanding ring, staggered `map-pulse`). Add a few for global balance: Los Angeles, Mexico City, Dubai, Nairobi, Seoul, Toronto. Marker positions use the same lon/lat → grid projection, so they land on the right coastlines.
 
-### Execution
+## Visual style preserved
 
-Sequential batches, one theme per turn, each ending with a build check. I will report findings before making bulk edits so you can veto per-batch. Estimated 4–6 turns end-to-end.
+Same `dotColor` (`rgba(226,226,226,0.32)`), same `pulseColor` (`#F0A968`), same faint dashed equator line, same `opacity-90` blend, same props API (`className`, `dotColor`, `pulseColor`, `cities`, `step`) so `catalog.tsx` and any other usage keep working.
 
-### First turn deliverable
+## Technical notes
 
-Audit report: list of hardcoded colors, dead files, duplicated utilities, missing aria-labels, and heavy static imports — with file paths and counts. No code edits until you greenlight the batches.
+- Files touched: `src/components/fx/dotted-map.tsx` (rewrite of the mask + projection), `src/components/fx/skeleton.tsx` (aspect match), `src/routes/index.tsx` (map slot aspect class only).
+- Circle count stays in the same order of magnitude as today (~600–900 desktop, fewer on mobile), so render cost and the bundle budget are unaffected.
+- Verify with Playwright screenshots at 394px, 834px, and 1440px before finishing.
