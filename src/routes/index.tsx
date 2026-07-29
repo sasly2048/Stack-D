@@ -696,7 +696,7 @@ function Landing() {
 
         {/* Voices — the payoff, in other people's words. Its own room: a
             darker floor, a soft top cut, and a single dominant marquee. */}
-        <section className="relative overflow-hidden border-t border-white/5 bg-neutral-900/30 py-24 sm:py-24">
+        <section className="relative overflow-hidden border-t border-white/5 bg-neutral-900/30 py-28 sm:py-24">
           {/* Single top-only cut-in, matching Scene — the next section (05)
               owns its own fade-in, so this boundary isn't double-darkened. */}
           <div
