@@ -703,7 +703,7 @@ function Landing() {
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black to-transparent"
           />
-          <div className="mx-auto mb-12 flex max-w-6xl flex-wrap items-end justify-between gap-6 px-6">
+          <div className="mx-auto mb-14 flex max-w-6xl flex-wrap items-end justify-between gap-6 px-6 sm:mb-12">
             <TextReveal
               as="h2"
               className="max-w-xl text-balance text-3xl font-extrabold tracking-tight sm:text-4xl"
