@@ -856,7 +856,7 @@ function Landing() {
         </Scene>
       </main>
 
-      <footer className="border-t border-white/5 px-6 py-16">
+      <footer className="border-t border-white/5 px-6 py-20 sm:py-16">
         <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-4">
           <div className="max-w-sm md:col-span-2">
             <div className="mb-6 flex items-center gap-3">
