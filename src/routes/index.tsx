@@ -350,7 +350,7 @@ function Landing() {
           )}
         </div>
       )}
-      <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-3 flex flex-col gap-3 sm:mt-2 sm:flex-row">
         <button
           type="button"
           onClick={start}
