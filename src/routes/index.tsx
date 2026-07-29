@@ -443,9 +443,6 @@ function Landing() {
                   >
                     Read the story ↓
                   </a>
-                </div>
-                <div className="flex flex-wrap items-center gap-4">
-                  {" "}
                   <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                     Six scenes · Two minutes
                   </span>
