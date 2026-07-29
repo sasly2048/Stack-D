@@ -1,0 +1,26 @@
+{
+  "/": {
+    "lcp_ms": 436,
+    "cls": 0.0001,
+    "ttfb_ms": 48,
+    "long_tasks_ms": 420,
+    "transfer_kb": 7707,
+    "requests": 202
+  },
+  "/philosophy": {
+    "lcp_ms": 0,
+    "cls": 0,
+    "ttfb_ms": 20,
+    "long_tasks_ms": 0,
+    "transfer_kb": 55,
+    "requests": 189
+  },
+  "/auth": {
+    "lcp_ms": 84,
+    "cls": 0,
+    "ttfb_ms": 14,
+    "long_tasks_ms": 0,
+    "transfer_kb": 147,
+    "requests": 186
+  }
+}

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.friendship_accepted_activity() FROM anon, PUBLIC; REVOKE EXECUTE ON FUNCTION public.rooms_add_collective_seconds() FROM anon, PUBLIC;
