@@ -618,7 +618,7 @@ function Landing() {
                   aria-hidden
                   className="pointer-events-none absolute inset-x-10 -top-8 z-0 h-24 rotate-[1.2deg] rounded-3xl border border-white/5 bg-white/[0.01]"
                 />
-                <div className="relative z-10">
+                <div className="relative z-50">
                   <RoomPreview />
                 </div>
                 {/* Overlapping product frames — the room, seen from outside it. */}
