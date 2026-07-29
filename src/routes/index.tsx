@@ -391,7 +391,7 @@ function Landing() {
           id="main"
           index="01"
           label="The Crisis"
-          className="border-t-0 pb-16 pt-28 lg:pb-20 lg:pt-32"
+          className="border-t-0 pb-20 pt-32 lg:pb-20 lg:pt-32"
           glow="top-right"
           handoff={false}
           background={
