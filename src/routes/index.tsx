@@ -604,7 +604,7 @@ function Landing() {
                 </ul>
               </div>
 
-              <div className="relative order-1 -mx-4 mt-16 sm:mx-0 sm:mt-0 lg:order-2">
+              <div className="relative order-1 -mx-4 mt-20 sm:mx-0 sm:mt-0 lg:order-2">
                 {/*
                   Echo frames — two duplicated room shells behind the live one,
                   so the protocol reads as "many tables at once" rather than a
