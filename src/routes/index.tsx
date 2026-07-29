@@ -817,7 +817,7 @@ function Landing() {
             <div ref={ctaPx.targetRef} className="will-change-transform">
               {/* The culmination — the last thing the story shows is the win,
                   stacked over two ghost frames of past sessions. */}
-              <div className="relative mx-auto mb-8 mt-8 max-w-lg sm:mb-10 sm:mt-0">
+              <div className="relative mx-auto mb-10 mt-10 max-w-lg sm:mb-10 sm:mt-0">
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-x-8 -top-3 h-20 rotate-[1deg] rounded-3xl border border-white/8 bg-white/[0.015]"
