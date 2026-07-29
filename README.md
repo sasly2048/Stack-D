@@ -1,7 +1,7 @@
 <h1 align="center"> Stack'D </h1>
 
 <p align="center">
-  <img src="src\assets\logo.png"
+  <img src="https://github.com/user-attachments/assets/e0e729ac-fe21-4685-bbbd-a2aa9f51ede4"
        alt="Stack'D Logo"
        width="300">
 </p>
