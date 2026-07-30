@@ -78,6 +78,11 @@ function MyProfile() {
             <h1 className="mt-1 text-3xl md:text-4xl font-serif">
               {p.display_name ?? "Anonymous"}
             </h1>
+            {p.productivity_dna && (
+              <p className="mt-1 font-mono text-[11px] tracking-[0.25em] uppercase text-ember">
+                {p.productivity_dna}
+              </p>
+            )}
             <p className="text-silver-dim/60 text-xs font-mono uppercase tracking-widest mt-1">
               {user.email}
             </p>

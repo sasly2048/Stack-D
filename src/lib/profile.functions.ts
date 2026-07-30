@@ -13,6 +13,7 @@ export type PublicProfile = {
   best_streak: number;
   total_focus_seconds: number;
   session_count: number;
+  productivity_dna: string | null;
   achievements: Array<{
     id: string;
     name: string;
@@ -87,6 +88,7 @@ export const getProfile = createServerFn({ method: "GET" })
       display_name: p.display_name,
       avatar_url: p.avatar_url,
       bio: (p as { bio?: string | null }).bio ?? null,
+      productivity_dna: (p as { productivity_dna?: string | null }).productivity_dna ?? null,
       created_at: p.created_at,
       lifetime_xp: p.lifetime_xp ?? 0,
       current_focus_streak: p.current_focus_streak ?? 0,
