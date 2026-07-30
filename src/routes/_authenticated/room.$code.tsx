@@ -352,6 +352,8 @@ function Room() {
                   xpEarned: payload._xp,
                   score: payload._score,
                   tier: payload._tier,
+                  historyId: hid,
+
                 },
               }),
             );
