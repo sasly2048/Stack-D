@@ -19,6 +19,7 @@ const AUTHED_ITEMS: NavItem[] = [
   { to: "/feed", label: "Feed", visibility: "hidden md:inline" },
   { to: "/friends", label: "Friends", visibility: "hidden md:inline" },
   { to: "/achievements", label: "Marks", visibility: "hidden md:inline" },
+  { to: "/wrapped", label: "Wrapped", visibility: "hidden md:inline" },
   { to: "/vault", label: "Vault", visibility: "hidden md:inline" },
   { to: "/dna", label: "DNA", visibility: "hidden lg:inline" },
   { to: "/replay", label: "Replay", visibility: "hidden lg:inline" },

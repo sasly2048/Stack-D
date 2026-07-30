@@ -22,12 +22,13 @@ export const CORE_ROUTES = [
   "/friends", // Friends & Groups
   "/groups", // Friends & Groups
   "/profile", // account surface
+  "/wrapped", // Progression — Stack Wrapped
+  "/dna", // Progression — Focus Personality
 ] as const;
 
 /** Secondary surfaces kept behind the labs flag. */
 export const LAB_ROUTES = [
   "/vault",
-  "/dna",
   "/replay",
   "/capsule",
   "/partners",
