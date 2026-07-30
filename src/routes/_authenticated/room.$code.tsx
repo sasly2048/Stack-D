@@ -816,9 +816,18 @@ function Room() {
           })}
         </div>
 
-        <div className="mb-8">
+        <div className="mb-8 grid gap-4 lg:grid-cols-2">
+          <PresenceRoster
+            roomId={room.id}
+            participants={participants}
+            status={room.status}
+            startedAt={room.started_at}
+            myUserId={me?.id ?? null}
+            targetSeconds={room.target_duration_seconds}
+          />
           <LiveActivityRail roomId={room.id} />
         </div>
+
 
         {breaks.length > 0 && (
           <div>
