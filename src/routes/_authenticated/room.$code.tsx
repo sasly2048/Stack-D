@@ -22,6 +22,7 @@ import { AmbientPlayer } from "@/components/ambient-player";
 import { SessionMetaForm } from "@/components/session-meta-form";
 import { RoomHeader, JoinRequestsPanel } from "@/components/rooms/room-header";
 import { LiveActivityRail } from "@/components/rooms/live-activity-rail";
+import { PresenceRoster } from "@/components/rooms/presence-roster";
 import { UserHoverCard } from "@/components/profile/user-hover-card";
 import { SessionWorkspace } from "@/components/session-workspace";
 import { setActiveSession } from "@/components/floating-timer";
@@ -57,6 +58,9 @@ interface ParticipantRow {
   breach_reason: string | null;
   breach_at?: string | null;
   joined_at: string;
+  last_heartbeat?: string | null;
+  left_at?: string | null;
+
 }
 
 interface BreakRow {
@@ -348,6 +352,8 @@ function Room() {
                   xpEarned: payload._xp,
                   score: payload._score,
                   tier: payload._tier,
+                  historyId: hid,
+
                 },
               }),
             );
@@ -816,9 +822,18 @@ function Room() {
           })}
         </div>
 
-        <div className="mb-8">
+        <div className="mb-8 grid gap-4 lg:grid-cols-2">
+          <PresenceRoster
+            roomId={room.id}
+            participants={participants}
+            status={room.status}
+            startedAt={room.started_at}
+            myUserId={me?.id ?? null}
+            targetSeconds={room.target_duration_seconds}
+          />
           <LiveActivityRail roomId={room.id} />
         </div>
+
 
         {breaks.length > 0 && (
           <div>

@@ -75,7 +75,7 @@ export async function flushFinalizeQueue(ownerId: string): Promise<void> {
   if (rows.length === 0) return;
   const survivors: FinalizePayload[] = [];
   for (const r of rows) {
-    const { error } = await supabase.rpc("finalize_focus_session", {
+    const { data: hid, error } = await supabase.rpc("finalize_focus_session", {
       _room_id: r._room_id,
       _score: r._score,
       _xp: r._xp,
@@ -94,6 +94,7 @@ export async function flushFinalizeQueue(ownerId: string): Promise<void> {
             xpEarned: r._xp,
             score: r._score,
             tier: r._tier,
+            historyId: typeof hid === "string" ? hid : undefined,
           },
         }),
       );

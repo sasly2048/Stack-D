@@ -8,6 +8,8 @@ export interface DnaProfile {
   consistencyScore: number;
   totalSessions: number;
   signature: string; // 6-char code
+  /** Composite, dynamic personality, e.g. "Deep Worker • Night Owl". */
+  personality: string | null;
 }
 
 export const getProductivityDna = createServerFn({ method: "GET" })
@@ -62,7 +64,14 @@ export const getProductivityDna = createServerFn({ method: "GET" })
       .map((t) => t.value.toString(36).padStart(2, "0").slice(-1).toUpperCase())
       .join("");
 
+    const { data: prof } = await context.supabase
+      .from("profiles")
+      .select("productivity_dna")
+      .eq("id", context.userId)
+      .maybeSingle();
+
     return {
+      personality: (prof?.productivity_dna as string) ?? null,
       archetype,
       traits,
       peakHour,

@@ -1,3 +1,4 @@
+import { MilestoneShelf } from "@/components/profile/milestone-shelf";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -77,6 +78,11 @@ function MyProfile() {
             <h1 className="mt-1 text-3xl md:text-4xl font-serif">
               {p.display_name ?? "Anonymous"}
             </h1>
+            {p.productivity_dna && (
+              <p className="mt-1 font-mono text-[11px] tracking-[0.25em] uppercase text-ember">
+                {p.productivity_dna}
+              </p>
+            )}
             <p className="text-silver-dim/60 text-xs font-mono uppercase tracking-widest mt-1">
               {user.email}
             </p>
@@ -89,6 +95,9 @@ function MyProfile() {
           <Stat label="Sessions" value={p.session_count.toString()} />
           <Stat label="Best streak" value={p.best_streak.toString()} />
         </section>
+
+        <MilestoneShelf />
+
 
         <form onSubmit={submit} className="space-y-4">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Edit</h2>

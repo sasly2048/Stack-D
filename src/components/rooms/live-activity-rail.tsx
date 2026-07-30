@@ -18,6 +18,11 @@ const KIND_LABEL: Record<string, string> = {
   join_requested: "requested to join",
   join_approved: "was approved to join",
   join_denied: "was denied",
+  ready: "is ready",
+  unready: "is no longer ready",
+  all_ready: "— everyone is ready",
+  disconnected: "lost connection",
+  reconnected: "reconnected",
 };
 
 const KIND_GLYPH: Record<string, string> = {
@@ -35,6 +40,11 @@ const KIND_GLYPH: Record<string, string> = {
   join_requested: "?",
   join_approved: "✓",
   join_denied: "✕",
+  ready: "✓",
+  unready: "·",
+  all_ready: "◎",
+  disconnected: "⚠",
+  reconnected: "↺",
 };
 
 function timeAgo(iso: string): string {
@@ -110,7 +120,7 @@ export function LiveActivityRail({ roomId }: { roomId: string }) {
         {events.map((e) => {
           void now; // ensure re-render on tick
           return (
-            <li key={e.id} className="flex items-start gap-3 text-xs font-mono">
+            <li key={e.id} className="flex items-start gap-3 text-xs font-mono animate-fade-in">
               <span
                 className={`w-4 text-center shrink-0 ${e.kind === "breach" ? "text-breach" : e.kind === "goal_hit" || e.kind === "completed" ? "text-ember" : "text-muted-foreground"}`}
               >

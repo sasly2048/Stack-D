@@ -102,7 +102,9 @@ function DnaPage() {
                 <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                   Archetype
                 </div>
-                <div className="text-3xl font-serif text-ember mt-1">{dna.archetype}</div>
+                <div className="text-3xl font-serif text-ember mt-1">
+                  {dna.personality ?? dna.archetype}
+                </div>
               </div>
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">

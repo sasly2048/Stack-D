@@ -50,6 +50,7 @@ export function CommandPalette() {
         { label: "Insights", to: "/insights" },
         { label: "Friends", to: "/friends" },
         { label: "Achievements", to: "/achievements" },
+        { label: "Stack Wrapped", to: "/wrapped" },
         { label: "Challenges", to: "/challenges" },
         { label: "Circles", to: "/groups" },
         { label: "Leaderboard", to: "/leaderboard" },
