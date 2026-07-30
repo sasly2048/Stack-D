@@ -66,7 +66,9 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "A real-time, multiplayer phone-stacking room. Every tilt, lift and screen wake is shared instantly.",
       },
+      { property: "og:url", content: "https://stack-d.lovable.app/" },
     ],
+    links: [{ rel: "canonical", href: "https://stack-d.lovable.app/" }],
   }),
   component: Landing,
 });
