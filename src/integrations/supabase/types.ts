@@ -1486,6 +1486,24 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      ensure_current_season: {
+        Args: never
+        Returns: {
+          description: string | null
+          ends_at: string
+          id: string
+          name: string
+          reward_title_id: string | null
+          starts_at: string
+          xp_multiplier: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seasons"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       evaluate_achievements: {
         Args: { _history_id: string; _user_id: string }
         Returns: string[]
@@ -1494,6 +1512,7 @@ export type Database = {
         Args: { _history_id: string; _user_id: string }
         Returns: undefined
       }
+      evaluate_milestones: { Args: { _user_id: string }; Returns: string[] }
       finalize_focus_session: {
         Args: {
           _breaches_count: number
@@ -1583,6 +1602,7 @@ export type Database = {
         Args: { _kind: string; _payload?: Json; _room_id: string }
         Returns: string
       }
+      refresh_personality: { Args: { _user_id: string }; Returns: string }
       room_code_exists: { Args: { _code: string }; Returns: boolean }
       update_session_meta: {
         Args: { _history_id: string; _notes: string; _tags: string[] }
