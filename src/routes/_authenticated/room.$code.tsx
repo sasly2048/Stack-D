@@ -58,6 +58,9 @@ interface ParticipantRow {
   breach_reason: string | null;
   breach_at?: string | null;
   joined_at: string;
+  last_heartbeat?: string | null;
+  left_at?: string | null;
+
 }
 
 interface BreakRow {
