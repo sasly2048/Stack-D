@@ -910,6 +910,7 @@ export type Database = {
       }
       room_templates: {
         Row: {
+          access: string
           banner_tone: string
           created_at: string
           description: string
@@ -920,6 +921,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          access?: string
           banner_tone?: string
           created_at?: string
           description: string
@@ -930,6 +932,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          access?: string
           banner_tone?: string
           created_at?: string
           description?: string
