@@ -121,7 +121,7 @@ export function SessionCeremony() {
     const delay = beats[beat] === "xp" ? 2400 : 1500;
     const t = window.setTimeout(() => {
       setBeat((b) => Math.min(b + 1, beats.length - 1));
-      haptic("light");
+      haptic("tap");
     }, delay);
     return () => window.clearTimeout(t);
   }, [detail, beat, beats, reduce]);
