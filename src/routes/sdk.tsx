@@ -12,9 +12,14 @@ export const Route = createFileRoute("/sdk")({
       { property: "og:title", content: "Stack'd SDK" },
       {
         property: "og:description",
-        content: "Tiny TypeScript client for the Stack'd webhook & public API surface.",
+        content:
+          "Tiny, zero-dependency TypeScript client for the Stack'd webhook and public API surface.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:url", content: "https://stack-d.lovable.app/sdk" },
     ],
+    links: [{ rel: "canonical", href: "https://stack-d.lovable.app/sdk" }],
   }),
   component: SdkPage,
 });
