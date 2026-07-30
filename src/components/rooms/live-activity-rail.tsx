@@ -40,6 +40,11 @@ const KIND_GLYPH: Record<string, string> = {
   join_requested: "?",
   join_approved: "✓",
   join_denied: "✕",
+  ready: "✓",
+  unready: "·",
+  all_ready: "◎",
+  disconnected: "⚠",
+  reconnected: "↺",
 };
 
 function timeAgo(iso: string): string {
