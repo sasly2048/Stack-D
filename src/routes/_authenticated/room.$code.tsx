@@ -22,6 +22,7 @@ import { AmbientPlayer } from "@/components/ambient-player";
 import { SessionMetaForm } from "@/components/session-meta-form";
 import { RoomHeader, JoinRequestsPanel } from "@/components/rooms/room-header";
 import { LiveActivityRail } from "@/components/rooms/live-activity-rail";
+import { PresenceRoster } from "@/components/rooms/presence-roster";
 import { UserHoverCard } from "@/components/profile/user-hover-card";
 import { SessionWorkspace } from "@/components/session-workspace";
 import { setActiveSession } from "@/components/floating-timer";
