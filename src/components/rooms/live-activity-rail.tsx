@@ -18,6 +18,11 @@ const KIND_LABEL: Record<string, string> = {
   join_requested: "requested to join",
   join_approved: "was approved to join",
   join_denied: "was denied",
+  ready: "is ready",
+  unready: "is no longer ready",
+  all_ready: "— everyone is ready",
+  disconnected: "lost connection",
+  reconnected: "reconnected",
 };
 
 const KIND_GLYPH: Record<string, string> = {
