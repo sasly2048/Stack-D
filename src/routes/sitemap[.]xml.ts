@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
-const BASE_URL = "";
+const BASE_URL = "https://stack-d.lovable.app";
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
@@ -9,6 +9,9 @@ export const Route = createFileRoute("/sitemap.xml")({
       GET: async () => {
         const entries = [
           { path: "/", changefreq: "weekly", priority: "1.0" },
+          { path: "/philosophy", changefreq: "monthly", priority: "0.8" },
+          { path: "/catalog", changefreq: "monthly", priority: "0.6" },
+          { path: "/sdk", changefreq: "monthly", priority: "0.6" },
           { path: "/auth", changefreq: "monthly", priority: "0.5" },
         ];
         const urls = entries.map(

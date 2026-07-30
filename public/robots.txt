@@ -3,3 +3,5 @@ Allow: /
 Disallow: /room/
 Disallow: /dashboard
 Disallow: /start
+
+Sitemap: https://stack-d.lovable.app/sitemap.xml
