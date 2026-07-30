@@ -41,6 +41,7 @@ import { Route as AuthenticatedTimelineRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTrustRouteImport } from './routes/_authenticated/trust'
 import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
 import { Route as AuthenticatedWebhooksRouteImport } from './routes/_authenticated/webhooks'
+import { Route as AuthenticatedWrappedRouteImport } from './routes/_authenticated/wrapped'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedProfileIdRouteImport } from './routes/_authenticated/profile.$id'
@@ -213,6 +214,11 @@ const AuthenticatedWebhooksRoute = AuthenticatedWebhooksRouteImport.update({
   path: '/webhooks',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWrappedRoute = AuthenticatedWrappedRouteImport.update({
+  id: '/wrapped',
+  path: '/wrapped',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -284,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/trust': typeof AuthenticatedTrustRouteWithChildren
   '/vault': typeof AuthenticatedVaultRoute
   '/webhooks': typeof AuthenticatedWebhooksRoute
+  '/wrapped': typeof AuthenticatedWrappedRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
@@ -324,6 +331,7 @@ export interface FileRoutesByTo {
   '/trust': typeof AuthenticatedTrustRouteWithChildren
   '/vault': typeof AuthenticatedVaultRoute
   '/webhooks': typeof AuthenticatedWebhooksRoute
+  '/wrapped': typeof AuthenticatedWrappedRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
@@ -366,6 +374,7 @@ export interface FileRoutesById {
   '/_authenticated/trust': typeof AuthenticatedTrustRouteWithChildren
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
   '/_authenticated/webhooks': typeof AuthenticatedWebhooksRoute
+  '/_authenticated/wrapped': typeof AuthenticatedWrappedRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/profile/$id': typeof AuthenticatedProfileIdRoute
@@ -408,6 +417,7 @@ export interface FileRouteTypes {
     | '/trust'
     | '/vault'
     | '/webhooks'
+    | '/wrapped'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/profile/$id'
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/trust'
     | '/vault'
     | '/webhooks'
+    | '/wrapped'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/profile/$id'
@@ -489,6 +500,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trust'
     | '/_authenticated/vault'
     | '/_authenticated/webhooks'
+    | '/_authenticated/wrapped'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/profile/$id'
@@ -741,6 +753,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWebhooksRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/wrapped': {
+      id: '/_authenticated/wrapped'
+      path: '/wrapped'
+      fullPath: '/wrapped'
+      preLoaderRoute: typeof AuthenticatedWrappedRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -838,6 +857,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTrustRoute: typeof AuthenticatedTrustRouteWithChildren
   AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
   AuthenticatedWebhooksRoute: typeof AuthenticatedWebhooksRoute
+  AuthenticatedWrappedRoute: typeof AuthenticatedWrappedRoute
   AuthenticatedRoomCodeRoute: typeof AuthenticatedRoomCodeRoute
 }
 
@@ -864,6 +884,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTrustRoute: AuthenticatedTrustRouteWithChildren,
   AuthenticatedVaultRoute: AuthenticatedVaultRoute,
   AuthenticatedWebhooksRoute: AuthenticatedWebhooksRoute,
+  AuthenticatedWrappedRoute: AuthenticatedWrappedRoute,
   AuthenticatedRoomCodeRoute: AuthenticatedRoomCodeRoute,
 }
 
