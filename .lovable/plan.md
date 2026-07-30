@@ -1,47 +1,92 @@
-# Redesign the dotted world map (Scene 05)
+## Goal
 
-The current map in `src/components/fx/dotted-map.tsx` builds its land mask from ~16 hand-written continent polygons. That's why shapes read wrong (Asia is a blob, no Mediterranean, missing islands) and why the silhouette doesn't match its container's aspect ratio (`aspect-[76/34]` vs the map's own lat/lon window), which causes the letterboxing/awkward fit.
+Ship six features that make Stack'D feel social, personal, and shareable — building on what already exists rather than adding parallel systems.
 
-## What changes
+Verified current state: `seasons` / `season_participants` tables exist but the table is empty and nothing awards season XP; `LiveActivityRail` already streams room events in realtime; session completion dispatches a minimal ceremony (duration/xp/score/tier only); a "Productivity DNA" archetype exists in `src/lib/dna.functions.ts` but is hidden behind the labs flag; there is no Wrapped surface and no milestone system.
 
-Only the map component and the wrapper's sizing classes in Scene 05. No text, cards, markers/pulses behavior, LeaderboardPanel, animations, or spacing changes elsewhere.
+---
 
-### 1. Real geographic land mask
+## 1. Stack Wrapped
 
-Generate the dot grid from actual Natural Earth land data instead of hand-drawn polygons:
+New core route `/wrapped` (rolling 12 months if the calendar year is young).
 
-- Offline (one-time, at implementation): fetch Natural Earth 110m land GeoJSON, rasterize it into an equirectangular land/no-land grid at a fixed resolution (~180 x 90 cells covering lon -180..180, lat -58..84).
-- Encode that grid as a compact base64/bit-packed string constant embedded in `dotted-map.tsx` (a few hundred bytes — no new runtime dependency, no network fetch, SSR-safe).
-- The component decodes it once in `useMemo` and emits one circle per land cell, exactly as today.
+Stats computed server-side from `focus_history`, `profiles`, `user_achievements`, `participants`:
+- total hours held, total XP, sessions count
+- longest single session, longest streak
+- most productive weekday + peak hour
+- top collaborator (most co-attended rooms)
+- global percentile by lifetime XP
 
-Result: recognizable Mediterranean, Indian subcontinent, Indonesian archipelago, Japan, UK, Scandinavia, Great Lakes, Red Sea, correct Africa/South America taper.
+Presentation: scene-by-scene scroll reusing the landing `Scene` language, `NumberTicker`, oversized numerals, ember accents.
 
-### 2. Correct proportions, edge to edge
+Shareable image: rendered client-side onto a 1080×1350 canvas from the same data, with Download + Web Share API (download fallback on desktop). No new dependency.
 
-- The SVG `viewBox` is derived from the grid dimensions, so the intrinsic aspect ratio always matches the projection — no stretching.
-- The wrapper in `src/routes/index.tsx` changes from the fixed `aspect-[76/34]` to the map's true aspect so the dots fill the slot edge to edge with no dead bands. `MapSkeleton` gets the same aspect so the lazy-load swap stays silent.
-- `preserveAspectRatio="xMidYMid meet"` stays; the SVG remains `w-full h-auto`.
+## 2. Live Presence
 
-### 3. Per-breakpoint composition
+Upgrade the room lobby/session header rather than adding a panel.
 
-Dot density/size responds to viewport so the map reads cleanly at 394px as well as desktop:
+Per-user states derived from `participants` (`last_heartbeat`, `breached`, `left_at`) plus the realtime channel:
 
-- Mobile (<640px): coarser sampling (every other column/row) and slightly larger dot radius, so dots stay legible instead of turning into grey mush.
-- Tablet (640–1024px): intermediate density.
-- Desktop: full grid density.
+- **Idle** — present, not ready
+- **Ready** — signaled ready
+- **Stacking** — session running, phone held
+- **Broke stack** — breached
+- **Disconnected** — no heartbeat for >45s while the session is live, so a dropped connection reads differently from an intentional leave
 
-Implemented with a small matchMedia-driven density state inside the component (defaults to the desktop grid during SSR, so no hydration mismatch), not with CSS scaling.
+Ready flow: a Ready toggle in the lobby writes a `ready` room event. When every present participant is ready, the roster resolves to a full-width **Everyone Ready → Starting…** beat, then a synchronized 3-2-1 countdown driven off `started_at` so all clients agree. Haptics on each tick.
 
-### 4. Markers
+Activity rail gets animated entry for new events plus `disconnected` / `reconnected` / `ready` kinds.
 
-Keep the existing 10 city pulses and their look (ember fill, drop shadow, expanding ring, staggered `map-pulse`). Add a few for global balance: Los Angeles, Mexico City, Dubai, Nairobi, Seoul, Toronto. Marker positions use the same lon/lat → grid projection, so they land on the right coastlines.
+## 3. Rich End-of-Session Summary
 
-## Visual style preserved
+A new server function called right after `finalize_focus_session` returns the full result set; `SessionCeremony` becomes a multi-beat overlay in this exact order:
 
-Same `dotColor` (`rgba(226,226,226,0.32)`), same `pulseColor` (`#F0A968`), same faint dashed equator line, same `opacity-90` blend, same props API (`className`, `dotColor`, `pulseColor`, `cities`, `step`) so `catalog.tsx` and any other usage keep working.
+1. **Focus Score** — tier ring reveal
+2. **XP** — counter animates up from 0 with easing (never snaps to the final number), tier multiplier shown
+3. **Level / Prestige progress** — bar fills toward the next threshold
+4. **Achievements** — newly unlocked badges (already returned by `evaluate_achievements`)
+5. **Rank change** — global leaderboard delta, ▲/▼ with the position moved
+6. **Friends finished** — friends who completed a session today
+7. **Continue** — explicit dismiss button (tap-anywhere and Escape still work)
+
+Reduced-motion collapses beats into one static summary. `ResultsCard` on the room page shows the same expanded set.
+
+## 4. Focus Personality
+
+Personality is **composite and dynamic**, not a single fixed label. Each user gets 2–3 stacked traits rendered as `Deep Worker • Night Owl`, recomputed from a rolling 60-day window so it shifts as habits shift.
+
+Trait pool derived from real signals: Deep Worker, Sprint Specialist, Marathoner, Night Owl, Early Bird, Consistency Master, Weekend Warrior, Streak Keeper, Flow Chaser, Comeback Kid.
+
+- Stored on `profiles.productivity_dna` (column exists) and refreshed on session finalize.
+- Surfaced on profile header, user hover cards, leaderboard rows, and Wrapped.
+- A "your personality shifted" toast when the leading trait changes.
+- `/dna` moves out of labs into core as the deep view.
+
+## 5. Weekly Seasons
+
+- Weekly cadence: Monday 00:00 UTC → Sunday 23:59 UTC.
+- Seasons are **named, not numbered** — each week draws a themed name from a curated rotating list in the Obsidian-ritualist voice (e.g. "Season of Quiet Hands", "The Long Dark", "Ember Week", "Still Water"), with the ordinal shown as small secondary text.
+- A pg_cron job (Monday 00:00 UTC) closes the current season and opens the next; a helper self-heals by creating the current week's season on demand if the job missed.
+- `finalize_focus_session` upserts earned XP into `season_participants` for the active season — `profiles.lifetime_xp` stays permanent, season ranking resets weekly.
+- `/seasons` gets a live top-10 board, your rank, a countdown to reset, and the previous season's winner. Top finisher receives the season's `reward_title_id`.
+
+## 6. Lifetime Milestones
+
+Permanent, cumulative markers that never reset.
+
+- Thresholds on total focus hours: 100, 200, 300, 500, 1000, 2000 hours (plus lifetime session-count and streak markers).
+- Awarded automatically inside the session finalize path, alongside achievements.
+- Each unlock produces a **Milestone Card**: an engraved-plate visual with the number, the date reached, and a short line of copy.
+- Cards live permanently on the profile in a milestone shelf, appear in the session ceremony when freshly earned, and are included in Wrapped.
+- Implemented on the existing `achievements` / `user_achievements` tables with a `milestone` tier, so no new social plumbing is needed.
+
+---
 
 ## Technical notes
 
-- Files touched: `src/components/fx/dotted-map.tsx` (rewrite of the mask + projection), `src/components/fx/skeleton.tsx` (aspect match), `src/routes/index.tsx` (map slot aspect class only).
-- Circle count stays in the same order of magnitude as today (~600–900 desktop, fewer on mobile), so render cost and the bundle budget are unaffected.
-- Verify with Playwright screenshots at 394px, 834px, and 1440px before finishing.
+- New server functions in `src/lib/wrapped.functions.ts`, `src/lib/session-summary.functions.ts`, `src/lib/milestones.functions.ts`; extensions to `seasons.functions.ts` and `dna.functions.ts`. All `requireSupabaseAuth`, called from components or `_authenticated` loaders only.
+- Migrations: milestone rows + evaluation function; season auto-rollover function with the named-season list and pg_cron schedule; `finalize_focus_session` updated to write season XP, evaluate milestones, refresh personality, and return the richer summary; new `ready` / `disconnected` / `reconnected` values in the room-event and activity-event kind allowlists. RLS + GRANTs on anything new.
+- Presence disconnect detection is client-derived from `last_heartbeat` — no new table, no polling beyond the existing heartbeat.
+- Wrapped share image is pure canvas; no new dependency.
+- `/wrapped` and `/dna` join `CORE_ROUTES`; nav and command palette updated.
+- Visual language unchanged: obsidian surfaces, silver type, ember (#F0A968) accents, existing FX primitives.
