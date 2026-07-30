@@ -17,7 +17,11 @@ export const Route = createFileRoute("/philosophy")({
         property: "og:description",
         content: "A manifesto for presence in a notification-saturated world.",
       },
+      { property: "og:type", content: "article" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:url", content: "https://stack-d.lovable.app/philosophy" },
     ],
+    links: [{ rel: "canonical", href: "https://stack-d.lovable.app/philosophy" }],
   }),
   component: Philosophy,
 });

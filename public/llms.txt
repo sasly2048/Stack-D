@@ -1,0 +1,14 @@
+# Stack'd
+
+> Stack'd turns phone-free time into a shared game: stack your phones with friends, hold the silence together, and earn back the hours.
+
+Stack'd is a real-time focus app. Friends open a shared room, stack their
+phones, and the room watches every tilt, lift, and screen wake together.
+Completed sessions earn XP, streaks, achievements, and seasonal rank.
+
+## Pages
+
+- [Home](/): What Stack'd is, how shared focus rooms work, and how to join one with a room code.
+- [Philosophy](/philosophy): The manifesto behind Stack'd — kinetic verdict, atomic sync, and earned time.
+- [Component Catalog](/catalog): Live inventory of the UI primitives and motion effects used across Stack'd.
+- [SDK](/sdk): Zero-dependency TypeScript client for the Stack'd webhook and public API surface.
