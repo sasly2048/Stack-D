@@ -7,6 +7,7 @@ import {
   type RewardStatus,
 } from "@/lib/daily-rewards.functions";
 import { haptic } from "@/lib/haptics";
+import { notifyXpChanged, useXpSync } from "@/lib/xp-sync";
 
 export function DailyRewardCard() {
   const load = useServerFn(getRewardStatus);
@@ -14,11 +15,16 @@ export function DailyRewardCard() {
   const [status, setStatus] = useState<RewardStatus | null>(null);
   const [claiming, setClaiming] = useState(false);
 
-  useEffect(() => {
+  const refresh = () =>
     load()
       .then(setStatus)
       .catch(() => undefined);
+
+  useEffect(() => {
+    refresh();
   }, []);
+
+  useXpSync(refresh);
 
   if (!status) return null;
 
@@ -28,8 +34,7 @@ export function DailyRewardCard() {
       const res = await claim();
       haptic("success");
       toast.success(`+${res.rewardXp} XP · Day ${res.dayOfStreak}`);
-      const fresh = await load();
-      setStatus(fresh);
+      notifyXpChanged();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Claim failed");
     } finally {

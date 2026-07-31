@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getPrestigeStatus, prestigeUp, type PrestigeStatus } from "@/lib/prestige.functions";
 import { haptic } from "@/lib/haptics";
+import { notifyXpChanged, useXpSync } from "@/lib/xp-sync";
 
 export function PrestigeCeremony() {
   const load = useServerFn(getPrestigeStatus);
@@ -11,11 +12,16 @@ export function PrestigeCeremony() {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const refresh = () =>
     load()
       .then(setStatus)
       .catch(() => undefined);
+
+  useEffect(() => {
+    refresh();
   }, []);
+
+  useXpSync(refresh);
 
   if (!status) return null;
   const pct = Math.min(100, (status.lifetimeXp / status.neededXp) * 100);
@@ -27,8 +33,7 @@ export function PrestigeCeremony() {
       haptic("heavy");
       toast.success(`Prestige ${newPrestige} · ascended`);
       setConfirming(false);
-      const fresh = await load();
-      setStatus(fresh);
+      notifyXpChanged();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally {
