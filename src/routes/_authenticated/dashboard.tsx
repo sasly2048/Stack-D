@@ -15,6 +15,7 @@ import {
 import { DynamicGreeting } from "@/components/home/dynamic-greeting";
 import { CsvExportButton } from "@/components/csv-export-button";
 import { DailyRewardCard } from "@/components/rewards/daily-reward-card";
+import { useXpSync } from "@/lib/xp-sync";
 import { AtlasWhisper } from "@/components/atlas-whisper";
 import { PrestigeCeremony } from "@/components/profile/prestige-ceremony";
 
@@ -107,6 +108,30 @@ function Dashboard() {
       .catch(() => setInsightsError(true))
       .finally(() => setInsightsLoading(false));
   };
+
+  const refreshProgress = async () => {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("display_name, lifetime_xp, current_focus_streak")
+      .eq("id", u.user.id)
+      .maybeSingle();
+    setMe((prev) =>
+      prev
+        ? {
+            ...prev,
+            name: p?.display_name ?? prev.name,
+            lifetime_xp: p?.lifetime_xp ?? prev.lifetime_xp,
+            streak: p?.current_focus_streak ?? prev.streak,
+          }
+        : prev,
+    );
+  };
+
+  useXpSync(() => {
+    void refreshProgress();
+  });
 
   useEffect(() => {
     let mounted = true;

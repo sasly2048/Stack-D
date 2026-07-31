@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy";
+import { formatHandle } from "@/lib/handle";
 import { Nav } from "@/components/nav";
 import { getProfile, type PublicProfile } from "@/lib/profile.functions";
 import { sendFriendRequest, respondFriendRequest, removeFriend } from "@/lib/friends.functions";
@@ -95,6 +96,9 @@ function PublicProfileView() {
             <h1 className="mt-2 text-3xl md:text-4xl font-serif truncate">
               {p.display_name ?? "Anonymous"}
             </h1>
+            <p className="mt-1 font-mono text-sm text-silver-dim">
+              {formatHandle(p.id, p.display_name)}
+            </p>
             {p.bio && <p className="mt-2 text-silver-dim">{p.bio}</p>}
             <p className="mt-2 font-mono text-[10px] tracking-[0.2em] uppercase text-silver-dim/60">
               Joined{" "}

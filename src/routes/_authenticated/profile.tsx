@@ -7,6 +7,8 @@ import { Nav } from "@/components/nav";
 import { useAuth } from "@/hooks/use-auth";
 import { getProfile, updateMyProfile, type PublicProfile } from "@/lib/profile.functions";
 import { LowPowerToggle } from "@/components/low-power-toggle";
+import { formatHandle } from "@/lib/handle";
+import { useXpSync } from "@/lib/xp-sync";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
@@ -26,8 +28,16 @@ function MyProfile() {
   const [p, setP] = useState<PublicProfile | null>(null);
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
-  const [avatar, setAvatar] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const refresh = async () => {
+    const res = await fetchProfile({ data: {} });
+    setP(res);
+  };
+
+  useXpSync(() => {
+    void refresh();
+  });
 
   useEffect(() => {
     (async () => {
@@ -35,7 +45,6 @@ function MyProfile() {
       setP(res);
       setName(res.display_name ?? "");
       setBio(res.bio ?? "");
-      setAvatar(res.avatar_url ?? "");
     })();
   }, []);
 
@@ -43,7 +52,7 @@ function MyProfile() {
     e.preventDefault();
     setSaving(true);
     try {
-      await save({ data: { display_name: name, bio, avatar_url: avatar } });
+      await save({ data: { display_name: name, bio } });
       toast.success("Profile updated");
       const res = await fetchProfile({ data: {} });
       setP(res);
@@ -83,8 +92,8 @@ function MyProfile() {
                 {p.productivity_dna}
               </p>
             )}
-            <p className="text-silver-dim/60 text-xs font-mono uppercase tracking-widest mt-1">
-              {user.email}
+            <p className="text-silver-dim text-sm font-mono mt-1">
+              {formatHandle(p.id, p.display_name)}
             </p>
           </div>
         </header>
@@ -97,7 +106,6 @@ function MyProfile() {
         </section>
 
         <MilestoneShelf />
-
 
         <form onSubmit={submit} className="space-y-4">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Edit</h2>
@@ -116,14 +124,6 @@ function MyProfile() {
               maxLength={280}
               rows={3}
               className="w-full bg-transparent border border-white/10 focus:border-ember/60 rounded-md px-4 py-3 outline-none transition-colors resize-none"
-            />
-          </Field>
-          <Field label="Avatar URL">
-            <input
-              value={avatar}
-              onChange={(e) => setAvatar(e.target.value)}
-              placeholder="https://…"
-              className="w-full bg-transparent border border-white/10 focus:border-ember/60 rounded-md px-4 py-3 outline-none transition-colors"
             />
           </Field>
           <button

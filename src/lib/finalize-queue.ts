@@ -6,6 +6,7 @@
  * room, `flushFinalizeQueue()` retries every queued record idempotently
  * (the RPC itself is one-row-per-(profile,room) safe).
  */
+import { notifyXpChanged } from "@/lib/xp-sync";
 import { supabase } from "@/integrations/supabase/client";
 
 const KEY = "stackd:finalize-queue";
@@ -86,6 +87,7 @@ export async function flushFinalizeQueue(ownerId: string): Promise<void> {
     if (error) {
       survivors.push(r);
     } else if (typeof window !== "undefined") {
+      notifyXpChanged();
       // Delayed finalizes still deserve a moment — smaller, non-blocking.
       window.dispatchEvent(
         new CustomEvent("stackd:ceremony", {
