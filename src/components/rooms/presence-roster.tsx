@@ -80,6 +80,31 @@ export function PresenceRoster({
     };
   }, [roomId]);
 
+  // Publish our own heartbeat while the session runs, otherwise every roster
+  // row would go stale (and read as "Disconnected") shortly after joining.
+  useEffect(() => {
+    if (status !== "active" || !myUserId) return;
+    let cancelled = false;
+    const beat = async () => {
+      if (cancelled) return;
+      try {
+        await supabase
+          .from("participants")
+          .update({ last_heartbeat: new Date().toISOString() })
+          .eq("room_id", roomId)
+          .eq("user_id", myUserId);
+      } catch {
+        /* transient; next tick retries */
+      }
+    };
+    void beat();
+    const t = setInterval(beat, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [status, myUserId, roomId]);
+
   const present = useMemo(() => participants.filter((p) => !p.left_at), [participants]);
 
   const stateOf = (p: PresenceParticipant): PresenceState => {
