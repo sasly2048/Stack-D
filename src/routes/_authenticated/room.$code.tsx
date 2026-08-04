@@ -60,7 +60,6 @@ interface ParticipantRow {
   joined_at: string;
   last_heartbeat?: string | null;
   left_at?: string | null;
-
 }
 
 interface BreakRow {
@@ -353,7 +352,6 @@ function Room() {
                   score: payload._score,
                   tier: payload._tier,
                   historyId: hid,
-
                 },
               }),
             );
@@ -833,7 +831,6 @@ function Room() {
           />
           <LiveActivityRail roomId={room.id} />
         </div>
-
 
         {breaks.length > 0 && (
           <div>

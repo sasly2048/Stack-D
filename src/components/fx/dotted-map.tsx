@@ -133,8 +133,7 @@ export function DottedMap({
         // so thin features (Japan, the UK, Indonesia) survive downsampling.
         let land = false;
         for (let dy = 0; dy < stride && !land; dy++)
-          for (let dx = 0; dx < stride && !land; dx++)
-            if (isLandCell(x + dx, y + dy)) land = true;
+          for (let dx = 0; dx < stride && !land; dx++) if (isLandCell(x + dx, y + dy)) land = true;
         if (land) out.push({ x, y });
       }
     }

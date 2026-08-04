@@ -1,22 +1,31 @@
 import { useMemo } from "react";
 
+/** Deterministic pseudo-random so SSR and client markup match exactly. */
+function seeded(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
 /**
  * Meteors — diagonal streaks falling across the container. Absolute,
  * pointer-events-none, purely decorative.
  */
 export function Meteors({ count = 20, className = "" }: { count?: number; className?: string }) {
-  const meteors = useMemo(
-    () =>
-      Array.from({ length: count }).map((_, i) => ({
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * -40}%`,
-        delay: `${Math.random() * 6}s`,
-        duration: `${4 + Math.random() * 6}s`,
-        length: 60 + Math.random() * 120,
-        key: i,
-      })),
-    [count],
-  );
+  const meteors = useMemo(() => {
+    const rand = seeded(count * 9301 + 49297);
+    return Array.from({ length: count }).map((_, i) => ({
+      left: `${(rand() * 100).toFixed(3)}%`,
+      top: `${(rand() * -40).toFixed(3)}%`,
+      delay: `${(rand() * 6).toFixed(3)}s`,
+      duration: `${(4 + rand() * 6).toFixed(3)}s`,
+      length: Number((60 + rand() * 120).toFixed(2)),
+      key: i,
+    }));
+  }, [count]);
+
 
   return (
     <div

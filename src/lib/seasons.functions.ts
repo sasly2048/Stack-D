@@ -73,7 +73,6 @@ export const getActiveSeason = createServerFn({ method: "GET" })
         myRank = (rank as number | null) ?? null;
       }
 
-
       return { season: s as Season, myXp, myRank, top };
     },
   );

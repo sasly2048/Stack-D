@@ -209,9 +209,7 @@ export function SessionCeremony() {
           >
             <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.25em] uppercase text-silver-dim">
               <span>
-                {summary.prestige > 0 && (
-                  <span className="text-ember">P{summary.prestige} · </span>
-                )}
+                {summary.prestige > 0 && <span className="text-ember">P{summary.prestige} · </span>}
                 Level {summary.level}
               </span>
               <span>

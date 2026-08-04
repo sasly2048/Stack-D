@@ -10,7 +10,9 @@ import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 const useMcp = process.env.LOVABLE === "true";
 const supabaseProjectId = process.env.VITE_SUPABASE_PROJECT_ID ?? "wmqyswkqdnfnpdcpdhan";
 const supabaseUrl =
-  process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? `https://${supabaseProjectId}.supabase.co`;
+  process.env.VITE_SUPABASE_URL ??
+  process.env.SUPABASE_URL ??
+  `https://${supabaseProjectId}.supabase.co`;
 const supabasePublishableKey =
   process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
   process.env.SUPABASE_PUBLISHABLE_KEY ??
