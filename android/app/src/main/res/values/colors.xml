@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mirrors Obsidian in core/theme/Color.kt. Needed here because the
+         pre-Compose window background is an Android resource, not a Compose
+         value. Keep the two in sync. -->
+    <color name="obsidian">#FF0A0A0A</color>
+    <color name="ember">#FFF0A968</color>
+</resources>
