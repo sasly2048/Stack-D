@@ -95,7 +95,7 @@ function Philosophy() {
 
         <div className="border-y border-white/5 py-8 bg-obsidian">
           <ScrollVelocity
-            words={["Presence", "Ritual", "Signal", "Stillness", "Protocol", "Focus"]}
+            words={["Presence", "Discipline", "Signal", "Stillness", "Protocol", "Focus"]}
           />
         </div>
 

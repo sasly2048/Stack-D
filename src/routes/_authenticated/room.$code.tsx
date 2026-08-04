@@ -60,7 +60,6 @@ interface ParticipantRow {
   joined_at: string;
   last_heartbeat?: string | null;
   left_at?: string | null;
-
 }
 
 interface BreakRow {
@@ -353,7 +352,6 @@ function Room() {
                   score: payload._score,
                   tier: payload._tier,
                   historyId: hid,
-
                 },
               }),
             );
@@ -526,7 +524,7 @@ function Room() {
     return (
       <Shell>
         <div className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
-          Loading ritual…
+          Loading session…
         </div>
       </Shell>
     );
@@ -601,7 +599,7 @@ function Room() {
             <span
               className={`size-1.5 rounded-full ${active ? "bg-pulse animate-pulse" : complete ? "bg-pulse" : aborted ? "bg-breach" : "bg-muted-foreground"}`}
             />
-            {active ? "LIVE RITUAL" : complete ? "COMPLETE" : aborted ? "ABORTED" : "LOBBY"}
+            {active ? "LIVE SESSION" : complete ? "COMPLETE" : aborted ? "ABORTED" : "LOBBY"}
           </span>
         </div>
 
@@ -724,7 +722,7 @@ function Room() {
               disabled={participants.length === 0}
               className="flex-1 bg-silver text-obsidian py-4 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40"
             >
-              Begin Ritual ({participants.length} {participants.length === 1 ? "soul" : "souls"})
+              Begin Session ({participants.length} present)
             </button>
           )}
           {lobby && !isHost && (
@@ -833,7 +831,6 @@ function Room() {
           />
           <LiveActivityRail roomId={room.id} />
         </div>
-
 
         {breaks.length > 0 && (
           <div>

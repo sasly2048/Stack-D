@@ -126,7 +126,7 @@ function IndividualList({ rows, meId }: { rows: IndividualRow[]; meId: string | 
   if (rows.length === 0) {
     return (
       <div className="py-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest">
-        No rituals recorded yet.
+        No sessions recorded yet.
       </div>
     );
   }
@@ -200,7 +200,7 @@ function GroupList({ rows }: { rows: GroupRow[] }) {
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold truncate">{g.name}</div>
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              {g.member_count} {g.member_count === 1 ? "soul" : "souls"}
+              {g.member_count} {g.member_count === 1 ? "member" : "members"}
             </div>
           </div>
           <div className="text-right">

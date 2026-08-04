@@ -114,7 +114,9 @@ export const getSessionSummary = createServerFn({ method: "POST" })
       .eq("status", "accepted");
     const friendIds = (links ?? [])
       .map((l) =>
-        (l.requester_id as string) === userId ? (l.addressee_id as string) : (l.requester_id as string),
+        (l.requester_id as string) === userId
+          ? (l.addressee_id as string)
+          : (l.requester_id as string),
       )
       .filter((id) => id !== userId);
 

@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "season_participants public read" ON public.season_participants;

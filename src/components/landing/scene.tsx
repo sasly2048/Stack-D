@@ -87,9 +87,7 @@ export function Scene({
       id={id}
       data-scene={index}
       className={`relative isolate flex scroll-mt-20 flex-col justify-center overflow-hidden border-t border-white/5 px-6 ${
-        compact
-          ? "pb-10 pt-32 sm:pb-10 sm:pt-28"
-          : "min-h-[100svh] pb-28 pt-36 sm:pb-28 sm:pt-32"
+        compact ? "pb-10 pt-32 sm:pb-10 sm:pt-28" : "min-h-[100svh] pb-28 pt-36 sm:pb-28 sm:pt-32"
       } ${toneClass} ${className}`}
     >
       {background}

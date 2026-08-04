@@ -49,10 +49,7 @@ export function Nav() {
   return (
     <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-obsidian/80 backdrop-blur-md safe-top">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-        <Link
-          to={user ? "/dashboard" : "/"}
-          className="flex min-w-0 items-center gap-2 sm:gap-3"
-        >
+        <Link to={user ? "/dashboard" : "/"} className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Logo className="size-7 shrink-0" />
           <span className="whitespace-nowrap font-mono text-xs tracking-[0.3em] uppercase">
             Stack&apos;d{" "}
