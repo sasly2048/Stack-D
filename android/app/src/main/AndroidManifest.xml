@@ -38,6 +38,19 @@
             </intent-filter>
         </activity>
 
+        <!-- Keeps the remaining time glanceable while a session runs and the
+             app is off screen. "specialUse" because none of the standard types
+             describe a countdown the user deliberately started; the reason
+             below is what Play review reads. -->
+        <service
+            android:name=".feature.room.session.FocusSessionService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Displays the remaining time of a focus session the user started, so it stays visible while the screen is off." />
+        </service>
+
     </application>
 
 </manifest>
