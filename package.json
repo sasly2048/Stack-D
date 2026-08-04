@@ -12,7 +12,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsc --noEmit",
     "test:e2e": "python3 tests/e2e/run.py",
     "test:visual": "python3 tests/visual/run.py",
     "analyze": "node scripts/bundle-budget.mjs"
