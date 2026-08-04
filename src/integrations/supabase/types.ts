@@ -1552,6 +1552,7 @@ export type Database = {
         }
         Returns: number
       }
+      my_season_rank: { Args: { _season_id: string }; Returns: number }
       presence_heartbeat: { Args: never; Returns: undefined }
       prestige_up: {
         Args: never
@@ -1607,6 +1608,16 @@ export type Database = {
       }
       refresh_personality: { Args: { _user_id: string }; Returns: string }
       room_code_exists: { Args: { _code: string }; Returns: boolean }
+      season_standings: {
+        Args: { _limit?: number; _season_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          rank: number
+          user_id: string
+          xp: number
+        }[]
+      }
       update_session_meta: {
         Args: { _history_id: string; _notes: string; _tags: string[] }
         Returns: undefined

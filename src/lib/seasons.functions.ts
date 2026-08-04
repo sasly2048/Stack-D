@@ -43,32 +43,18 @@ export const getActiveSeason = createServerFn({ method: "GET" })
 
       if (!s) return { season: null, myXp: 0, myRank: null, top: [] };
 
-      const { data: rows } = await context.supabase
-        .from("season_participants")
-        .select("user_id, xp")
-        .eq("season_id", s.id as string)
-        .order("xp", { ascending: false })
-        .limit(50);
-
-      const ids = (rows ?? []).map((r) => r.user_id as string);
-      const { data: profs } = ids.length
-        ? await context.supabase
-            .from("profiles")
-            .select("id, display_name, avatar_url")
-            .in("id", ids)
-        : { data: [] as { id: string; display_name: string | null; avatar_url: string | null }[] };
-      const pmap = new Map((profs ?? []).map((p) => [p.id as string, p]));
-
-      const top: SeasonStanding[] = (rows ?? []).map((r, i) => {
-        const p = pmap.get(r.user_id as string);
-        return {
-          user_id: r.user_id as string,
-          display_name: (p?.display_name as string) ?? null,
-          avatar_url: (p?.avatar_url as string) ?? null,
-          xp: r.xp as number,
-          rank: i + 1,
-        };
+      const { data: rows } = await context.supabase.rpc("season_standings", {
+        _season_id: s.id as string,
+        _limit: 50,
       });
+
+      const top: SeasonStanding[] = ((rows ?? []) as SeasonStanding[]).map((r) => ({
+        user_id: r.user_id,
+        display_name: r.display_name ?? null,
+        avatar_url: r.avatar_url ?? null,
+        xp: r.xp,
+        rank: r.rank,
+      }));
 
       const mine = top.find((t) => t.user_id === context.userId);
       let myXp = mine?.xp ?? 0;
@@ -81,8 +67,12 @@ export const getActiveSeason = createServerFn({ method: "GET" })
           .eq("user_id", context.userId)
           .maybeSingle();
         myXp = (me?.xp as number) ?? 0;
-        myRank = null;
+        const { data: rank } = await context.supabase.rpc("my_season_rank", {
+          _season_id: s.id as string,
+        });
+        myRank = (rank as number | null) ?? null;
       }
+
 
       return { season: s as Season, myXp, myRank, top };
     },
