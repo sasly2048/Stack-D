@@ -43,14 +43,23 @@ function SeasonsPage() {
   const [myXp, setMyXp] = useState(0);
   const [myRank, setMyRank] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const refresh = () =>
-    loadFn().then((r) => {
-      setSeason(r.season);
-      setTop(r.top);
-      setMyXp(r.myXp);
-      setMyRank(r.myRank);
-    });
+  const refresh = () => {
+    setLoadError(null);
+    return loadFn()
+      .then((r) => {
+        setSeason(r.season);
+        setTop(r.top);
+        setMyXp(r.myXp);
+        setMyRank(r.myRank);
+      })
+      .catch((e: unknown) => {
+        setLoadError((e as Error).message || "Could not load the season.");
+      })
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     refresh();
@@ -81,7 +90,24 @@ function SeasonsPage() {
         </div>
         <h1 className="text-3xl font-serif mt-1 mb-8">Compete in cycles.</h1>
 
-        {!season ? (
+        {loading ? (
+          <div className="glass rounded-xl p-12 text-center">
+            <div className="text-sm text-muted-foreground">Loading the current cycle…</div>
+          </div>
+        ) : loadError ? (
+          <div className="glass rounded-xl p-12 text-center space-y-4">
+            <div className="text-sm text-muted-foreground">{loadError}</div>
+            <button
+              onClick={() => {
+                setLoading(true);
+                refresh();
+              }}
+              className="px-5 py-2 rounded-full border border-silver/20 text-xs font-mono uppercase tracking-widest"
+            >
+              Retry
+            </button>
+          </div>
+        ) : !season ? (
           <div className="glass rounded-xl p-12 text-center">
             <div className="text-sm text-muted-foreground">
               No active season right now. Check back soon.
