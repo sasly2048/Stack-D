@@ -52,7 +52,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <div className="font-mono text-[10px] tracking-[0.3em] text-breach uppercase mb-6">
           RUNTIME_EXCEPTION
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">Ritual interrupted</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Session interrupted</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {error.message || "Something went off-protocol."}
         </p>

@@ -191,7 +191,7 @@ function Auth() {
         <Link to="/" className="flex items-center gap-3">
           <Logo className="size-7" />
           <span className="font-mono text-xs tracking-[0.3em] uppercase">
-            Stack&apos;d <span className="text-muted-foreground">/ Ritual.01</span>
+            Stack&apos;d <span className="text-muted-foreground">/ Protocol.01</span>
           </span>
         </Link>
       </header>
@@ -199,7 +199,7 @@ function Auth() {
       <main id="auth-main" className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md animate-entrance">
           <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember mb-4">
-            {mode === "sign-in" ? "AUTH / RETURN" : "AUTH / INITIATE"}
+            {mode === "sign-in" ? "AUTH / RETURN" : "AUTH / CREATE"}
           </div>
           <h1 className="text-4xl font-extrabold tracking-tighter mb-10">
             {mode === "sign-in" ? "Re-enter the protocol." : "Claim your presence."}
@@ -344,7 +344,7 @@ function Auth() {
             onClick={() => setMode(mode === "sign-in" ? "sign-up" : "sign-in")}
             className="mt-8 w-full text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-ember transition-colors focus-visible:outline-none focus-visible:text-ember"
           >
-            {mode === "sign-in" ? "No protocol key? Initiate →" : "Already aligned? Return →"}
+            {mode === "sign-in" ? "No protocol key? Create one →" : "Already have one? Sign in →"}
           </button>
         </div>
       </main>
