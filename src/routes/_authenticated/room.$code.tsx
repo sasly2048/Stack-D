@@ -722,7 +722,7 @@ function Room() {
               disabled={participants.length === 0}
               className="flex-1 bg-silver text-obsidian py-4 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40"
             >
-              Begin Session ({participants.length} {participants.length === 1 ? "present" : "present"})
+              Begin Session ({participants.length} present)
             </button>
           )}
           {lobby && !isHost && (
