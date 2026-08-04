@@ -32,7 +32,7 @@ export const getActiveSeason = createServerFn({ method: "GET" })
       top: SeasonStanding[];
     }> => {
       const now = new Date().toISOString();
-      const { data: s } = await context.supabase
+      const { data: s, error: seasonErr } = await context.supabase
         .from("seasons")
         .select("id, name, description, starts_at, ends_at, reward_title_id, xp_multiplier")
         .lte("starts_at", now)
@@ -41,6 +41,7 @@ export const getActiveSeason = createServerFn({ method: "GET" })
         .limit(1)
         .maybeSingle();
 
+      if (seasonErr) throw new Error(seasonErr.message);
       if (!s) return { season: null, myXp: 0, myRank: null, top: [] };
 
       const { data: rows } = await context.supabase.rpc("season_standings", {
