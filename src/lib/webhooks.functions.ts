@@ -37,11 +37,18 @@ export const createWebhook = createServerFn({ method: "POST" })
   .inputValidator((d) =>
     z
       .object({
-        url: z.string().url().max(500),
+        url: z
+          .string()
+          .url()
+          .max(500)
+          .refine((u) => isPublicHttpUrl(u), {
+            message: "URL must be a public http(s) endpoint",
+          }),
         events: z.array(z.enum(EVENT_TYPES)).min(1).max(20),
       })
       .parse(d),
   )
+
   .handler(async ({ data, context }) => {
     const secret = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
     const { data: row, error } = await context.supabase
