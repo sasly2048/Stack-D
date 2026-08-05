@@ -7,6 +7,7 @@ import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.functions.functions
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
@@ -39,6 +40,21 @@ data class GuardVerdict(
     val message: String? = null,
 )
 
+/**
+ * Result of a server-side sign-in. On success it carries the session tokens
+ * the Edge Function obtained, which the client installs locally — the client
+ * never sees the password outcome as a claim it could have forged.
+ */
+@Serializable
+data class SignInVerdict(
+    val ok: Boolean,
+    val code: String? = null,
+    val message: String? = null,
+    @SerialName("access_token") val accessToken: String? = null,
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    @SerialName("expires_in") val expiresIn: Long? = null,
+)
+
 /** What a sign-in/sign-up attempt produced, in the terms the UI cares about. */
 sealed interface AuthOutcome {
     /** A session now exists; proceed to the confirm-identity step. */
@@ -57,11 +73,12 @@ sealed interface AuthOutcome {
 /**
  * Auth against the same Supabase project the web app uses.
  *
- * The order of operations is the web's, from `src/routes/auth.tsx`: consult the
- * guard first, and only touch Supabase Auth if it says yes — otherwise a
- * throttled attempt would still cost a real auth call. Every terminal outcome
- * is logged back through the guard so `auth_attempts` sees Android traffic the
- * same way it sees web traffic.
+ * Password sign-in runs entirely inside the `auth-guard` Edge Function: it
+ * applies the throttle, performs the credential check, records the observed
+ * outcome, and returns session tokens. The client therefore never reports
+ * whether an attempt succeeded — see [signIn] for why that matters. Providers
+ * without a password (Google) still use the advisory guard, since the token
+ * exchange must happen on the device.
  *
  * Two deliberate divergences from web, both settled with the user:
  *  - No Turnstile CAPTCHA. There is no native widget, and a signed APK is a
@@ -83,27 +100,59 @@ class AuthRepository(
     val isSignedIn: Flow<Boolean>
         get() = client.auth.sessionStatus.map { it is SessionStatus.Authenticated }
 
+    /**
+     * Signs in through the `auth-guard` Edge Function rather than calling
+     * Supabase Auth directly.
+     *
+     * The throttle that guards this account is driven by the failure count in
+     * `auth_attempts`, so whoever writes that row decides who gets locked out.
+     * Letting the client write it — or even report its own outcome for the
+     * server to write — means anyone can lock out any address they know. So the
+     * credential check happens server-side and the client never asserts an
+     * outcome at all; it receives a session or a refusal.
+     *
+     * The returned tokens are installed locally via [importSession], which is
+     * what makes the SDK's own session handling (refresh, `sessionStatus`)
+     * work from here on exactly as if we had signed in directly.
+     */
     suspend fun signIn(email: String, password: String): AuthOutcome {
-        val guard = guard(AuthProvider.EMAIL, email)
-        if (!guard.ok) {
-            return Failed(guard, fallback = "Email sign-in failed. Please retry.")
+        val verdict = runCatching {
+            val response: HttpResponse = client.functions.invoke(
+                function = SIGNIN_FUNCTION,
+                body = buildJsonObject {
+                    put("email", email)
+                    put("password", password)
+                    put("fp", settings.deviceFingerprint())
+                },
+            )
+            json.decodeFromString<SignInVerdict>(response.body())
+        }.getOrElse {
+            // Fails CLOSED, unlike the advisory guard: this call *is* the
+            // sign-in, so an unreachable function means no session, not a free
+            // pass.
+            return AuthOutcome.Failed("Couldn't reach the server. Check your connection and retry.")
+        }
+
+        if (!verdict.ok || verdict.accessToken == null || verdict.refreshToken == null) {
+            return AuthOutcome.Failed(
+                verdict.message ?: "Email sign-in failed. Please retry.",
+                verdict.code,
+            )
         }
 
         return runCatching {
-            client.auth.signInWith(Email) {
-                this.email = email
-                this.password = password
-            }
+            client.auth.importSession(
+                UserSession(
+                    accessToken = verdict.accessToken,
+                    refreshToken = verdict.refreshToken,
+                    expiresIn = verdict.expiresIn ?: DEFAULT_EXPIRES_IN,
+                    tokenType = "bearer",
+                    user = null,
+                ),
+            )
         }.fold(
-            onSuccess = {
-                log(AuthProvider.EMAIL, email, success = true)
-                AuthOutcome.SignedIn
-            },
-            onFailure = { err ->
-                val message = err.message ?: "Email sign-in failed. Please retry."
-                log(AuthProvider.EMAIL, email, success = false, reason = message.take(120))
-                AuthOutcome.Failed(message)
-            },
+            onSuccess = { AuthOutcome.SignedIn },
+            onFailure = { AuthOutcome.Failed("Couldn't start your session. Please retry.") },
         )
     }
 
@@ -126,14 +175,9 @@ class AuthRepository(
                 this.data = buildJsonObject { put("display_name", name) }
             }
         }.fold(
-            onSuccess = {
-                log(AuthProvider.EMAIL, email, success = true, reason = "signup_email_sent")
-                AuthOutcome.ConfirmationEmailSent
-            },
+            onSuccess = { AuthOutcome.ConfirmationEmailSent },
             onFailure = { err ->
-                val message = err.message ?: "Email sign-up failed. Please retry."
-                log(AuthProvider.EMAIL, email, success = false, reason = message.take(120))
-                AuthOutcome.Failed(message)
+                AuthOutcome.Failed(err.message ?: "Email sign-up failed. Please retry.")
             },
         )
     }
@@ -156,14 +200,9 @@ class AuthRepository(
                 this.nonce = rawNonce
             }
         }.fold(
-            onSuccess = {
-                log(AuthProvider.GOOGLE, email = null, success = true)
-                AuthOutcome.SignedIn
-            },
+            onSuccess = { AuthOutcome.SignedIn },
             onFailure = { err ->
-                val message = err.message ?: "Google sign-in failed. Please retry."
-                log(AuthProvider.GOOGLE, null, success = false, reason = message.take(120))
-                AuthOutcome.Failed(message)
+                AuthOutcome.Failed(err.message ?: "Google sign-in failed. Please retry.")
             },
         )
     }
@@ -195,29 +234,13 @@ class AuthRepository(
             json.decodeFromString<GuardVerdict>(response.body())
         }.getOrElse { GuardVerdict(ok = true) }
 
-    /** Fire-and-forget; a failed log must never block or fail an auth attempt. */
-    private suspend fun log(
-        provider: AuthProvider,
-        email: String?,
-        success: Boolean,
-        reason: String? = null,
-    ) {
-        runCatching {
-            client.functions.invoke(
-                function = LOG_FUNCTION,
-                body = buildJsonObject {
-                    put("provider", provider.wire)
-                    email?.let { put("email", it) }
-                    put("success", success)
-                    reason?.let { put("reason", it.take(200)) }
-                },
-            )
-        }
-    }
-
     private companion object {
         const val GUARD_FUNCTION = "auth-guard"
-        const val LOG_FUNCTION = "auth-guard/log"
+        const val SIGNIN_FUNCTION = "auth-guard/signin"
+
+        /** Supabase's default access-token lifetime; only used if the server omits it. */
+        const val DEFAULT_EXPIRES_IN = 3600L
+
         val json = Json { ignoreUnknownKeys = true }
     }
 }
