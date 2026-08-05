@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { isPublicHttpUrl } from "@/lib/safe-url";
+
 
 export interface Webhook {
   id: string;
