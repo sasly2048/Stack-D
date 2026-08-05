@@ -2,20 +2,33 @@ package app.stackd.core.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import app.stackd.R
 
-// TODO(fonts): the web app loads Inter (400/500/600/800) and JetBrains Mono
-// (400/500) from Google Fonts. Drop the real .ttf files into res/font/ and
-// point these two families at them — the machine's installed copies are not
-// usable as-is (its Inter ships only Regular/Bold, and its JetBrains Mono is a
-// Nerd Font build carrying a large icon glyph set). Until then these fall back
-// to the platform families so the weight/size scale below is already correct
-// and only the glyphs change when the real files land.
-val DisplayFamily = FontFamily.SansSerif
-val MonoFamily = FontFamily.Monospace
+// The same faces the web app pulls from Google Fonts — Inter 400/500/600/800
+// and JetBrains Mono 400/500 — bundled as static .ttf (latin subset, ~380KB
+// total) rather than fetched at runtime. Bundling keeps first paint identical
+// offline and avoids a Downloadable-Fonts dependency for six files. Both are
+// SIL Open Font License 1.1.
+//
+// Only the weights the design actually uses are shipped. Compose synthesises
+// anything else, so asking for a weight not listed here yields a faux-bold
+// rather than a crash.
+val DisplayFamily = FontFamily(
+    Font(R.font.inter_400, FontWeight.Normal),
+    Font(R.font.inter_500, FontWeight.Medium),
+    Font(R.font.inter_600, FontWeight.SemiBold),
+    Font(R.font.inter_800, FontWeight.ExtraBold),
+)
+
+val MonoFamily = FontFamily(
+    Font(R.font.jbmono_400, FontWeight.Normal),
+    Font(R.font.jbmono_500, FontWeight.Medium),
+)
 
 /**
  * The mono style carries most of Stack'd's identity: small, uppercase, and
@@ -46,9 +59,11 @@ val StackdTypography = Typography(
         lineHeight = 40.sp,
         letterSpacing = (-0.02).em,
     ),
+    // ExtraBold rather than Bold: 700 isn't among the bundled weights, so Bold
+    // would be synthesised. The web's headings use font-extrabold anyway.
     headlineLarge = TextStyle(
         fontFamily = DisplayFamily,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = 28.sp,
         lineHeight = 34.sp,
         letterSpacing = (-0.01).em,
