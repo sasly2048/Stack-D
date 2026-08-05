@@ -13,7 +13,22 @@ import {
 } from "@/lib/rooms2.functions";
 
 export const Route = createFileRoute("/_authenticated/start")({
-  head: () => ({ meta: [{ title: "New Session — Stack'd" }] }),
+  head: () => ({
+    meta: [
+      { title: "New Session — Stack'd" },
+      {
+        name: "description",
+        content:
+          "Open a new Stack'd focus room: pick a duration, choose an enforcement mode and invite friends to stack.",
+      },
+      { property: "og:title", content: "New Session — Stack'd" },
+      {
+        property: "og:description",
+        content: "Open a focus room, set a duration and invite friends to stack their phones.",
+      },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
   component: Start,
 });
 

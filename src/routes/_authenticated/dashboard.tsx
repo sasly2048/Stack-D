@@ -20,7 +20,22 @@ import { AtlasWhisper } from "@/components/atlas-whisper";
 import { PrestigeCeremony } from "@/components/profile/prestige-ceremony";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Analytics — Stack'd" }] }),
+  head: () => ({
+    meta: [
+      { title: "Analytics — Stack'd" },
+      {
+        name: "description",
+        content:
+          "Your Stack'd analytics: focus history, session scores, breaches, streaks and XP earned over time.",
+      },
+      { property: "og:title", content: "Analytics — Stack'd" },
+      {
+        property: "og:description",
+        content: "Focus history, session scores, streaks and XP earned on Stack'd.",
+      },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
   component: Dashboard,
 });
 
