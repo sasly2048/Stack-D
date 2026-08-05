@@ -87,6 +87,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
       { name: "theme-color", content: "#0A0A0A" },
+      {
+        name: "google-site-verification",
+        content: "sDulKjsnJ8aQiu2O-2aI7QG1jG0pTNVrfwhdchNoUR4",
+      },
       { title: "Stack'd — Presence is the new luxury" },
       {
         name: "description",
