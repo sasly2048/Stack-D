@@ -129,6 +129,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap",
       },
     ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "Stack'd",
+              url: "https://stack-d.lovable.app/",
+              description:
+                "Stack'd builds shared focus rooms where friends stack their phones and hold the silence together.",
+            },
+            {
+              "@type": "WebSite",
+              name: "Stack'd",
+              url: "https://stack-d.lovable.app/",
+              description:
+                "Presence is the new luxury. Stack your phones with friends, hold the silence, and earn back the time.",
+            },
+          ],
+        }),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
