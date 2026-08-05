@@ -91,19 +91,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "google-site-verification",
         content: "sDulKjsnJ8aQiu2O-2aI7QG1jG0pTNVrfwhdchNoUR4",
       },
-      { title: "Stack'd — Presence is the new luxury" },
+      { title: "Stack'd" },
       {
         name: "description",
         content: "Stack your phones with friends, hold the silence, and earn back the time.",
       },
-      { property: "og:title", content: "Stack'd — Presence is the new luxury" },
+      { property: "og:site_name", content: "Stack'd" },
+      { property: "og:title", content: "Stack'd" },
       {
         property: "og:description",
         content: "Stack your phones with friends, hold the silence, and earn back the time.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Stack'd — Presence is the new luxury" },
+      { name: "twitter:title", content: "Stack'd" },
       {
         name: "twitter:description",
         content: "Stack your phones with friends, hold the silence, and earn back the time.",
