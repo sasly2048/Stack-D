@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { checkPublicHttpUrl } from "@/lib/safe-url";
+
 
 export interface Delivery {
   id: string;
@@ -44,6 +46,11 @@ export const testWebhook = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error || !wh) throw new Error("not_found");
 
+    // SSRF guard: re-validate at send time (rows may predate validation).
+    const urlProblem = checkPublicHttpUrl(wh.url);
+    if (urlProblem) throw new Error(urlProblem);
+
+
     const payload = JSON.stringify({
       event: "session.complete",
       test: true,
@@ -78,8 +85,11 @@ export const testWebhook = createServerFn({ method: "POST" })
           "User-Agent": "Stackd-Webhooks/1.0 (test)",
         },
         body: payload,
+        // Don't follow redirects: a public URL could bounce to an internal host.
+        redirect: "manual",
         signal: AbortSignal.timeout(10_000),
       });
+
       status = res.status;
       ok = res.ok;
       const txt = await res.text().catch(() => "");
