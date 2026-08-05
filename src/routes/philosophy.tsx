@@ -22,6 +22,21 @@ export const Route = createFileRoute("/philosophy")({
       { property: "og:url", content: "https://stack-d.lovable.app/philosophy" },
     ],
     links: [{ rel: "canonical", href: "https://stack-d.lovable.app/philosophy" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: "The Stack'd Philosophy: presence is the new luxury",
+          description:
+            "The protocol behind Stack'd: kinetic verdict, atomic sync, and earned time. A manifesto for presence.",
+          author: { "@type": "Organization", name: "Stack'd" },
+          publisher: { "@type": "Organization", name: "Stack'd" },
+          mainEntityOfPage: "https://stack-d.lovable.app/philosophy",
+        }),
+      },
+    ],
   }),
   component: Philosophy,
 });
@@ -86,7 +101,7 @@ function Philosophy() {
             {PILLARS.map((f) => (
               <div key={f.k} className="border-t border-white/10 pt-8">
                 <div className="font-mono text-[10px] tracking-[0.3em] text-ember mb-6">{f.k}</div>
-                <h3 className="text-2xl font-bold tracking-tight mb-3">{f.h}</h3>
+                <h2 className="text-2xl font-bold tracking-tight mb-3">{f.h}</h2>
                 <p className="text-sm text-silver-dim leading-relaxed">{f.p}</p>
               </div>
             ))}

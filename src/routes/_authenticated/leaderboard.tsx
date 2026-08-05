@@ -4,7 +4,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/nav";
 
 export const Route = createFileRoute("/_authenticated/leaderboard")({
-  head: () => ({ meta: [{ title: "Leaderboard — Stack'd" }] }),
+  head: () => ({
+    meta: [
+      { title: "Leaderboard — Stack'd" },
+      {
+        name: "description",
+        content:
+          "See how you rank against other stackers and groups by lifetime XP and current focus streak.",
+      },
+      { property: "og:title", content: "Leaderboard — Stack'd" },
+      {
+        property: "og:description",
+        content: "Individual and group rankings by lifetime XP and focus streak.",
+      },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
   component: Leaderboard,
 });
 

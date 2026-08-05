@@ -13,7 +13,24 @@ const searchSchema = z.object({ next: z.string().optional() });
 
 export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
-  head: () => ({ meta: [{ title: "Enter — Stack'd" }] }),
+  head: () => ({
+    meta: [
+      { title: "Enter — Stack'd" },
+      {
+        name: "description",
+        content:
+          "Sign in to Stack'd with Google, Apple or email, or enter a room code to join a friend's focus session.",
+      },
+      { property: "og:title", content: "Enter Stack'd" },
+      {
+        property: "og:description",
+        content: "Sign in or enter a room code to join a shared focus session on Stack'd.",
+      },
+      { property: "og:url", content: "https://stack-d.lovable.app/auth" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://stack-d.lovable.app/auth" }],
+  }),
   component: Auth,
 });
 
