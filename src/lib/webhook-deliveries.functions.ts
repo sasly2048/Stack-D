@@ -85,8 +85,11 @@ export const testWebhook = createServerFn({ method: "POST" })
           "User-Agent": "Stackd-Webhooks/1.0 (test)",
         },
         body: payload,
+        // Don't follow redirects: a public URL could bounce to an internal host.
+        redirect: "manual",
         signal: AbortSignal.timeout(10_000),
       });
+
       status = res.status;
       ok = res.ok;
       const txt = await res.text().catch(() => "");
