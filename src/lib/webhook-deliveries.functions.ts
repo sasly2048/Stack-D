@@ -44,6 +44,11 @@ export const testWebhook = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error || !wh) throw new Error("not_found");
 
+    // SSRF guard: re-validate at send time (rows may predate validation).
+    const urlProblem = checkPublicHttpUrl(wh.url);
+    if (urlProblem) throw new Error(urlProblem);
+
+
     const payload = JSON.stringify({
       event: "session.complete",
       test: true,
