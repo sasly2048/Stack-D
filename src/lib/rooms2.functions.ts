@@ -431,29 +431,33 @@ export const createRoomFromTemplate = createServerFn({ method: "POST" })
         { length: 6 },
         () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)],
       ).join("");
-    let code = gen();
-    for (let i = 0; i < 5; i++) {
-      const { data: exists } = await supabase.rpc("room_code_exists", { _code: code });
-      if (!exists) break;
-      code = gen();
+    let room: { code: string; id: string } | null = null;
+    let lastErr = "room_code_collision";
+    for (let i = 0; i < 5 && !room; i++) {
+      const { data: inserted, error: iErr } = await supabase
+        .from("rooms")
+        .insert({
+          code: gen(),
+          host_id: userId,
+          target_duration_seconds: tpl.target_duration_seconds,
+          status: "lobby",
+          title: data.title ?? tpl.title,
+          description: data.description ?? tpl.description,
+          collective_goal_seconds: data.collective_goal_seconds ?? null,
+          visibility: tpl.visibility,
+          template_key: tpl.key,
+        })
+        .select("code, id")
+        .single();
+      if (!iErr) {
+        room = inserted;
+        break;
+      }
+      lastErr = iErr.message;
+      // 23505 = unique violation on the room code; retry with a fresh code.
+      if (iErr.code !== "23505") throw new Error(iErr.message);
     }
-
-    const { data: room, error: iErr } = await supabase
-      .from("rooms")
-      .insert({
-        code,
-        host_id: userId,
-        target_duration_seconds: tpl.target_duration_seconds,
-        status: "lobby",
-        title: data.title ?? tpl.title,
-        description: data.description ?? tpl.description,
-        collective_goal_seconds: data.collective_goal_seconds ?? null,
-        visibility: tpl.visibility,
-        template_key: tpl.key,
-      })
-      .select("code, id")
-      .single();
-    if (iErr) throw new Error(iErr.message);
+    if (!room) throw new Error(lastErr);
 
     const { data: prof } = await supabase
       .from("profiles")
