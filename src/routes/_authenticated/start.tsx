@@ -85,31 +85,30 @@ function Start() {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Not signed in");
 
-      let code = generateRoomCode();
-      for (let i = 0; i < 5; i++) {
-        const { data: exists } = await (
-          supabase.rpc as unknown as (
-            fn: string,
-            args: Record<string, unknown>,
-          ) => PromiseLike<{ data: boolean | null }>
-        )("room_code_exists", { _code: code });
-        if (!exists) break;
-        code = generateRoomCode();
+      let room: { id: string; code: string } | null = null;
+      let lastError: { message: string; code?: string } | null = null;
+      for (let i = 0; i < 5 && !room; i++) {
+        const { data: inserted, error } = await supabase
+          .from("rooms")
+          .insert({
+            code: generateRoomCode(),
+            host_id: u.user.id,
+            target_duration_seconds: duration * 60,
+            status: "lobby",
+            title: title || null,
+            collective_goal_seconds: goalHours > 0 ? goalHours * 3600 : null,
+          })
+          .select()
+          .single();
+        if (!error) {
+          room = inserted;
+          break;
+        }
+        lastError = error;
+        // 23505 = duplicate room code; try again with a fresh one.
+        if (error.code !== "23505") throw error;
       }
-
-      const { data: room, error } = await supabase
-        .from("rooms")
-        .insert({
-          code,
-          host_id: u.user.id,
-          target_duration_seconds: duration * 60,
-          status: "lobby",
-          title: title || null,
-          collective_goal_seconds: goalHours > 0 ? goalHours * 3600 : null,
-        })
-        .select()
-        .single();
-      if (error) throw error;
+      if (!room) throw new Error(lastError?.message ?? "room_code_collision");
 
       await supabase.from("participants").insert({
         room_id: room.id,
