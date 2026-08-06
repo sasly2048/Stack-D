@@ -9,10 +9,9 @@ export const Route = createFileRoute("/_authenticated/companion")({
   head: () => ({
     meta: [
       { title: "Study Companion — Stack'd" },
-      {
-        name: "description",
-        content: "A private, always-on focus coach trained on your own protocol.",
-      },
+      { name: "description", content: "A private, always-on focus coach trained on your own Stack'd protocol, sessions and streak history." },
+      { property: "og:title", content: "Study Companion — Stack'd" },
+      { property: "og:description", content: "A private, always-on focus coach trained on your own Stack'd protocol, sessions and streak history." },
     ],
   }),
   component: CompanionPage,

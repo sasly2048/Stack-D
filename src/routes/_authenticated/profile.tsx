@@ -14,7 +14,9 @@ export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
     meta: [
       { title: "Your profile — Stack'd" },
-      { name: "description", content: "Your record. Your ties. Your unlocks." },
+      { name: "description", content: "Your Stack'd record: lifetime XP, streaks, unlocks and the ties you keep with your focus circle." },
+      { property: "og:title", content: "Your profile — Stack'd" },
+      { property: "og:description", content: "Your Stack'd record: lifetime XP, streaks, unlocks and the ties you keep with your focus circle." },
     ],
   }),
   component: MyProfile,

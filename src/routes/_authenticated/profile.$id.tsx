@@ -12,7 +12,9 @@ export const Route = createFileRoute("/_authenticated/profile/$id")({
   head: () => ({
     meta: [
       { title: "Profile — Stack'd" },
-      { name: "description", content: "A witness's focus record." },
+      { name: "description", content: "A witness's focus record on Stack'd: sessions held, streaks kept, titles earned and ties formed." },
+      { property: "og:title", content: "Profile — Stack'd" },
+      { property: "og:description", content: "A witness's focus record on Stack'd: sessions held, streaks kept, titles earned and ties formed." },
     ],
   }),
   component: PublicProfileView,

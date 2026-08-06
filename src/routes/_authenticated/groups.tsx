@@ -7,7 +7,14 @@ import { generateRoomCode } from "@/lib/room";
 import { publishGroupSprint } from "@/lib/invite-channel";
 
 export const Route = createFileRoute("/_authenticated/groups")({
-  head: () => ({ meta: [{ title: "Focus Circles — Stack'd" }] }),
+  head: () => ({
+    meta: [
+      { title: "Focus Circles — Stack'd" },
+      { name: "description", content: "Create and manage shared Stack'd focus circles, pool collective XP and hold silence with your group." },
+      { property: "og:title", content: "Focus Circles — Stack'd" },
+      { property: "og:description", content: "Create and manage shared Stack'd focus circles, pool collective XP and hold silence with your group." },
+    ],
+  }),
   component: GroupsPage,
 });
 

@@ -10,7 +10,9 @@ export const Route = createFileRoute("/_authenticated/trust")({
   head: () => ({
     meta: [
       { title: "Trust & Safety — Stack'd" },
-      { name: "description", content: "Manage blocks and view your reports." },
+      { name: "description", content: "Manage blocked accounts and review the reports you have filed across your Stack'd sessions." },
+      { property: "og:title", content: "Trust & Safety — Stack'd" },
+      { property: "og:description", content: "Manage blocked accounts and review the reports you have filed across your Stack'd sessions." },
     ],
   }),
   component: TrustPage,

@@ -11,7 +11,9 @@ export const Route = createFileRoute("/_authenticated/achievements")({
   head: () => ({
     meta: [
       { title: "Achievements — Stack'd" },
-      { name: "description", content: "Your unlocks and the marks yet to earn." },
+      { name: "description", content: "Track every Stack'd unlock, tier and milestone you have earned, and see the marks still waiting ahead of you." },
+      { property: "og:title", content: "Achievements — Stack'd" },
+      { property: "og:description", content: "Track every Stack'd unlock, tier and milestone you have earned, and see the marks still waiting ahead of you." },
     ],
   }),
   component: AchievementsPage,

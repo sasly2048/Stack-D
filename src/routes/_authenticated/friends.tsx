@@ -17,7 +17,9 @@ export const Route = createFileRoute("/_authenticated/friends")({
   head: () => ({
     meta: [
       { title: "Friends — Stack'd" },
-      { name: "description", content: "Your focus circle. Send and accept ties." },
+      { name: "description", content: "Build your Stack'd focus circle: send ties, accept requests and keep each other accountable in real time." },
+      { property: "og:title", content: "Friends — Stack'd" },
+      { property: "og:description", content: "Build your Stack'd focus circle: send ties, accept requests and keep each other accountable in real time." },
     ],
   }),
   component: FriendsPage,

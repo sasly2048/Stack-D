@@ -8,7 +8,9 @@ export const Route = createFileRoute("/_authenticated/dna")({
   head: () => ({
     meta: [
       { title: "Productivity DNA — Stack'd" },
-      { name: "description", content: "Your unique focus signature." },
+      { name: "description", content: "Your unique focus signature, mapped from every Stack'd session into traits you can actually act on." },
+      { property: "og:title", content: "Productivity DNA — Stack'd" },
+      { property: "og:description", content: "Your unique focus signature, mapped from every Stack'd session into traits you can actually act on." },
     ],
   }),
   component: DnaPage,

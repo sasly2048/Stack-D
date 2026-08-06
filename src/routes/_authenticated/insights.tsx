@@ -13,7 +13,9 @@ export const Route = createFileRoute("/_authenticated/insights")({
   head: () => ({
     meta: [
       { title: "Insights — Stack'd" },
-      { name: "description", content: "Trends, tags, and the hours you focus best." },
+      { name: "description", content: "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history." },
+      { property: "og:title", content: "Insights — Stack'd" },
+      { property: "og:description", content: "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history." },
     ],
   }),
   component: InsightsPage,

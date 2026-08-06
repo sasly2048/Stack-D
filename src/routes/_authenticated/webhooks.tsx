@@ -18,7 +18,9 @@ export const Route = createFileRoute("/_authenticated/webhooks")({
   head: () => ({
     meta: [
       { title: "Webhooks — Stack'd" },
-      { name: "description", content: "Stream Stack'd events to your own systems." },
+      { name: "description", content: "Stream Stack'd session, room and achievement events straight into your own systems and tooling." },
+      { property: "og:title", content: "Webhooks — Stack'd" },
+      { property: "og:description", content: "Stream Stack'd session, room and achievement events straight into your own systems and tooling." },
     ],
   }),
   component: WebhooksPage,

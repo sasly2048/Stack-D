@@ -7,7 +7,14 @@ import { listPartners, pairPartner, endPartnership, type Partner } from "@/lib/m
 import { searchPeople } from "@/lib/friends.functions";
 
 export const Route = createFileRoute("/_authenticated/partners")({
-  head: () => ({ meta: [{ title: "Partners — Stack'd" }] }),
+  head: () => ({
+    meta: [
+      { title: "Partners — Stack'd" },
+      { name: "description", content: "Pair with an accountability partner on Stack'd and keep a single, steady commitment to focused time." },
+      { property: "og:title", content: "Partners — Stack'd" },
+      { property: "og:description", content: "Pair with an accountability partner on Stack'd and keep a single, steady commitment to focused time." },
+    ],
+  }),
   component: PartnersPage,
 });
 
