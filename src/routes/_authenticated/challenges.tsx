@@ -8,7 +8,9 @@ export const Route = createFileRoute("/_authenticated/challenges")({
   head: () => ({
     meta: [
       { title: "Challenges — Stack'd" },
-      { name: "description", content: "Daily and weekly rites. Small, deliberate targets." },
+      { name: "description", content: "Daily and weekly focus challenges: small, deliberate targets that keep your Stack'd streak moving forward." },
+      { property: "og:title", content: "Challenges — Stack'd" },
+      { property: "og:description", content: "Daily and weekly focus challenges: small, deliberate targets that keep your Stack'd streak moving forward." },
     ],
   }),
   component: ChallengesPage,

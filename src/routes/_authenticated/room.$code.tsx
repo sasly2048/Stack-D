@@ -34,7 +34,20 @@ import { RoomSchedule } from "@/components/rooms/room-schedule";
 import { useLockScreenTimer } from "@/hooks/use-lock-screen-timer";
 
 export const Route = createFileRoute("/_authenticated/room/$code")({
-  head: ({ params }) => ({ meta: [{ title: `Room ${params.code} — Stack'd` }] }),
+  head: ({ params }) => ({
+    meta: [
+      { title: `Room ${params.code} — Stack'd` },
+      {
+        name: "description",
+        content: `Shared Stack'd focus room ${params.code}: stack your phones, hold the silence together and earn the time back.`,
+      },
+      { property: "og:title", content: `Room ${params.code} — Stack'd` },
+      {
+        property: "og:description",
+        content: `Shared Stack'd focus room ${params.code}: stack your phones, hold the silence together and earn the time back.`,
+      },
+    ],
+  }),
   component: Room,
 });
 

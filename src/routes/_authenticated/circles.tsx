@@ -8,7 +8,9 @@ export const Route = createFileRoute("/_authenticated/circles")({
   head: () => ({
     meta: [
       { title: "Study Circles — Stack'd" },
-      { name: "description", content: "Weekly rankings across your focus circles." },
+      { name: "description", content: "Weekly rankings across your Stack'd study circles, so you can see how your group holds focus together." },
+      { property: "og:title", content: "Study Circles — Stack'd" },
+      { property: "og:description", content: "Weekly rankings across your Stack'd study circles, so you can see how your group holds focus together." },
     ],
   }),
   component: CirclesPage,

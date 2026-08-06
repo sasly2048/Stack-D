@@ -15,7 +15,9 @@ export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({
     meta: [
       { title: "Feed — Stack'd" },
-      { name: "description", content: "Signal from your circle. Sessions, unlocks, ties." },
+      { name: "description", content: "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with." },
+      { property: "og:title", content: "Feed — Stack'd" },
+      { property: "og:description", content: "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with." },
     ],
   }),
   component: FeedPage,

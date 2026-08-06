@@ -16,10 +16,9 @@ export const Route = createFileRoute("/_authenticated/vault")({
   head: () => ({
     meta: [
       { title: "Memory Vault — Stack'd" },
-      {
-        name: "description",
-        content: "Searchable archive of your focus sessions, notes and links.",
-      },
+      { name: "description", content: "A searchable archive of your Stack'd focus sessions, notes and links, kept in one private place." },
+      { property: "og:title", content: "Memory Vault — Stack'd" },
+      { property: "og:description", content: "A searchable archive of your Stack'd focus sessions, notes and links, kept in one private place." },
     ],
   }),
   component: VaultPage,
