@@ -127,7 +127,10 @@ function Privacy() {
                 </span>
                 <h2 className="text-xl font-semibold tracking-tight">{s.title}</h2>
               </div>
-              <p className="pl-[3.25rem] text-sm leading-relaxed text-silver-dim">{s.body}</p>
+              {/* The hanging indent aligns body copy under the section title on
+                  desktop, but 52px of it on a 375px screen squeezes the text
+                  into a narrow column — so it only applies from sm up. */}
+              <p className="text-sm leading-relaxed text-silver-dim sm:pl-[3.25rem]">{s.body}</p>
             </section>
           ))}
         </div>
