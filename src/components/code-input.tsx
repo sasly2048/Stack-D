@@ -78,6 +78,7 @@ export function CodeInput({
       </span>
       <input
         ref={inputRef}
+        id="room-code-input"
         type="text"
         inputMode="text"
         autoComplete="one-time-code"
