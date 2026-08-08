@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PhilosophyRouteImport } from './routes/philosophy'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SdkRouteImport } from './routes/sdk'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -77,6 +78,11 @@ const McpRoute = McpRouteImport.update({
 const PhilosophyRoute = PhilosophyRouteImport.update({
   id: '/philosophy',
   path: '/philosophy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SdkRoute = SdkRouteImport.update({
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof CatalogRoute
   '/mcp': typeof McpRoute
   '/philosophy': typeof PhilosophyRoute
+  '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/catalog': typeof CatalogRoute
   '/mcp': typeof McpRoute
   '/philosophy': typeof PhilosophyRoute
+  '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -348,6 +356,7 @@ export interface FileRoutesById {
   '/catalog': typeof CatalogRoute
   '/mcp': typeof McpRoute
   '/philosophy': typeof PhilosophyRoute
+  '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -391,6 +400,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/mcp'
     | '/philosophy'
+    | '/privacy'
     | '/sdk'
     | '/sitemap.xml'
     | '/.mcp/list-tools'
@@ -432,6 +442,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/mcp'
     | '/philosophy'
+    | '/privacy'
     | '/sdk'
     | '/sitemap.xml'
     | '/.mcp/list-tools'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/mcp'
     | '/philosophy'
+    | '/privacy'
     | '/sdk'
     | '/sitemap.xml'
     | '/.mcp/list-tools'
@@ -517,6 +529,7 @@ export interface RootRouteChildren {
   CatalogRoute: typeof CatalogRoute
   McpRoute: typeof McpRoute
   PhilosophyRoute: typeof PhilosophyRoute
+  PrivacyRoute: typeof PrivacyRoute
   SdkRoute: typeof SdkRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
@@ -569,6 +582,13 @@ declare module '@tanstack/react-router' {
       path: '/philosophy'
       fullPath: '/philosophy'
       preLoaderRoute: typeof PhilosophyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sdk': {
@@ -898,6 +918,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogRoute: CatalogRoute,
   McpRoute: McpRoute,
   PhilosophyRoute: PhilosophyRoute,
+  PrivacyRoute: PrivacyRoute,
   SdkRoute: SdkRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,

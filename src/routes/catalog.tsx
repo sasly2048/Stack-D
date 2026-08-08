@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { Nav } from "@/components/nav";
+import { siteUrl } from "@/lib/site";
 
 // shadcn/ui
 import { Button } from "@/components/ui/button";
@@ -84,9 +85,9 @@ export const Route = createFileRoute("/catalog")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "https://stack-d.lovable.app/catalog" },
+      { property: "og:url", content: siteUrl("/catalog") },
     ],
-    links: [{ rel: "canonical", href: "https://stack-d.lovable.app/catalog" }],
+    links: [{ rel: "canonical", href: siteUrl("/catalog") }],
   }),
 });
 
