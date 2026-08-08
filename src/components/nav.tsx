@@ -87,7 +87,11 @@ export function Nav() {
               >
                 New Session
               </Link>
-              <button onClick={signOut} className="hover:text-silver transition-colors">
+              <button
+                type="button"
+                onClick={signOut}
+                className="cursor-pointer transition-colors hover:text-silver"
+              >
                 Exit
               </button>
             </>

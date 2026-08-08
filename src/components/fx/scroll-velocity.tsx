@@ -71,7 +71,9 @@ export function ScrollVelocity({
         {items.map((w, i) => (
           <span
             key={i}
-            className="font-mono text-[clamp(2.5rem,8vw,6rem)] uppercase tracking-[0.15em] text-silver-dim/40 px-8 select-none"
+            // /40 computed to ~2:1 on obsidian, below even the 3:1 large-text
+            // floor. /60 clears it while keeping the recessive, ambient feel.
+            className="font-mono text-[clamp(2.5rem,8vw,6rem)] uppercase tracking-[0.15em] text-silver-dim/60 px-8 select-none"
           >
             {w}
             <span className="text-ember/50 mx-6">·</span>

@@ -102,6 +102,9 @@ function Philosophy() {
             {PILLARS.map((f) => (
               <div key={f.k} className="border-t border-white/10 pt-8">
                 <div className="font-mono text-[10px] tracking-[0.3em] text-ember mb-6">{f.k}</div>
+                {/* h2, not h3: these sit directly under the page h1 with no
+                    intervening level, and they preceded the page's only other
+                    h2 — so the old markup both skipped and ran out of order. */}
                 <h2 className="text-2xl font-bold tracking-tight mb-3">{f.h}</h2>
                 <p className="text-sm text-silver-dim leading-relaxed">{f.p}</p>
               </div>

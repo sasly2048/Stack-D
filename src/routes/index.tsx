@@ -302,7 +302,10 @@ function Landing() {
         <span
           id="room-code-status"
           className={`font-mono text-[10px] uppercase tracking-widest transition-colors ${
-            error ? "text-breach" : malformed ? "text-ember/80" : "text-muted-foreground/60"
+            // Full-strength muted (#9A9A9A, 7:1) rather than /60 (~3:1). This is
+            // a 10px aria-live region reporting code validity — the one place
+            // small text can least afford to be sub-AA.
+            error ? "text-breach" : malformed ? "text-ember/80" : "text-muted-foreground"
           }`}
           aria-live="polite"
           aria-atomic="true"
@@ -645,7 +648,11 @@ function Landing() {
                 </div>
                 {/* Overlapping product frames — the room, seen from outside it. */}
                 <BreachToast className="absolute -right-1 -top-16 z-20 w-[168px] scale-90 origin-top-right sm:-right-8 sm:-top-10 sm:w-[210px] sm:scale-100 lg:-right-12" />
-                <ReactionRail className="absolute -left-2 bottom-10 z-20 sm:-left-8" />
+                {/* Unlike its two siblings this had no mobile treatment, so its
+                    ~210px of unconstrained width sat on top of the room roster
+                    at narrow widths. Hidden below sm, matching BreachToast's
+                    handling in the scene above. */}
+                <ReactionRail className="absolute -left-2 bottom-10 z-20 hidden sm:block sm:-left-8" />
                 <XpChip className="absolute -bottom-8 right-4 z-20 w-[150px] scale-90 origin-bottom-right sm:-bottom-10 sm:right-10 sm:w-[180px] sm:scale-100" />
 
                 <p className="sr-only">
@@ -722,7 +729,9 @@ function Landing() {
             {[...VOICES, ...VOICES].map((v, i) => (
               <figure
                 key={`${v.n}-${i}`}
-                className="flex w-[340px] shrink-0 flex-col justify-between gap-8 rounded-2xl border border-white/10 bg-obsidian p-8 transition-colors hover:border-ember/40"
+                // 340px exceeded a 320px viewport, so the quote was clipped by
+                // the marquee's mask on the smallest phones.
+                className="flex w-[min(340px,82vw)] shrink-0 flex-col justify-between gap-8 rounded-2xl border border-white/10 bg-obsidian p-6 transition-colors hover:border-ember/40 sm:p-8"
               >
                 <blockquote className="text-balance text-lg font-medium leading-snug tracking-tight">
                   &ldquo;{v.q}&rdquo;

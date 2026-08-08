@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -19,6 +19,9 @@ if (typeof window !== "undefined") {
  *     </div>
  *   </PinnedHorizontal>
  */
+/** Below this width the pin is replaced by native horizontal scrolling (Tailwind `md`). */
+const PIN_MIN_WIDTH = 768;
+
 export function PinnedHorizontal({
   children,
   className = "",
@@ -34,17 +37,42 @@ export function PinnedHorizontal({
   const wrapRef = useRef<HTMLDivElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  // Bumped on a breakpoint crossing so the effect re-runs and swaps modes —
+  // otherwise a rotate from portrait to landscape keeps whichever branch was
+  // chosen at mount.
+  const [layoutEpoch, setLayoutEpoch] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(`(min-width: ${PIN_MIN_WIDTH}px)`);
+    const onChange = () => setLayoutEpoch((n) => n + 1);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     const wrap = wrapRef.current;
     const pin = pinRef.current;
     const track = trackRef.current;
     if (!wrap || !pin || !track || typeof window === "undefined") return;
+
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      // On reduced-motion: don't pin; expose horizontally scrollable fallback.
-      track.style.overflowX = "auto";
-      return;
+    // Scroll-jacking a phone is the worst version of this effect: the track is
+    // several viewports wide, so the user loses vertical control for a long
+    // stretch and can't flick past it. Below `md` we hand back a plain swipe.
+    const narrow = window.innerWidth < PIN_MIN_WIDTH;
+
+    if (reduced || narrow) {
+      // The overflow has to live on the pin box, not the track. The track is a
+      // flex row sized by its own children, so it has no width to overflow —
+      // setting overflow-x there produced an element that just grew, and the
+      // fallback never actually scrolled.
+      pin.style.overflowX = "auto";
+      pin.style.height = "auto";
+      return () => {
+        pin.style.overflowX = "";
+        pin.style.height = "";
+      };
     }
 
     const ctx = gsap.context(() => {
@@ -77,8 +105,12 @@ export function PinnedHorizontal({
       return () => window.removeEventListener("resize", onResize);
     }, wrap);
 
-    return () => ctx.revert();
-  }, [extraPin]);
+    return () => {
+      ctx.revert();
+      // ctx.revert() restores what GSAP set, but the wrapper height is ours.
+      wrap.style.height = "";
+    };
+  }, [extraPin, layoutEpoch]);
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>
