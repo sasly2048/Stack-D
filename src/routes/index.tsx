@@ -294,7 +294,7 @@ function Landing() {
       <div className="flex items-center justify-between">
         <label
           className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground"
-          htmlFor="room-code-status"
+          htmlFor="room-code-input"
         >
           Join a Session
         </label>
