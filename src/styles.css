@@ -24,6 +24,13 @@
 
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* `font-serif` is used as an editorial accent in ~10 components (insights
+     narratives, milestone numerals, the SDK headings). It had no token, so it
+     resolved to Tailwind's default stack — i.e. whatever serif the OS happened
+     to supply, which differs across Windows, macOS and Android. Pinned to a
+     consistent high-quality stack rather than shipping a third webfont for an
+     accent face. */
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
 
   --ease-ritual: cubic-bezier(0.32, 0.72, 0, 1);
 
@@ -443,6 +450,18 @@
     to {
       transform: translateX(0);
     }
+  }
+  /* Ran continuously on the hero kicker with no reduced-motion handling. */
+  @keyframes shiny-sweep {
+    from,
+    to {
+      background-position: 0% 50%;
+    }
+  }
+  /* Tailwind's built-in `animate-pulse` isn't gated on reduced-motion, and it
+     drives the live-status dots on the landing page and product panels. */
+  .animate-pulse {
+    animation: none;
   }
 }
 

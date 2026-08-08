@@ -70,7 +70,7 @@ function CodeBlock({ code }: { code: string }) {
 
 function SdkPage() {
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-screen overflow-x-hidden bg-obsidian text-silver">
       <Nav />
       <main className="max-w-4xl mx-auto px-6 pt-28 pb-24 space-y-12">
         <header>

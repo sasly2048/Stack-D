@@ -113,18 +113,26 @@ function Demo({
           <CardDescription className="text-xs text-white/60">{description}</CardDescription>
         </div>
         <div className="flex gap-1 rounded-md border border-white/10 bg-black/60 p-0.5">
+          {/* aria-pressed carries the selected state: it was previously
+              signalled by background colour alone, which a screen reader can't
+              convey. The inactive label also moves from white/50 (~3.2:1) to
+              white/70 so 10px text clears AA. */}
           <button
+            type="button"
+            aria-pressed={tab === "preview"}
             onClick={() => setTab("preview")}
-            className={`rounded px-2 py-0.5 text-[10px] uppercase tracking-wider transition ${
-              tab === "preview" ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80"
+            className={`cursor-pointer rounded px-2 py-0.5 text-[10px] uppercase tracking-wider transition ${
+              tab === "preview" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"
             }`}
           >
             Preview
           </button>
           <button
+            type="button"
+            aria-pressed={tab === "code"}
             onClick={() => setTab("code")}
-            className={`rounded px-2 py-0.5 text-[10px] uppercase tracking-wider transition ${
-              tab === "code" ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80"
+            className={`cursor-pointer rounded px-2 py-0.5 text-[10px] uppercase tracking-wider transition ${
+              tab === "code" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"
             }`}
           >
             Code
@@ -184,7 +192,7 @@ function CatalogPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-obsidian text-white">
+    <div className="min-h-screen overflow-x-hidden bg-obsidian text-white">
       <Nav />
       <Toaster />
 

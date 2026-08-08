@@ -561,7 +561,7 @@ function VerifyStep({
           </button>
 
           {next && (
-            <div className="mt-6 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
+            <div className="mt-6 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Will redirect to <span className="text-silver-dim">{next}</span>
             </div>
           )}
