@@ -4,7 +4,7 @@
  *
  * Usage:
  *   import { StackdClient } from "@stackd/sdk";
- *   const client = new StackdClient({ baseUrl: "https://stack-d.lovable.app" });
+ *   const client = new StackdClient({ baseUrl: "https://stackd.raghav.studio" });
  *   const ok = await client.verifyWebhookSignature(rawBody, header, secret);
  */
 

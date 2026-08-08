@@ -1,7 +1,36 @@
 User-agent: *
 Allow: /
+
+# Authenticated surfaces. These all bounce to /auth for a crawler, so letting
+# them be indexed just produces a pile of duplicate sign-in pages.
 Disallow: /room/
 Disallow: /dashboard
 Disallow: /start
+Disallow: /profile
+Disallow: /leaderboard
+Disallow: /friends
+Disallow: /achievements
+Disallow: /challenges
+Disallow: /circles
+Disallow: /groups
+Disallow: /feed
+Disallow: /timeline
+Disallow: /insights
+Disallow: /trust
+Disallow: /vault
+Disallow: /seasons
+Disallow: /integrations
+Disallow: /partners
+Disallow: /replay
+Disallow: /capsule
+Disallow: /dna
+Disallow: /wrapped
+Disallow: /companion
+Disallow: /webhooks
 
-Sitemap: https://stack-d.lovable.app/sitemap.xml
+# Internal/machine endpoints.
+Disallow: /api/
+Disallow: /.mcp/
+Disallow: /lovable/
+
+Sitemap: https://stackd.raghav.studio/sitemap.xml

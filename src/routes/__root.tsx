@@ -19,6 +19,7 @@ import { FloatingTimer } from "@/components/floating-timer";
 import { GlobalRealtimeToasts } from "@/components/global-realtime-toasts";
 import { QueueBadge } from "@/components/queue-badge";
 import { SessionCeremony } from "@/components/session-ceremony";
+import { siteUrl } from "@/lib/site";
 
 function NotFoundComponent() {
   return (
@@ -104,19 +105,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "twitter:description",
         content: "Stack your phones with friends, hold the silence, and earn back the time.",
       },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/dbf64533-6a19-4488-b439-6da7960f679f/id-preview-4e044855--4583512a-abdb-4f6c-bcfb-adf0289b6c2b.lovable.app-1784255570712.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/dbf64533-6a19-4488-b439-6da7960f679f/id-preview-4e044855--4583512a-abdb-4f6c-bcfb-adf0289b6c2b.lovable.app-1784255570712.png",
-      },
+      // Served from our own origin. This previously pointed at a Lovable
+      // preview screenshot on a third-party R2 bucket — an asset we neither
+      // control nor can keep from going stale.
+      { property: "og:image", content: siteUrl("/og-image.png") },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Stack'd — presence is the new luxury" },
+      { name: "twitter:image", content: siteUrl("/og-image.png") },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      // Declared explicitly rather than relying on the browser's implicit
+      // /favicon.ico probe, which never yields a home-screen icon.
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

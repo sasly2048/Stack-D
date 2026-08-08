@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -37,22 +37,25 @@ export function CodeInput({
       .replace(/[^A-Z0-9]/g, "")
       .slice(0, length);
 
-  const syncSelection = () => {
+  const syncSelection = useCallback(() => {
     const el = inputRef.current;
     if (!el) return;
-    setSel({
-      start: el.selectionStart ?? value.length,
-      end: el.selectionEnd ?? value.length,
-    });
-  };
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    // Bail when nothing moved: this runs on every keystroke and selection
+    // change, and re-rendering six tiles for an identical caret is pure waste.
+    setSel((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+  }, []);
 
-  // Keep selection state fresh while focused (keyboard arrows, mouse drag, etc.)
+  // Keep selection state fresh while focused (keyboard arrows, mouse drag,
+  // etc.). `selectionchange` is the native signal for this — the previous
+  // implementation polled on a 60ms interval, which re-rendered ~17×/sec for
+  // the whole time the field held focus, even while completely idle.
   useEffect(() => {
     if (!focused) return;
-    const id = window.setInterval(syncSelection, 60);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focused]);
+    document.addEventListener("selectionchange", syncSelection);
+    return () => document.removeEventListener("selectionchange", syncSelection);
+  }, [focused, syncSelection]);
 
   const focus = () => {
     const el = inputRef.current;

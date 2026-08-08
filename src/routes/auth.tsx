@@ -259,7 +259,17 @@ function Auth() {
             <div className="flex-1 h-px bg-white/10" />
           </div>
 
-          <form onSubmit={onSubmit} className="space-y-4" aria-label="Email sign-in">
+          {/* The submit error ("invalid credentials", "rate limited") describes
+              the attempt, not one field — so it hangs off the form. It used to
+              be wired to the password input as well, which meant a screen
+              reader announced an element named "email-err" against the
+              password box. */}
+          <form
+            onSubmit={onSubmit}
+            className="space-y-4"
+            aria-label="Email sign-in"
+            aria-describedby={errors.email ? "email-err" : undefined}
+          >
             {mode === "sign-up" && (
               <Field label="Display Name" htmlFor="auth-name">
                 <input
@@ -300,7 +310,6 @@ function Auth() {
                 className="auth-input"
                 placeholder="••••••••"
                 autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-                aria-describedby={errors.email ? "email-err" : undefined}
               />
             </Field>
             {showCaptcha && (

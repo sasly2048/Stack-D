@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Nav } from "@/components/nav";
 import { ScrollVelocity } from "@/components/fx/scroll-velocity";
 import { useBrandProse } from "@/components/ai-prose";
+import { siteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/philosophy")({
   head: () => ({
@@ -19,9 +20,9 @@ export const Route = createFileRoute("/philosophy")({
       },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "https://stack-d.lovable.app/philosophy" },
+      { property: "og:url", content: siteUrl("/philosophy") },
     ],
-    links: [{ rel: "canonical", href: "https://stack-d.lovable.app/philosophy" }],
+    links: [{ rel: "canonical", href: siteUrl("/philosophy") }],
   }),
   component: Philosophy,
 });

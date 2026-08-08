@@ -51,7 +51,6 @@ export const copy = {
     saveFail: "That didn't save. Your work is still here — try once more.",
     networkOffline: "You're offline. We'll hold your progress.",
     networkBack: "Reconnected. Catching you up.",
-    comingSoon: "Almost ready — this one's coming soon.",
   },
   empty: {
     sessions: {

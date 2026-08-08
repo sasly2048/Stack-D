@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { validateRoomCode } from "@/lib/room.functions";
 import { ERROR_COPY, type CodeError } from "@/lib/room-code";
 import { track } from "@/lib/observability";
+import { siteUrl } from "@/lib/site";
 import { MatrixText } from "@/components/fx/matrix-text";
 import { ShinyText } from "@/components/fx/shiny-text";
 import { Particles } from "@/components/fx/particles";
@@ -69,9 +70,9 @@ export const Route = createFileRoute("/")({
         content:
           "A real-time, multiplayer phone-stacking room. Every tilt, lift and screen wake is shared instantly.",
       },
-      { property: "og:url", content: "https://stack-d.lovable.app/" },
+      { property: "og:url", content: siteUrl("/") },
     ],
-    links: [{ rel: "canonical", href: "https://stack-d.lovable.app/" }],
+    links: [{ rel: "canonical", href: siteUrl("/") }],
   }),
   component: Landing,
 });
@@ -902,19 +903,25 @@ function Landing() {
             </div>
             <ul className="space-y-3 text-sm">
               <li>
-                <a href="mailto:hello@stackd.app" className="transition-colors hover:text-ember">
+                <a
+                  href="mailto:press@stackd.raghav.studio"
+                  className="transition-colors hover:text-ember"
+                >
                   Press
                 </a>
               </li>
               <li>
-                <a href="mailto:hello@stackd.app" className="transition-colors hover:text-ember">
+                <a
+                  href="mailto:hello@stackd.raghav.studio"
+                  className="transition-colors hover:text-ember"
+                >
                   Contact
                 </a>
               </li>
               <li>
-                <a href="#" className="transition-colors hover:text-ember">
+                <Link to="/privacy" className="transition-colors hover:text-ember">
                   Privacy
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Nav } from "@/components/nav";
+import { SITE_URL, siteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/sdk")({
   head: () => ({
@@ -17,9 +18,9 @@ export const Route = createFileRoute("/sdk")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "https://stack-d.lovable.app/sdk" },
+      { property: "og:url", content: siteUrl("/sdk") },
     ],
-    links: [{ rel: "canonical", href: "https://stack-d.lovable.app/sdk" }],
+    links: [{ rel: "canonical", href: siteUrl("/sdk") }],
   }),
   component: SdkPage,
 });
@@ -32,7 +33,7 @@ npm install @stackd/sdk
 const USAGE = `import { StackdClient } from "@stackd/sdk";
 
 const stackd = new StackdClient({
-  baseUrl: "https://stack-d.lovable.app",
+  baseUrl: "${SITE_URL}",
 });
 
 // 1. Verify an incoming webhook
