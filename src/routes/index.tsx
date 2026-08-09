@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { validateRoomCode } from "@/lib/room.functions";
 import { ERROR_COPY, type CodeError } from "@/lib/room-code";
 import { track } from "@/lib/observability";
-import { CONTACT_EMAIL, siteUrl } from "@/lib/site";
+import { CONTACT_EMAIL, siteUrl, X_HANDLE, X_URL } from "@/lib/site";
 import { MatrixText } from "@/components/fx/matrix-text";
 import { ShinyText } from "@/components/fx/shiny-text";
 import { Particles } from "@/components/fx/particles";
@@ -910,12 +910,34 @@ function Landing() {
             <div className="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Signal
             </div>
-            {/* "Press" was a media-enquiry link — the address a journalist uses
-                to request comment. Stack'd has no press function and the
-                address it pointed at did not exist, so it promised a channel
-                nobody was staffing. One real inbox is worth more than two
-                invented ones. */}
+            {/* Every entry here goes somewhere real. A "Press" link used to sit
+                in this column pointing at an invented press@ mailbox; a channel
+                nobody staffs is worse than a shorter list. */}
             <ul className="space-y-3 text-sm">
+              <li>
+                {/* rel="me" marks this as the site's own account — the
+                    convention verification tools and X itself read. noopener is
+                    the security default for any target="_blank". */}
+                <a
+                  href={X_URL}
+                  target="_blank"
+                  rel="me noopener noreferrer"
+                  className="group inline-flex cursor-pointer items-center gap-2 rounded transition-colors hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
+                >
+                  <XIcon />
+                  {/* The mark IS the wordmark, so pairing it with a literal "X"
+                      label rendered as "X X". The handle carries more meaning
+                      than the platform name anyway. */}
+                  <span>@{X_HANDLE}</span>
+                  <span className="sr-only"> on X (opens in a new tab)</span>
+                  <span
+                    aria-hidden="true"
+                    className="text-[10px] text-muted-foreground transition-transform duration-200 ease-[var(--ease-ritual)] group-hover:-translate-y-px group-hover:translate-x-px"
+                  >
+                    ↗
+                  </span>
+                </a>
+              </li>
               <li>
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
@@ -940,5 +962,21 @@ function Landing() {
         </div>
       </footer>
     </div>
+  );
+}
+
+/** The X mark. Solid glyph, so it fills rather than strokes like the other icons. */
+function XIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
   );
 }

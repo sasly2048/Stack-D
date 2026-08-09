@@ -29,6 +29,10 @@ export const SITE_URL: string = (import.meta.env?.VITE_SITE_URL || FALLBACK_ORIG
  */
 export const CONTACT_EMAIL = "raghavendrasujith204800@gmail.com";
 
+/** The project's X account. Handle kept separate so it can label the link. */
+export const X_HANDLE = "StackD_HQ";
+export const X_URL = `https://x.com/${X_HANDLE}`;
+
 /**
  * Absolute URL for a site-relative path.
  * `siteUrl("/philosophy")` → `https://stackd.raghav.studio/philosophy`

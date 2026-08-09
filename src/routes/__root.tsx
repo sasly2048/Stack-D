@@ -20,7 +20,7 @@ import { GlobalRealtimeToasts } from "@/components/global-realtime-toasts";
 import { QueueBadge } from "@/components/queue-badge";
 import { OfflineBanner } from "@/components/offline-banner";
 import { SessionCeremony } from "@/components/session-ceremony";
-import { siteUrl } from "@/lib/site";
+import { siteUrl, X_HANDLE, X_URL } from "@/lib/site";
 
 function NotFoundComponent() {
   return (
@@ -121,6 +121,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      // Attributes shared links to the account, so a card reads "from
+      // @StackD_HQ" instead of rendering unattributed.
+      { name: "twitter:site", content: `@${X_HANDLE}` },
+      { name: "twitter:creator", content: `@${X_HANDLE}` },
       { name: "twitter:title", content: "Stack'd" },
       {
         name: "twitter:description",
@@ -159,6 +163,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               "@type": "Organization",
               name: "Stack'd",
               url: siteUrl("/"),
+              // sameAs is how a search engine ties this site to the same entity
+              // elsewhere — without it the X account and the site look like two
+              // unrelated things.
+              sameAs: [X_URL],
               description:
                 "Stack'd builds shared focus rooms where friends stack their phones and hold the silence together.",
             },
