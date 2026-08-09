@@ -59,6 +59,8 @@ interface RoomRow {
   target_duration_seconds: number;
   started_at: string | null;
   ended_at: string | null;
+  /** Server-set. Orders realtime updates so a replayed stale row is rejected. */
+  updated_at?: string;
 }
 
 interface ParticipantRow {
@@ -193,7 +195,19 @@ function Room() {
         "postgres_changes",
         { event: "*", schema: "public", table: "rooms", filter: `id=eq.${room.id}` },
         (payload) => {
-          if (payload.new) setRoom(payload.new as RoomRow);
+          if (!payload.new) return;
+          const next = payload.new as RoomRow;
+          setRoom((prev) => {
+            // Reject stale updates. On reconnect the channel can replay events,
+            // and a late-delivered older row would otherwise overwrite newer
+            // state — flipping an active room back to "lobby" and resetting
+            // everyone's timer. rooms.updated_at is set by the server, so it
+            // orders reliably across clients with skewed clocks.
+            if (prev && next.updated_at && prev.updated_at && next.updated_at < prev.updated_at) {
+              return prev;
+            }
+            return next;
+          });
         },
       )
       .on(
@@ -206,6 +220,9 @@ function Room() {
             const next = payload.new as ParticipantRow;
             const i = prev.findIndex((p) => p.id === next.id);
             if (i >= 0) {
+              // Replayed INSERT for a row already present, or a genuine UPDATE.
+              // Either way replace in place — appending would duplicate the
+              // participant in the roster after a reconnect.
               const c = [...prev];
               c[i] = next;
               return c;
@@ -219,8 +236,21 @@ function Room() {
         { event: "INSERT", schema: "public", table: "breaks", filter: `room_id=eq.${room.id}` },
         (payload) => {
           const b = payload.new as BreakRow;
-          setBreaks((prev) => [b, ...prev].slice(0, 30));
-          if (b.user_id !== me?.id && b.severity === "severe") {
+          let isNew = true;
+          setBreaks((prev) => {
+            // A reconnect can redeliver INSERTs the client already has. Without
+            // this the same breach appears twice in the feed and the count the
+            // user sees drifts from the count the server holds.
+            if (prev.some((x) => x.id === b.id)) {
+              isNew = false;
+              return prev;
+            }
+            // Sort by the server's timestamp rather than arrival order, so a
+            // batch replayed out of order still reads chronologically.
+            return [b, ...prev].sort((x, y) => y.at.localeCompare(x.at)).slice(0, 30);
+          });
+          // Only announce a breach once, however many times it is delivered.
+          if (isNew && b.user_id !== me?.id && b.severity === "severe") {
             toast.error(`${b.display_name} broke the stack`, {
               description: b.reason.toUpperCase(),
             });

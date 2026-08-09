@@ -18,11 +18,20 @@ export function QueueBadge() {
       setCount(0);
       return;
     }
-    setCount(getQueueSize(user.id));
-    const unsub = subscribeQueue(() => setCount(getQueueSize(user.id)));
+    // The queue moved to IndexedDB, so reads are async now. `cancelled` guards
+    // against a resolve landing after unmount or after the user changes.
+    let cancelled = false;
+    const refresh = () => {
+      void getQueueSize(user.id).then((n) => {
+        if (!cancelled) setCount(n);
+      });
+    };
+    refresh();
+    const unsub = subscribeQueue(refresh);
     const onOnline = () => flushFinalizeQueue(user.id).catch(() => {});
     window.addEventListener("online", onOnline);
     return () => {
+      cancelled = true;
       unsub();
       window.removeEventListener("online", onOnline);
     };
@@ -33,8 +42,11 @@ export function QueueBadge() {
   const retry = async () => {
     setBusy(true);
     haptic("tap");
-    await flushFinalizeQueue(user.id).catch(() => {});
-    setCount(getQueueSize(user.id));
+    // Explicit user action — bypass the backoff schedule, which exists to stop
+    // automatic flushes hammering the API, not to ignore the person pressing
+    // the button.
+    await flushFinalizeQueue(user.id, { force: true }).catch(() => {});
+    setCount(await getQueueSize(user.id));
     setBusy(false);
   };
 
