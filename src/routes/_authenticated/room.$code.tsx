@@ -97,6 +97,10 @@ function Room() {
   const [room, setRoom] = useState<RoomRow | null>(null);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [breaks, setBreaks] = useState<BreakRow[]>([]);
+  /** Live realtime health, surfaced in the header — see the subscribe callback. */
+  const [realtime, setRealtime] = useState<"connecting" | "live" | "reconnecting" | "offline">(
+    "connecting",
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
@@ -223,7 +227,15 @@ function Room() {
           }
         },
       )
-      .subscribe();
+      // The status callback was previously ignored, so a dropped channel meant
+      // the room quietly stopped updating: the timer kept counting while other
+      // people's breaches never arrived, and nothing said so. In a shared
+      // accountability session that is the worst possible silent failure.
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setRealtime("live");
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setRealtime("reconnecting");
+        else if (status === "CLOSED") setRealtime("offline");
+      });
     return () => {
       supabase.removeChannel(channel);
     };
@@ -528,9 +540,25 @@ function Room() {
     navigate({ to: "/dashboard" });
   };
 
-  const copyCode = () => {
-    navigator.clipboard?.writeText(window.location.origin + `/room/${room?.code}`);
-    toast.success("Invite link copied");
+  // Inline confirmation as well as the toast: on the room screen the user's
+  // attention is on the code itself, and a toast in the corner is easy to miss
+  // — leaving them unsure whether the copy actually happened.
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    const link = window.location.origin + `/room/${room?.code}`;
+    try {
+      // Optional chaining used to swallow the absence of the clipboard API
+      // entirely, so an insecure context reported "copied" having copied
+      // nothing. Fall back to a selectable prompt instead of lying.
+      if (!navigator.clipboard) throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      toast.success("Invite link copied");
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy automatically", { description: link });
+    }
   };
 
   if (loading) {
@@ -602,10 +630,52 @@ function Room() {
       <Nav />
       <main className="pt-24 pb-20 px-6 max-w-2xl mx-auto">
         <div className="mb-10 flex justify-between items-center font-mono text-[10px] tracking-tighter text-muted-foreground">
-          <button onClick={copyCode} className="hover:text-silver transition-colors">
-            ROOM: {room.code} ⧉
+          <button
+            type="button"
+            onClick={copyCode}
+            aria-label={`Copy invite link for room ${room.code}`}
+            className="cursor-pointer rounded transition-all duration-200 ease-[var(--ease-ritual)] hover:text-silver active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+          >
+            ROOM: {room.code} {copied ? "✓" : "⧉"}
+            {/* Announced separately so the confirmation reaches a screen reader,
+                which cannot infer it from a glyph swap. */}
+            <span role="status" aria-live="polite" className="sr-only">
+              {copied ? "Invite link copied" : ""}
+            </span>
           </button>
+          {copied && (
+            <span
+              aria-hidden="true"
+              className="font-mono text-[10px] uppercase tracking-widest text-pulse"
+            >
+              Copied
+            </span>
+          )}
           <span className="flex items-center gap-3">
+            {/* Connection health sits next to the session status because the two
+                are read together: "LIVE SESSION" while the channel is down
+                means the screen is lying about being live. */}
+            {realtime !== "live" && (
+              <span
+                role="status"
+                aria-live="polite"
+                className={`flex items-center gap-1.5 uppercase tracking-widest ${
+                  realtime === "offline" ? "text-breach" : "text-ember"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`size-1.5 rounded-full ${
+                    realtime === "offline" ? "bg-breach" : "bg-ember animate-pulse"
+                  }`}
+                />
+                {realtime === "connecting"
+                  ? "Connecting"
+                  : realtime === "reconnecting"
+                    ? "Reconnecting"
+                    : "Disconnected"}
+              </span>
+            )}
             <span className="uppercase tracking-widest">
               {mode === "gentle" ? "Gentle" : "Absolute"}
             </span>

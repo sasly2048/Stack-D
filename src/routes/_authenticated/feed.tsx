@@ -82,9 +82,25 @@ function FeedPage() {
             skeleton={<SkeletonList rows={4} />}
             isEmpty={rows.length === 0}
             empty={
-              <p className="border border-white/10 rounded-md px-4 py-6 text-silver-dim/60">
-                No signal yet. Complete a session or add friends.
-              </p>
+              /* An empty state that only states the problem is a dead end —
+                 both routes out of it are one tap away, so offer them. */
+              <div className="border border-white/10 rounded-md px-4 py-8 text-center">
+                <p className="text-silver-dim/60">No signal yet. Complete a session or add friends.</p>
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                  <Link
+                    to="/start"
+                    className="cursor-pointer rounded-full border border-ember/50 px-5 py-2 font-mono text-[10px] uppercase tracking-widest text-ember transition-all duration-200 ease-[var(--ease-ritual)] hover:bg-ember/10 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+                  >
+                    Start a session
+                  </Link>
+                  <Link
+                    to="/friends"
+                    className="cursor-pointer rounded-full border border-white/15 px-5 py-2 font-mono text-[10px] uppercase tracking-widest text-silver-dim transition-all duration-200 ease-[var(--ease-ritual)] hover:border-white/30 hover:text-silver active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+                  >
+                    Find friends
+                  </Link>
+                </div>
+              </div>
             }
           >
             <Virtuoso
@@ -115,17 +131,31 @@ function FeedPage() {
               loadingLabel="Loading your circle"
               skeleton={<SkeletonList rows={3} className="px-4 py-3" />}
               isEmpty={friends.length === 0}
-              empty={<li className="px-4 py-4 text-silver-dim/60 text-sm">No ties yet.</li>}
+              empty={
+                <li className="px-4 py-4 text-sm">
+                  <span className="text-silver-dim/60">No ties yet.</span>{" "}
+                  <Link
+                    to="/friends"
+                    className="cursor-pointer rounded text-ember underline underline-offset-4 transition-colors hover:text-ember-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+                  >
+                    Find someone
+                  </Link>
+                </li>
+              }
             >
               {friends.map((f) => (
-                <li key={f.id} className="flex items-center gap-3 px-4 py-3">
-                  <StatusDot status={f.status} />
+                // The whole row is the target, not just the name — a 3-word
+                // link in a 260px row is a needlessly small tap area.
+                <li key={f.id}>
                   <Link
                     to="/profile/$id"
                     params={{ id: f.id }}
-                    className="truncate text-sm text-silver hover:text-ember transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 transition-all duration-200 ease-[var(--ease-ritual)] hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-inset"
                   >
-                    {f.display_name ?? "Anonymous"}
+                    <StatusDot status={f.status} />
+                    <span className="truncate text-sm text-silver">
+                      {f.display_name ?? "Anonymous"}
+                    </span>
                   </Link>
                 </li>
               ))}
