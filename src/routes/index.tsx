@@ -56,11 +56,16 @@ function Spinner({ className = "" }: { className?: string }) {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Stack'd — Presence is the new luxury" },
+      // The <title> and og:title deliberately differ. A search result is read
+      // cold by someone scanning ten blue links, so it needs a noun that says
+      // what this is; "Presence is the new luxury" alone reads as a lifestyle
+      // brand, not software. og:title is read by someone who already clicked a
+      // friend's link, where the brand line does more work than the category.
+      { title: "Stack'd — Phone Stacking App for Focus With Friends" },
       {
         name: "description",
         content:
-          "Stack'd isn't another focus timer — it's a shared commitment to being present. Stack your phones with friends and hold the silence together.",
+          "Stack'd is a phone stacking app: put your phones down together, hold the silence, and every tilt or screen wake is shared with the room in real time.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

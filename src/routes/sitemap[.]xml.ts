@@ -10,9 +10,15 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        // Lab routes are hidden from nav and the command palette, so listing
-        // them here would advertise pages no visitor can navigate to. Filtering
-        // on the same flag keeps the sitemap honest if a route changes tier.
+        // A sitemap is a list of pages you are asking to have indexed, so it
+        // must exclude two kinds of route:
+        //  - Lab routes, hidden from nav and the command palette: listing them
+        //    advertises pages no visitor can navigate to.
+        //  - Routes that serve `noindex`. Submitting one is a direct signal
+        //    conflict — Search Console reports it as "Submitted URL marked
+        //    noindex" — because the sitemap asks for indexing that the page
+        //    itself refuses. /auth is noindex and was being submitted.
+        const NOINDEX_ROUTES = new Set(["/auth"]);
         const entries = [
           { path: "/", changefreq: "weekly", priority: "1.0" },
           { path: "/philosophy", changefreq: "monthly", priority: "0.8" },
@@ -20,7 +26,7 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/catalog", changefreq: "monthly", priority: "0.6" },
           { path: "/sdk", changefreq: "monthly", priority: "0.6" },
           { path: "/auth", changefreq: "monthly", priority: "0.5" },
-        ].filter((e) => !isLabRoute(e.path));
+        ].filter((e) => !isLabRoute(e.path) && !NOINDEX_ROUTES.has(e.path));
         const urls = entries.map(
           (e) =>
             `  <url>\n    <loc>${BASE_URL}${e.path}</loc>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`,

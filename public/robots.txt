@@ -28,12 +28,9 @@ Disallow: /wrapped
 Disallow: /companion
 Disallow: /webhooks
 
-<<<<<<< HEAD
-=======
 # Internal/machine endpoints.
 Disallow: /api/
 Disallow: /.mcp/
 Disallow: /lovable/
 
->>>>>>> 701950e (fix(web): correct canonical URLs, ship real icons, add privacy page)
 Sitemap: https://stackd.raghav.studio/sitemap.xml

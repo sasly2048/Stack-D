@@ -1,0 +1,18 @@
+# Cloudflare Pages header rules. Merged with the caching rules Nitro emits at
+# build time, so this file only needs to carry what the build does not.
+#
+# Deliberately NOT setting Content-Security-Policy here. A correct CSP for this
+# app has to allow Supabase (auth + realtime websockets), Google Fonts, and the
+# Turnstile widget, and a wrong one silently breaks sign-in in production. It
+# needs to be authored against a real page load in report-only mode first.
+
+/*
+  # Clickjacking protection. The sign-in page takes Google, Apple and email
+  # credentials; without this it can be framed invisibly and overlaid, so a
+  # user types real credentials into an attacker's UI.
+  X-Frame-Options: DENY
+  # Nothing here needs a camera, mic or geolocation. Denying by default means a
+  # future dependency cannot quietly start asking for them.
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  # Isolates window.opener for any tab this site opens.
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
