@@ -5,6 +5,21 @@
 // Brief §3: durations flow through as fractional seconds (ms-precision) and
 // are only floored at the *boundary* where we hand integers to Postgres.
 
+/**
+ * Stamped on every completed session so a historical score can be interpreted
+ * with the rules that actually produced it.
+ *
+ * Without this, changing the formula silently reinterprets every past result:
+ * a leaderboard would compare v1 and v2 scores as though they meant the same
+ * thing, and nobody could tell which. Bump this whenever the tier boundaries,
+ * penalties or XP multipliers change.
+ *
+ * v2 — tier and XP derive from the unrounded score. In v1 the rounded value
+ * fed the tier lookup, so a raw 84.5 rounded to 85 and doubled the XP
+ * multiplier at a boundary.
+ */
+export const SCORING_VERSION = 2;
+
 export type Tier =
   | "flow" // 95-100
   | "pristine" // 85-94
@@ -66,6 +81,8 @@ export interface ScoreResult {
   abandonmentPenalty: number;
   /** echoed back at integer second-precision for DB persistence */
   focusSecondsInt: number;
+  /** Ruleset that produced this result — persist it alongside the score. */
+  scoringVersion: number;
 }
 
 export function computeFocusScore({
@@ -89,9 +106,17 @@ export function computeFocusScore({
 
   // Keep ms-precision through the multiplications — only round at the end.
   const raw = (focus / target) * 100 - penalty;
-  const score = Math.max(0, Math.min(100, Math.round(raw)));
-  const tier = tierForScore(score);
-  const xp = Math.floor(score * (focus / 60) * tier.multiplier);
+
+  // Rounding is a *display* concern and must not decide rewards. Previously
+  // the rounded value fed both the tier lookup and the XP formula, so a raw
+  // 84.5 rounded up to 85, crossed the "pristine" boundary, and doubled the
+  // multiplier — a half-point of real performance became a 2x reward jump.
+  // Tier and XP are now derived from the unrounded score; only `score` is
+  // rounded, and only because it is the number shown to the user.
+  const rawClamped = Math.max(0, Math.min(100, raw));
+  const score = Math.round(rawClamped);
+  const tier = tierForScore(rawClamped);
+  const xp = Math.floor(rawClamped * (focus / 60) * tier.multiplier);
 
   return {
     score,
@@ -100,5 +125,6 @@ export function computeFocusScore({
     penalty: breachPenalty,
     abandonmentPenalty,
     focusSecondsInt: Math.floor(focus),
+    scoringVersion: SCORING_VERSION,
   };
 }

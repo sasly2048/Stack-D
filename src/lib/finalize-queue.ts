@@ -19,6 +19,12 @@ export interface FinalizePayload {
   _duration_seconds: number;
   _breaches_count: number;
   _tier: string;
+  /**
+   * Scoring ruleset in force when this session completed. Optional because
+   * entries queued before this field existed are still on disk and must
+   * replay rather than crash.
+   */
+  _scoring_version?: number;
   /** owner stamp so we don't replay another account's payload after sign-out */
   _owner: string;
   _queued_at: number;
@@ -83,6 +89,10 @@ export async function flushFinalizeQueue(ownerId: string): Promise<void> {
       _duration_seconds: r._duration_seconds,
       _breaches_count: r._breaches_count,
       _tier: r._tier,
+      // A queued session may flush days later, possibly after the formula has
+      // changed. Replaying it under today's rules would rewrite history, so
+      // the version captured at completion travels with the payload.
+      _scoring_version: r._scoring_version,
     });
     if (error) {
       survivors.push(r);

@@ -9,7 +9,19 @@ export type AnalyticsPayload = {
   tagDistribution: Array<{ tag: string; seconds: number; sessions: number }>;
   breachByTier: Array<{ tier: string; breaches: number; sessions: number }>;
   best: { hour: number | null; weekday: number | null } | null;
-  totals: { sessions: number; hours: number; xp: number; avg_score: number };
+  totals: {
+    sessions: number;
+    hours: number;
+    xp: number;
+    avg_score: number;
+    breaches: number;
+    clean_sessions: number;
+    /** Percentage of sessions completed with zero breaches, 0-100. */
+    clean_rate: number;
+    breaches_per_session: number;
+    current_streak: number;
+    best_streak: number;
+  };
 };
 
 const DAYS = 120;
@@ -27,6 +39,15 @@ export const getAnalytics = createServerFn({ method: "GET" })
       .gte("created_at", since)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
+
+    // The radar's "Streak" axis previously plotted total hours, which is not a
+    // streak. The real value already exists on the profile; fetch it so the
+    // label and the number agree.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("current_focus_streak, best_streak")
+      .eq("id", userId)
+      .maybeSingle();
 
     const rows = data ?? [];
     // Heatmap
@@ -120,6 +141,8 @@ export const getAnalytics = createServerFn({ method: "GET" })
 
     const totalSeconds = rows.reduce((s, r) => s + r.duration_seconds, 0);
     const totalXp = rows.reduce((s, r) => s + r.xp_earned, 0);
+    const totalBreaches = rows.reduce((s, r) => s + r.breaches_count, 0);
+    const cleanSessions = rows.filter((r) => r.breaches_count === 0).length;
     const avgScore = rows.length
       ? Math.round(rows.reduce((s, r) => s + r.score, 0) / rows.length)
       : 0;
@@ -135,6 +158,23 @@ export const getAnalytics = createServerFn({ method: "GET" })
         hours: Math.round((totalSeconds / 3600) * 10) / 10,
         xp: totalXp,
         avg_score: avgScore,
+        // Real behavioural metrics. The Focus Radar's "Restraint" axis used to
+        // be `sessions ? 80 : 100` — a two-valued constant that showed the same
+        // score to someone with zero breaches and someone with fifty. A metric
+        // that cannot move with behaviour is not a metric.
+        breaches: totalBreaches,
+        clean_sessions: cleanSessions,
+        // Share of sessions finished without a single breach, 0-100.
+        clean_rate: rows.length
+          ? Math.round((cleanSessions / rows.length) * 100)
+          : 0,
+        // Mean breaches per session, kept at one decimal so a user with 0.4
+        // is visibly different from one with 0.
+        breaches_per_session: rows.length
+          ? Math.round((totalBreaches / rows.length) * 10) / 10
+          : 0,
+        current_streak: profile?.current_focus_streak ?? 0,
+        best_streak: profile?.best_streak ?? 0,
       },
     };
   });

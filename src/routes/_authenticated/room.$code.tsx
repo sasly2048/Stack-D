@@ -345,6 +345,9 @@ function Room() {
       _duration_seconds: res.focusSecondsInt,
       _breaches_count: myBreaks.length,
       _tier: res.tier.key,
+      // Recorded so a historical score stays interpretable if the formula
+      // changes — without it, old and new rows silently mean different things.
+      _scoring_version: res.scoringVersion,
       _owner: me.id,
       _queued_at: Date.now(),
     };
@@ -358,6 +361,7 @@ function Room() {
           _duration_seconds: payload._duration_seconds,
           _breaches_count: payload._breaches_count,
           _tier: payload._tier,
+          _scoring_version: payload._scoring_version,
         });
         if (!error && typeof hid === "string") {
           setHistoryId(hid);
@@ -484,10 +488,15 @@ function Room() {
     if (countdown <= 0) {
       setCountdown(null);
       if (room && isHost && room.status === "lobby") {
-        supabase
-          .from("rooms")
-          .update({ status: "active", started_at: new Date().toISOString() })
-          .eq("id", room.id);
+        // The server sets started_at from its own clock. This used to write
+        // `new Date().toISOString()` from the host's browser — and since every
+        // score derives from that timestamp, the most important input to the
+        // reward system came from an unverified client clock. The RPC is also
+        // host-checked and idempotent, so a double-tap cannot restart a
+        // running session.
+        supabase.rpc("start_focus_session", { _room_id: room.id }).then(({ error }) => {
+          if (error) toast.error("Couldn't start the session. Try again.");
+        });
       }
       setArmed(true);
       try {

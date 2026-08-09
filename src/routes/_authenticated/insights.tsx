@@ -90,8 +90,15 @@ function InsightsPage() {
               data={{
                 consistency: Math.min(100, (data.totals.sessions / 60) * 100),
                 deepWork: data.totals.avg_score,
-                streak: Math.min(100, data.totals.hours * 2),
-                breaks: Math.max(0, 100 - Math.min(100, data.totals.sessions ? 20 : 0)),
+                // The real streak, not total hours. A 30-day streak reads as a
+                // full axis; the old formula quietly plotted volume under a
+                // label that promised consistency over time.
+                streak: Math.min(100, (data.totals.current_streak / 30) * 100),
+                // Real restraint: the share of sessions finished without a
+                // single breach. This was `sessions ? 80 : 100` — a constant
+                // that showed an identical score to someone who had never
+                // breached and someone who breached every session.
+                breaks: data.totals.clean_rate,
                 duration: Math.min(100, (data.totals.hours / 120) * 100),
               }}
               size={260}

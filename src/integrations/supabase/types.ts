@@ -388,6 +388,7 @@ export type Database = {
           profile_id: string
           room_id: string | null
           score: number
+          scoring_version: number
           tags: string[]
           tier: string
           xp_earned: number
@@ -1522,9 +1523,14 @@ export type Database = {
           _duration_seconds: number
           _room_id: string
           _score: number
+          _scoring_version?: number
           _tier: string
           _xp: number
         }
+        Returns: string
+      }
+      start_focus_session: {
+        Args: { _room_id: string }
         Returns: string
       }
       is_group_member: {
