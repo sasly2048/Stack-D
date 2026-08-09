@@ -1,7 +1,9 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 import { listRoomReports, resolveReport, type HostReport } from "@/lib/moderation.functions";
 import { toast } from "sonner";
 
@@ -20,27 +22,31 @@ export const Route = createFileRoute("/_authenticated/trust/moderation")({
 function ModerationPage() {
   const list = useServerFn(listRoomReports);
   const resolve = useServerFn(resolveReport);
-  const [rows, setRows] = useState<HostReport[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"open" | "all">("open");
 
-  const refresh = () => {
-    setLoading(true);
-    list()
-      .then((r) => setRows(r.rows))
-      .finally(() => setLoading(false));
-  };
-  useEffect(refresh, []);
+  const reportsQuery = useQuery({
+    queryKey: ["moderation-reports"],
+    queryFn: async () => (await list()).rows,
+  });
+  const rows: HostReport[] = reportsQuery.data ?? [];
 
-  const act = async (id: string, status: "resolved" | "dismissed") => {
-    try {
-      await resolve({ data: { id, status } });
-      setRows((all) => all.map((r) => (r.id === id ? { ...r, status } : r)));
+  // The old handler patched the row into local state and never rolled back, so
+  // a failed resolve still showed the report as resolved until a reload. And
+  // with no disabled state a double-click fired the action twice.
+  const actMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "resolved" | "dismissed" }) =>
+      resolve({ data: { id, status } }),
+    onSuccess: (_r, { status }) => {
       toast.success(status === "resolved" ? "Report resolved." : "Report dismissed.");
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
+      queryClient.invalidateQueries({ queryKey: ["moderation-reports"] });
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
+  const act = (id: string, status: "resolved" | "dismissed") => actMutation.mutate({ id, status });
+  // Only the row mid-flight disables, so one busy report doesn't freeze the page.
+  const busyId = actMutation.isPending ? actMutation.variables?.id : null;
 
   const visible = rows.filter((r) => (filter === "open" ? r.status === "open" : true));
 
@@ -79,16 +85,24 @@ function ModerationPage() {
           ))}
         </div>
 
-        {loading ? (
-          <div className="text-sm text-muted-foreground text-center py-12">Loading…</div>
-        ) : visible.length === 0 ? (
-          <div className="glass rounded-xl p-12 text-center">
-            <div className="text-sm text-muted-foreground">No reports here.</div>
-            <div className="text-[11px] font-mono text-muted-foreground/70 mt-2">
-              Rooms you host are clean.
+        <QueryBoundary
+          isPending={reportsQuery.isPending}
+          isError={reportsQuery.isError}
+          error={reportsQuery.error}
+          onRetry={() => reportsQuery.refetch()}
+          errorTitle="Couldn't load reports."
+          loadingLabel="Loading reports"
+          skeleton={<SkeletonList rows={3} />}
+          isEmpty={visible.length === 0}
+          empty={
+            <div className="glass rounded-xl p-12 text-center">
+              <div className="text-sm text-muted-foreground">No reports here.</div>
+              <div className="text-[11px] font-mono text-muted-foreground/70 mt-2">
+                Rooms you host are clean.
+              </div>
             </div>
-          </div>
-        ) : (
+          }
+        >
           <div className="space-y-3">
             {visible.map((r) => (
               <div key={r.id} className="glass rounded-xl p-5">
@@ -126,13 +140,15 @@ function ModerationPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => act(r.id, "resolved")}
-                      className="text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full border border-ember/40 text-ember hover:bg-ember/10"
+                      disabled={busyId === r.id}
+                      className="text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full border border-ember/40 text-ember hover:bg-ember/10 disabled:opacity-40"
                     >
                       Resolve
                     </button>
                     <button
                       onClick={() => act(r.id, "dismissed")}
-                      className="text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/10 text-muted-foreground hover:text-silver"
+                      disabled={busyId === r.id}
+                      className="text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/10 text-muted-foreground hover:text-silver disabled:opacity-40"
                     >
                       Dismiss
                     </button>
@@ -141,7 +157,7 @@ function ModerationPage() {
               </div>
             ))}
           </div>
-        )}
+        </QueryBoundary>
       </div>
     </div>
   );

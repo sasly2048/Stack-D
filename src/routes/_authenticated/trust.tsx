@@ -1,10 +1,11 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Nav } from "@/components/nav";
 import { listBlocks, listMyReports, unblockUser } from "@/lib/trust.functions";
 import { EmptyState } from "@/components/empty-state";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 
 export const Route = createFileRoute("/_authenticated/trust")({
   head: () => ({
@@ -22,20 +23,30 @@ function TrustPage() {
   const blocks = useServerFn(listBlocks);
   const reports = useServerFn(listMyReports);
   const unblock = useServerFn(unblockUser);
-  const [blockRows, setBlockRows] = useState<
-    Array<{ id: string; display_name: string | null; created_at: string }>
-  >([]);
-  const [reportRows, setReportRows] = useState<Awaited<ReturnType<typeof reports>>["rows"]>([]);
+  const queryClient = useQueryClient();
 
-  const refresh = async () => {
-    const [b, r] = await Promise.all([blocks(), reports()]);
-    setBlockRows(b.rows);
-    setReportRows(r.rows);
-  };
+  // The old refresh() was called from useEffect with no .catch, so a failed
+  // load was an unhandled rejection and the page just sat on its empty states.
+  const trustQuery = useQuery({
+    queryKey: ["trust-blocks"],
+    queryFn: async () => {
+      const [b, r] = await Promise.all([blocks(), reports()]);
+      return { blockRows: b.rows, reportRows: r.rows };
+    },
+  });
 
-  useEffect(() => {
-    refresh();
-  }, []);
+  const blockRows = trustQuery.data?.blockRows ?? [];
+  const reportRows = trustQuery.data?.reportRows ?? [];
+
+  const unblockMutation = useMutation({
+    mutationFn: (userId: string) => unblock({ data: { userId } }),
+    onSuccess: () => {
+      toast.success("Unblocked");
+      queryClient.invalidateQueries({ queryKey: ["trust-blocks"] });
+    },
+    // Unblocking silently failing left the row in place with no explanation.
+    onError: () => toast.error("Could not unblock"),
+  });
 
   return (
     <div className="min-h-screen bg-obsidian text-silver">
@@ -57,9 +68,22 @@ function TrustPage() {
           <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
             Blocked users
           </p>
-          {blockRows.length === 0 ? (
-            <EmptyState title="Nobody blocked" description="You're on good terms with everyone." />
-          ) : (
+          {/* Loading is checked before emptiness. "Nobody blocked" used to show
+              while the list was still loading, telling a user with blocks that
+              they had none. */}
+          <QueryBoundary
+            isPending={trustQuery.isPending}
+            isError={trustQuery.isError}
+            error={trustQuery.error}
+            onRetry={() => trustQuery.refetch()}
+            errorTitle="Couldn't load your blocked users."
+            loadingLabel="Loading blocked users"
+            skeleton={<SkeletonList rows={2} className="mt-4" />}
+            isEmpty={blockRows.length === 0}
+            empty={
+              <EmptyState title="Nobody blocked" description="You're on good terms with everyone." />
+            }
+          >
             <ul className="mt-4 space-y-2">
               {blockRows.map((b) => (
                 <li
@@ -68,31 +92,42 @@ function TrustPage() {
                 >
                   <span className="text-silver">{b.display_name ?? "Anon"}</span>
                   <button
-                    onClick={async () => {
-                      await unblock({ data: { userId: b.id } });
-                      toast.success("Unblocked");
-                      refresh();
-                    }}
-                    className="text-[10px] font-mono uppercase tracking-widest text-silver-dim hover:text-ember"
+                    onClick={() => unblockMutation.mutate(b.id)}
+                    disabled={unblockMutation.isPending && unblockMutation.variables === b.id}
+                    className="text-[10px] font-mono uppercase tracking-widest text-silver-dim hover:text-ember disabled:opacity-40"
                   >
-                    Unblock
+                    {unblockMutation.isPending && unblockMutation.variables === b.id
+                      ? "Unblocking…"
+                      : "Unblock"}
                   </button>
                 </li>
               ))}
             </ul>
-          )}
+          </QueryBoundary>
         </section>
 
         <section>
           <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
             Your reports
           </p>
-          {reportRows.length === 0 ? (
-            <EmptyState
-              title="No reports filed"
-              description="Report from any profile or room when needed."
-            />
-          ) : (
+          {/* Same query backs both sections, so this empty state had the same
+              bug: it claimed "No reports filed" before the fetch resolved. */}
+          <QueryBoundary
+            isPending={trustQuery.isPending}
+            isError={trustQuery.isError}
+            error={trustQuery.error}
+            onRetry={() => trustQuery.refetch()}
+            errorTitle="Couldn't load your reports."
+            loadingLabel="Loading your reports"
+            skeleton={<SkeletonList rows={2} className="mt-4" />}
+            isEmpty={reportRows.length === 0}
+            empty={
+              <EmptyState
+                title="No reports filed"
+                description="Report from any profile or room when needed."
+              />
+            }
+          >
             <ul className="mt-4 space-y-2">
               {reportRows.map((r) => (
                 <li key={r.id} className="border border-white/10 rounded p-4 text-sm">
@@ -113,7 +148,7 @@ function TrustPage() {
                 </li>
               ))}
             </ul>
-          )}
+          </QueryBoundary>
         </section>
       </main>
     </div>

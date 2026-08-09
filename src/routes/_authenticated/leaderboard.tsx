@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 
 export const Route = createFileRoute("/_authenticated/leaderboard")({
   head: () => ({
@@ -42,52 +44,63 @@ type Tab = "individual" | "groups";
 
 function Leaderboard() {
   const [tab, setTab] = useState<Tab>("individual");
-  const [loading, setLoading] = useState(true);
-  const [me, setMe] = useState<string | null>(null);
-  const [individuals, setIndividuals] = useState<IndividualRow[]>([]);
-  const [groups, setGroups] = useState<GroupRow[]>([]);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (mounted) setMe(u.user?.id ?? null);
+  const meQuery = useQuery({
+    queryKey: ["me-id"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
+  });
+  const me = meQuery.data ?? null;
 
-      const [{ data: people }, { data: grps }, { data: members }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, display_name, avatar_url, lifetime_xp, current_focus_streak")
-          .order("lifetime_xp", { ascending: false })
-          .limit(100),
-        supabase
-          .from("focus_groups")
-          .select("id, name, total_group_xp")
-          .order("total_group_xp", { ascending: false })
-          .limit(100),
-        supabase.from("group_members").select("group_id"),
-      ]);
+  const boardQuery = useQuery({
+    queryKey: ["leaderboard"],
+    queryFn: async () => {
+      const [{ data: people, error: peopleErr }, { data: grps, error: grpsErr }] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, display_name, avatar_url, lifetime_xp, current_focus_streak")
+            .order("lifetime_xp", { ascending: false })
+            .limit(100),
+          supabase
+            .from("focus_groups")
+            .select("id, name, total_group_xp")
+            .order("total_group_xp", { ascending: false })
+            .limit(100),
+        ]);
+      // Errors were previously discarded, so a failed board rendered as an
+      // empty one. Surfacing them lets the boundary below show a retry.
+      if (peopleErr) throw peopleErr;
+      if (grpsErr) throw grpsErr;
 
-      if (!mounted) return;
+      const groupIds = (grps ?? []).map((g) => g.id);
+      // Scoped to the ≤100 groups actually on screen. This previously selected
+      // every row of group_members platform-wide and counted them in the
+      // browser, so the payload grew with total membership across all users
+      // while only 100 counts were ever displayed.
+      const { data: members, error: membersErr } = groupIds.length
+        ? await supabase.from("group_members").select("group_id").in("group_id", groupIds)
+        : { data: [], error: null };
+      if (membersErr) throw membersErr;
+
       const memberCounts = new Map<string, number>();
       (members ?? []).forEach((m) =>
         memberCounts.set(m.group_id, (memberCounts.get(m.group_id) ?? 0) + 1),
       );
 
-      setIndividuals((people ?? []) as IndividualRow[]);
-      setGroups(
-        (grps ?? []).map((g) => ({
+      return {
+        individuals: (people ?? []) as IndividualRow[],
+        groups: (grps ?? []).map((g) => ({
           id: g.id,
           name: g.name,
           total_group_xp: g.total_group_xp ?? 0,
           member_count: memberCounts.get(g.id) ?? 0,
         })),
-      );
-      setLoading(false);
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      };
+    },
+  });
+
+  const individuals = boardQuery.data?.individuals ?? [];
+  const groups = boardQuery.data?.groups ?? [];
 
   return (
     <div className="min-h-screen bg-obsidian text-silver">
@@ -115,15 +128,21 @@ function Leaderboard() {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl overflow-hidden">
-          {loading ? (
-            <div className="py-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest">
-              Loading…
-            </div>
-          ) : tab === "individual" ? (
-            <IndividualList rows={individuals} meId={me} />
-          ) : (
-            <GroupList rows={groups} />
-          )}
+          <QueryBoundary
+            isPending={boardQuery.isPending}
+            isError={boardQuery.isError}
+            error={boardQuery.error}
+            onRetry={() => boardQuery.refetch()}
+            errorTitle="Couldn't load the leaderboard."
+            loadingLabel="Loading the leaderboard"
+            skeleton={<SkeletonList rows={6} className="p-4" />}
+          >
+            {tab === "individual" ? (
+              <IndividualList rows={individuals} meId={me} />
+            ) : (
+              <GroupList rows={groups} />
+            )}
+          </QueryBoundary>
         </div>
       </main>
     </div>

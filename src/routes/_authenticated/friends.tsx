@@ -1,9 +1,11 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 import {
   listFriends,
   searchPeople,
@@ -34,70 +36,72 @@ function FriendsPage() {
   const respond = useServerFn(respondFriendRequest);
   const remove = useServerFn(removeFriend);
 
-  const [rows, setRows] = useState<FriendRow[]>([]);
+  const queryClient = useQueryClient();
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<Person[]>([]);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [debouncedQ, setDebouncedQ] = useState("");
 
-  const refresh = async () => {
-    const r = await list();
-    setRows(r.rows);
-  };
+  const friendsQuery = useQuery({
+    queryKey: ["friends"],
+    queryFn: async () => (await list()).rows,
+  });
+  const rows: FriendRow[] = friendsQuery.data ?? [];
 
+  // Debounce in state, then let the query key drive the fetch. react-query
+  // dedupes and cancels in-flight requests per key, so a fast typist no longer
+  // races results — the old version could render a stale query's rows.
   useEffect(() => {
-    refresh();
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(async () => {
-      if (q.trim().length < 1) {
-        setResults([]);
-        return;
-      }
-      try {
-        const r = await search({ data: { q: q.trim() } });
-        setResults(r.rows);
-      } catch {
-        setResults([]);
-      }
-    }, 250);
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 250);
     return () => clearTimeout(t);
   }, [q]);
 
-  const doSend = async (id: string) => {
-    setBusy(id);
-    try {
-      await send({ data: { addresseeId: id } });
+  const searchQuery = useQuery({
+    queryKey: ["people-search", debouncedQ],
+    queryFn: async () => (await search({ data: { q: debouncedQ } })).rows,
+    enabled: debouncedQ.length > 0,
+  });
+  const results: Person[] = debouncedQ.length > 0 ? (searchQuery.data ?? []) : [];
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["friends"] });
+
+  const sendMutation = useMutation({
+    mutationFn: (addresseeId: string) => send({ data: { addresseeId } }),
+    onSuccess: () => {
       toast.success("Request sent");
-      await refresh();
-    } catch {
-      toast.error("Could not send request");
-    } finally {
-      setBusy(null);
-    }
-  };
+      invalidate();
+    },
+    onError: () => toast.error("Could not send request"),
+  });
 
-  const doRespond = async (id: string, accept: boolean) => {
-    setBusy(id);
-    try {
-      await respond({ data: { id, accept } });
+  const respondMutation = useMutation({
+    mutationFn: ({ id, accept }: { id: string; accept: boolean }) => respond({ data: { id, accept } }),
+    onSuccess: (_r, { accept }) => {
       toast.success(accept ? "Tie accepted" : "Request declined");
-      await refresh();
-    } finally {
-      setBusy(null);
-    }
-  };
+      invalidate();
+    },
+    // Previously this had no catch at all, so a failed accept looked like a
+    // no-op and the row stayed put with no explanation.
+    onError: () => toast.error("Could not update that request"),
+  });
 
-  const doRemove = async (id: string) => {
-    setBusy(id);
-    try {
-      await remove({ data: { id } });
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onSuccess: () => {
       toast(copy.friends.removed);
-      await refresh();
-    } finally {
-      setBusy(null);
-    }
-  };
+      invalidate();
+    },
+    onError: () => toast.error("Could not remove that tie"),
+  });
+
+  // Which row is mid-flight, so only that row's buttons disable.
+  const busy =
+    (sendMutation.isPending ? sendMutation.variables : null) ??
+    (respondMutation.isPending ? respondMutation.variables?.id : null) ??
+    (removeMutation.isPending ? removeMutation.variables : null) ??
+    null;
+
+  const doSend = (id: string) => sendMutation.mutate(id);
+  const doRespond = (id: string, accept: boolean) => respondMutation.mutate({ id, accept });
+  const doRemove = (id: string) => removeMutation.mutate(id);
 
   const incoming = rows.filter((r) => r.direction === "incoming");
   const outgoing = rows.filter((r) => r.direction === "outgoing");
@@ -197,13 +201,26 @@ function FriendsPage() {
           </Section>
         )}
 
-        <Section title={`Ties (${friends.length})`}>
-          {friends.length === 0 ? (
-            <li className="px-4 py-6 text-silver-dim/60 text-sm">
-              Your circle is empty. Search above to send a tie.
-            </li>
-          ) : (
-            friends.map((r) => (
+        <Section title={friendsQuery.isPending ? "Ties" : `Ties (${friends.length})`}>
+          {/* Loading is checked before emptiness. This screen used to render
+              "Your circle is empty" while the list was still in flight, so a
+              user with fifty ties was told they had none on every slow load. */}
+          <QueryBoundary
+            isPending={friendsQuery.isPending}
+            isError={friendsQuery.isError}
+            error={friendsQuery.error}
+            onRetry={() => friendsQuery.refetch()}
+            errorTitle="Couldn't load your circle."
+            loadingLabel="Loading your circle"
+            skeleton={<SkeletonList rows={3} className="px-4 py-3" />}
+            isEmpty={friends.length === 0}
+            empty={
+              <li className="px-4 py-6 text-silver-dim/60 text-sm">
+                Your circle is empty. Search above to send a tie.
+              </li>
+            }
+          >
+            {friends.map((r) => (
               <li key={r.id} className="flex items-center justify-between px-4 py-3">
                 <Link to="/profile/$id" params={{ id: r.user_id }} className="flex-1 min-w-0">
                   <PersonRow
@@ -218,8 +235,8 @@ function FriendsPage() {
                   Sever
                 </button>
               </li>
-            ))
-          )}
+            ))}
+          </QueryBoundary>
         </Section>
       </main>
     </div>

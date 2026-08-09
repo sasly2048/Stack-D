@@ -1,7 +1,9 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { EmptyState, QueryBoundary, SkeletonList } from "@/components/query-states";
 import {
   listVault,
   createVaultItem,
@@ -30,46 +32,72 @@ function VaultPage() {
   const del = useServerFn(deleteVaultItem);
   const summarize = useServerFn(summarizeVaultItem);
 
-  const [items, setItems] = useState<VaultItem[]>([]);
+  const queryClient = useQueryClient();
   const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(true);
+  // The typed box and the submitted search are separate: only pressing Search
+  // moves `submittedQ`, so the query key (and the fetch) doesn't churn per key.
+  const [submittedQ, setSubmittedQ] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
 
-  const refresh = async (query?: string) => {
-    setLoading(true);
-    try {
-      const rows = await list({ data: { q: query || undefined, limit: 50 } });
-      setItems(rows);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const vaultQuery = useQuery({
+    queryKey: ["vault", submittedQ],
+    queryFn: () => list({ data: { q: submittedQ || undefined, limit: 50 } }),
+  });
+  const items: VaultItem[] = vaultQuery.data ?? [];
 
-  useEffect(() => {
-    refresh();
-  }, []);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["vault"] });
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const createMutation = useMutation({
+    mutationFn: () =>
+      create({
+        data: {
+          title: title.trim(),
+          body: body || undefined,
+          tags: tags
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        },
+      }),
+    onSuccess: () => {
+      setTitle("");
+      setBody("");
+      setTags("");
+      toast.success("Saved to vault");
+      invalidate();
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
+  // Summarizing calls an AI model, which is slow enough that the unguarded
+  // button invited three or four clicks and three or four billed calls.
+  const summarizeMutation = useMutation({
+    mutationFn: (id: string) => summarize({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Summary ready");
+      invalidate();
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
+  // Deleting is irreversible and previously had no confirm, no disabled state
+  // and no toast at all — a failed delete was indistinguishable from success.
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => del({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Deleted from vault");
+      invalidate();
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
+  const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     haptic("select");
-    await create({
-      data: {
-        title: title.trim(),
-        body: body || undefined,
-        tags: tags
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      },
-    });
-    setTitle("");
-    setBody("");
-    setTags("");
-    toast.success("Saved to vault");
-    refresh(q);
+    createMutation.mutate();
   };
 
   return (
@@ -106,11 +134,15 @@ function VaultPage() {
             placeholder="tags, comma, separated"
             className="w-full bg-transparent border border-white/10 rounded px-3 py-2 text-xs font-mono outline-none focus:border-ember"
           />
+          {/* Submitting with an empty title used to hit `if (!title.trim()) return;`
+              and silently do nothing — a dead click with no feedback. Disabling
+              the button makes that state impossible to reach. */}
           <button
             type="submit"
-            className="bg-silver text-obsidian px-4 py-2 rounded font-mono text-xs uppercase tracking-widest font-bold hover:opacity-90"
+            disabled={createMutation.isPending || !title.trim()}
+            className="bg-silver text-obsidian px-4 py-2 rounded font-mono text-xs uppercase tracking-widest font-bold hover:opacity-90 disabled:opacity-40"
           >
-            Save
+            {createMutation.isPending ? "Saving…" : "Save"}
           </button>
         </form>
 
@@ -122,22 +154,32 @@ function VaultPage() {
             className="flex-1 bg-transparent border border-white/10 rounded px-3 py-2 text-sm outline-none focus:border-ember"
           />
           <button
-            onClick={() => refresh(q)}
+            onClick={() => setSubmittedQ(q)}
             className="border border-white/10 px-4 rounded font-mono text-xs uppercase hover:bg-white/5"
           >
             Search
           </button>
         </div>
 
-        {loading && <div className="text-sm text-muted-foreground">Loading…</div>}
-        {!loading && items.length === 0 && (
-          <div className="glass rounded-2xl p-10 text-center">
-            <div className="text-4xl mb-3">📚</div>
-            <div className="text-sm text-muted-foreground">
-              Nothing here yet. Every note you save becomes future-you's search index.
-            </div>
-          </div>
-        )}
+        {/* Loading before emptiness, and the hand-rolled empty card is now the
+            shared EmptyState so it announces itself to screen readers. */}
+        <QueryBoundary
+          isPending={vaultQuery.isPending}
+          isError={vaultQuery.isError}
+          error={vaultQuery.error}
+          onRetry={() => vaultQuery.refetch()}
+          errorTitle="Couldn't load your vault."
+          loadingLabel="Loading your vault"
+          skeleton={<SkeletonList rows={3} />}
+          isEmpty={items.length === 0}
+          empty={
+            <EmptyState
+              icon="📚"
+              title="Nothing here yet"
+              description="Nothing here yet. Every note you save becomes future-you's search index."
+            />
+          }
+        >
         <ul className="space-y-3">
           {items.map((it) => (
             <li key={it.id} className="glass rounded-xl p-4">
@@ -168,29 +210,33 @@ function VaultPage() {
                 <div className="flex flex-col gap-1 shrink-0">
                   {!it.ai_summary && (
                     <button
-                      onClick={async () => {
-                        await summarize({ data: { id: it.id } });
-                        refresh(q);
-                      }}
-                      className="text-[10px] font-mono uppercase tracking-widest border border-white/10 rounded px-2 py-1 hover:bg-white/5"
+                      onClick={() => summarizeMutation.mutate(it.id)}
+                      disabled={summarizeMutation.isPending && summarizeMutation.variables === it.id}
+                      className="text-[10px] font-mono uppercase tracking-widest border border-white/10 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-40"
                     >
-                      AI ✦
+                      {summarizeMutation.isPending && summarizeMutation.variables === it.id
+                        ? "…"
+                        : "AI ✦"}
                     </button>
                   )}
                   <button
-                    onClick={async () => {
-                      await del({ data: { id: it.id } });
-                      refresh(q);
+                    onClick={() => {
+                      if (!window.confirm("Delete this vault item?")) return;
+                      deleteMutation.mutate(it.id);
                     }}
-                    className="text-[10px] font-mono uppercase tracking-widest text-breach/70 hover:text-breach"
+                    disabled={deleteMutation.isPending && deleteMutation.variables === it.id}
+                    className="text-[10px] font-mono uppercase tracking-widest text-breach/70 hover:text-breach disabled:opacity-40"
                   >
-                    Delete
+                    {deleteMutation.isPending && deleteMutation.variables === it.id
+                      ? "Deleting…"
+                      : "Delete"}
                   </button>
                 </div>
               </div>
             </li>
           ))}
         </ul>
+        </QueryBoundary>
       </div>
     </div>
   );

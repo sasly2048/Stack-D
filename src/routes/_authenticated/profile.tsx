@@ -1,9 +1,11 @@
 import { MilestoneShelf } from "@/components/profile/milestone-shelf";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, Skeleton, SkeletonCards } from "@/components/query-states";
 import { useAuth } from "@/hooks/use-auth";
 import { getProfile, updateMyProfile, type PublicProfile } from "@/lib/profile.functions";
 import { LowPowerToggle } from "@/components/low-power-toggle";
@@ -27,45 +29,73 @@ function MyProfile() {
   const fetchProfile = useServerFn(getProfile);
   const save = useServerFn(updateMyProfile);
 
-  const [p, setP] = useState<PublicProfile | null>(null);
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
-  const [saving, setSaving] = useState(false);
+  // Only seed the form from the server once; re-seeding on every refetch would
+  // wipe whatever the user is mid-way through typing.
+  const seeded = useRef(false);
 
-  const refresh = async () => {
-    const res = await fetchProfile({ data: {} });
-    setP(res);
-  };
-
-  useXpSync(() => {
-    void refresh();
+  const profileQuery = useQuery({
+    queryKey: ["my-profile"],
+    queryFn: () => fetchProfile({ data: {} }) as Promise<PublicProfile>,
   });
+  const p = profileQuery.data;
 
   useEffect(() => {
-    (async () => {
-      const res = await fetchProfile({ data: {} });
-      setP(res);
-      setName(res.display_name ?? "");
-      setBio(res.bio ?? "");
-    })();
-  }, []);
+    if (!p || seeded.current) return;
+    seeded.current = true;
+    setName(p.display_name ?? "");
+    setBio(p.bio ?? "");
+  }, [p]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await save({ data: { display_name: name, bio } });
+  useXpSync(() => {
+    void queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: () => save({ data: { display_name: name, bio } }),
+    onSuccess: () => {
       toast.success("Profile updated");
-      const res = await fetchProfile({ data: {} });
-      setP(res);
-    } catch {
-      toast.error("Could not save");
-    } finally {
-      setSaving(false);
-    }
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+    },
+    onError: () => toast.error("Could not save"),
+  });
+  const saving = saveMutation.isPending;
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveMutation.mutate();
   };
 
-  if (!p || !user) return null;
+  // This used to be `if (!p || !user) return null`, i.e. a blank obsidian page
+  // on every visit until the fetch landed, and permanently if it failed.
+  if (!p || !user) {
+    return (
+      <div className="min-h-screen bg-obsidian text-silver">
+        <Nav />
+        <main className="mx-auto max-w-3xl px-6 pt-28">
+          <QueryBoundary
+            isPending={profileQuery.isPending || (!p && !profileQuery.isError)}
+            isError={profileQuery.isError}
+            error={profileQuery.error}
+            onRetry={() => profileQuery.refetch()}
+            errorTitle="Couldn't load your profile."
+            loadingLabel="Loading your profile"
+            skeleton={
+              <div className="space-y-6">
+                <Skeleton className="size-20 rounded-full" />
+                <Skeleton className="h-8 w-48" />
+                <SkeletonCards count={3} />
+              </div>
+            }
+          >
+            {null}
+          </QueryBoundary>
+        </main>
+      </div>
+    );
+  }
 
   const hours = Math.floor(p.total_focus_seconds / 3600);
   const initial = (p.display_name ?? "?").slice(0, 1).toUpperCase();

@@ -1,7 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { EmptyState, QueryBoundary, SkeletonCards } from "@/components/query-states";
 import { listAchievements, type Achievement } from "@/lib/achievements.functions";
 import { NARRATIVE_CHAPTERS, chapterForXp, nextChapter } from "@/lib/copy";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,25 +30,22 @@ const TIER_STYLE: Record<string, string> = {
 function AchievementsPage() {
   const list = useServerFn(listAchievements);
   const { user } = useAuth();
-  const [rows, setRows] = useState<Achievement[]>([]);
-  const [stats, setStats] = useState({ unlocked: 0, total: 0 });
-  const [xp, setXp] = useState(0);
 
-  useEffect(() => {
-    (async () => {
+  // Was a bare async IIFE in useEffect with no try/catch: a failed fetch became
+  // an unhandled rejection and the page sat forever on "0 of 0 unlocked".
+  const achievementsQuery = useQuery({
+    queryKey: ["achievements", user?.id ?? null],
+    queryFn: async () => {
       const r = await list();
-      setRows(r.rows);
-      setStats({ unlocked: r.unlocked, total: r.total });
-      if (user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("lifetime_xp")
-          .eq("id", user.id)
-          .maybeSingle();
-        setXp(data?.lifetime_xp ?? 0);
-      }
-    })();
-  }, [user?.id]);
+      const { data } = user
+        ? await supabase.from("profiles").select("lifetime_xp").eq("id", user.id).maybeSingle()
+        : { data: null };
+      return { rows: r.rows, unlocked: r.unlocked, total: r.total, xp: data?.lifetime_xp ?? 0 };
+    },
+  });
+  const rows: Achievement[] = achievementsQuery.data?.rows ?? [];
+  const stats = { unlocked: achievementsQuery.data?.unlocked ?? 0, total: achievementsQuery.data?.total ?? 0 };
+  const xp = achievementsQuery.data?.xp ?? 0;
 
   const chapter = chapterForXp(xp);
   const next = nextChapter(xp);
@@ -65,7 +63,17 @@ function AchievementsPage() {
           <p className="mt-3 text-silver-dim">
             {stats.unlocked} of {stats.total} unlocked. Every mark is a private record.
           </p>
-          <div className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden">
+          {/* The bar was a bare styled div — a screen reader announced nothing
+              at all. role="progressbar" carries the same number the sighted
+              user reads above it. */}
+          <div
+            role="progressbar"
+            aria-valuenow={stats.unlocked}
+            aria-valuemin={0}
+            aria-valuemax={stats.total}
+            aria-label="Achievements unlocked"
+            className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden"
+          >
             <div
               className="h-full bg-ember transition-[width] duration-700"
               style={{ width: stats.total ? `${(stats.unlocked / stats.total) * 100}%` : "0%" }}
@@ -81,7 +89,14 @@ function AchievementsPage() {
           <p className="mt-1 text-silver-dim text-sm">{chapter.subtitle}</p>
           {next && (
             <>
-              <div className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden">
+              <div
+                role="progressbar"
+                aria-valuenow={Math.round(chapterPct)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Progress to ${next.title}`}
+                className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden"
+              >
                 <div
                   className="h-full bg-ember transition-[width] duration-700"
                   style={{ width: `${chapterPct}%` }}
@@ -94,8 +109,26 @@ function AchievementsPage() {
           )}
         </section>
 
-        <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rows.map((a) => {
+        {/* Loading is checked before emptiness, and there was no empty state at
+            all before: a user with no marks got a silent blank page. */}
+        <QueryBoundary
+          isPending={achievementsQuery.isPending}
+          isError={achievementsQuery.isError}
+          error={achievementsQuery.error}
+          onRetry={() => achievementsQuery.refetch()}
+          errorTitle="Couldn't load your marks."
+          loadingLabel="Loading your achievements"
+          skeleton={<SkeletonCards count={6} />}
+          isEmpty={rows.length === 0}
+          empty={
+            <EmptyState
+              title="No marks yet"
+              description="Finish a focus session and the first one is yours."
+            />
+          }
+        >
+          <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {rows.map((a) => {
             const locked = !a.unlocked_at;
             return (
               <li
@@ -130,7 +163,8 @@ function AchievementsPage() {
               </li>
             );
           })}
-        </ul>
+          </ul>
+        </QueryBoundary>
       </main>
     </div>
   );

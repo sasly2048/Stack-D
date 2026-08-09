@@ -1,7 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { EmptyState, QueryBoundary, SkeletonCards } from "@/components/query-states";
 import { listChallenges, type ChallengeRow } from "@/lib/challenges.functions";
 
 export const Route = createFileRoute("/_authenticated/challenges")({
@@ -18,11 +19,14 @@ export const Route = createFileRoute("/_authenticated/challenges")({
 
 function ChallengesPage() {
   const list = useServerFn(listChallenges);
-  const [rows, setRows] = useState<ChallengeRow[]>([]);
 
-  useEffect(() => {
-    list().then((r) => setRows(r.rows));
-  }, []);
+  // The old `list().then(...)` had no .catch, so a failed load was an unhandled
+  // rejection and both groups rendered as bare headers with nothing under them.
+  const challengesQuery = useQuery({
+    queryKey: ["challenges"],
+    queryFn: async () => (await list()).rows,
+  });
+  const rows: ChallengeRow[] = challengesQuery.data ?? [];
 
   const daily = rows.filter((r) => r.cadence === "daily");
   const weekly = rows.filter((r) => r.cadence === "weekly");
@@ -39,17 +43,46 @@ function ChallengesPage() {
           </p>
         </header>
 
-        <Group title="Today" rows={daily} />
-        <Group title="This week" rows={weekly} />
+        <Group title="Today" rows={daily} query={challengesQuery} emptyLabel="No daily rites today" />
+        <Group
+          title="This week"
+          rows={weekly}
+          query={challengesQuery}
+          emptyLabel="No weekly rites this week"
+        />
       </main>
     </div>
   );
 }
 
-function Group({ title, rows }: { title: string; rows: ChallengeRow[] }) {
+function Group({
+  title,
+  rows,
+  query,
+  emptyLabel,
+}: {
+  title: string;
+  rows: ChallengeRow[];
+  query: { isPending: boolean; isError: boolean; error: unknown; refetch: () => unknown };
+  emptyLabel: string;
+}) {
   return (
     <section className="space-y-4">
       <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">{title}</h2>
+      {/* Loading before emptiness, and an empty state where there was none:
+          the group used to render an empty <ul> under its header, so the user
+          saw two bare headings and no explanation. */}
+      <QueryBoundary
+        isPending={query.isPending}
+        isError={query.isError}
+        error={query.error}
+        onRetry={() => query.refetch()}
+        errorTitle="Couldn't load your challenges."
+        loadingLabel={`Loading ${title.toLowerCase()} challenges`}
+        skeleton={<SkeletonCards count={2} />}
+        isEmpty={rows.length === 0}
+        empty={<EmptyState title={emptyLabel} description="New targets appear as your streak moves." />}
+      >
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {rows.map((c) => {
           const pct = Math.min(100, Math.round((c.progress / c.target) * 100));
@@ -70,7 +103,16 @@ function Group({ title, rows }: { title: string; rows: ChallengeRow[] }) {
                   +{c.xp_reward} XP
                 </span>
               </div>
-              <div className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden">
+              {/* Bare styled div announced nothing; role="progressbar" gives
+                  assistive tech the same progress the bar shows visually. */}
+              <div
+                role="progressbar"
+                aria-valuenow={Math.min(c.progress, c.target)}
+                aria-valuemin={0}
+                aria-valuemax={c.target}
+                aria-label={c.name}
+                className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden"
+              >
                 <div
                   className={`h-full transition-[width] duration-700 ${done ? "bg-ember" : "bg-silver"}`}
                   style={{ width: `${pct}%` }}
@@ -85,6 +127,7 @@ function Group({ title, rows }: { title: string; rows: ChallengeRow[] }) {
           );
         })}
       </ul>
+      </QueryBoundary>
     </section>
   );
 }

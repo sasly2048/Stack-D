@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Virtuoso } from "react-virtuoso";
 import { Nav } from "@/components/nav";
+import { ErrorPanel, LoadingAnnouncer, SkeletonList } from "@/components/query-states";
 import { listTimeline, type TimelineSession } from "@/lib/session-interactions.functions";
 import { SessionReactionBar } from "@/components/session-reaction-bar";
 import { getProactiveInsights, type ProactiveInsight } from "@/lib/proactive-ai.functions";
@@ -78,6 +79,16 @@ function TimelinePage() {
   const fetchList = useServerFn(listTimeline);
   const fetchAI = useServerFn(getProactiveInsights);
 
+  const [loadError, setLoadError] = useState<Error | null>(null);
+  // Bumping this re-runs the load effect — a retry that refetches rather than
+  // reloading the whole document and losing scroll position.
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Kept on hand-rolled state rather than useQuery: this is the one screen with
+  // real cursor pagination (loadMore below), and useInfiniteQuery would be a
+  // rewrite of the part that already works. The bug worth fixing here was the
+  // swallow — `.catch(() => {})` discarded the failure, so the route's own
+  // errorComponent could never fire and the list just sat empty.
   useEffect(() => {
     let alive = true;
     Promise.all([fetchList({ data: { limit: 20 } }), fetchAI()])
@@ -86,13 +97,17 @@ function TimelinePage() {
         setItems(rows);
         setAi(insight);
         setHasMore(rows.length === 20);
+        setLoadError(null);
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (!alive) return;
+        setLoadError(err instanceof Error ? err : new Error("Couldn't load your timeline."));
+      })
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [fetchList, fetchAI]);
+  }, [fetchList, fetchAI, reloadKey]);
 
   async function loadMore() {
     if (!items.length) return;
@@ -115,8 +130,23 @@ function TimelinePage() {
 
         {ai && <ProactiveCard ai={ai} />}
 
-        {loading && <div className="text-sm text-muted-foreground">Loading…</div>}
-        {!loading && items.length === 0 && (
+        {loading && (
+          <>
+            <LoadingAnnouncer label="Loading your timeline" />
+            <SkeletonList rows={4} />
+          </>
+        )}
+        {!loading && loadError && (
+          <ErrorPanel
+            title="Couldn't load your timeline."
+            message={loadError.message}
+            onRetry={() => {
+              setLoading(true);
+              setReloadKey((n) => n + 1);
+            }}
+          />
+        )}
+        {!loading && !loadError && items.length === 0 && (
           <div className="text-sm text-muted-foreground">
             No sessions yet. Start one to write your first line.
           </div>

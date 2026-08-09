@@ -1,7 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonCards } from "@/components/query-states";
 import { getAnalytics, type AnalyticsPayload } from "@/lib/analytics.functions";
 import { ProactivePanel } from "@/components/insights/proactive-panel";
 import { GoalForecast } from "@/components/insights/goal-forecast";
@@ -25,18 +26,32 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function InsightsPage() {
   const load = useServerFn(getAnalytics);
-  const [data, setData] = useState<AnalyticsPayload | null>(null);
 
-  useEffect(() => {
-    load().then(setData);
-  }, []);
+  const analytics = useQuery({
+    queryKey: ["analytics"],
+    queryFn: () => load() as Promise<AnalyticsPayload>,
+  });
+  const data = analytics.data;
 
-  if (!data) {
+  // The old code was `load().then(setData)` with no catch, gated on
+  // `if (!data)`. Any failure therefore left "Loading…" on screen forever with
+  // no error, no retry and no way to tell it apart from a slow request.
+  if (analytics.isPending || analytics.isError || !data) {
     return (
       <div className="min-h-screen bg-obsidian text-silver">
         <Nav />
-        <div className="pt-32 text-center font-mono text-xs text-silver-dim tracking-[0.3em] uppercase">
-          Loading…
+        <div className="mx-auto max-w-4xl px-6 pt-32">
+          <QueryBoundary
+            isPending={analytics.isPending}
+            isError={analytics.isError}
+            error={analytics.error}
+            onRetry={() => analytics.refetch()}
+            errorTitle="Couldn't load your insights."
+            loadingLabel="Loading your insights"
+            skeleton={<SkeletonCards count={6} />}
+          >
+            {null}
+          </QueryBoundary>
         </div>
       </div>
     );

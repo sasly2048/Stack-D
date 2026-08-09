@@ -1,8 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Virtuoso } from "react-virtuoso";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 import {
   listFeed,
   friendsPresence,
@@ -28,30 +30,34 @@ function FeedPage() {
   const presence = useServerFn(friendsPresence);
   const beat = useServerFn(heartbeat);
 
-  const [rows, setRows] = useState<FeedItem[]>([]);
-  const [friends, setFriends] = useState<
-    Array<{
-      id: string;
-      display_name: string | null;
-      avatar_url: string | null;
-      status: PresenceStatus;
-    }>
-  >([]);
-
-  useEffect(() => {
-    const load = async () => {
+  // The old setInterval(load, 30s) polled forever, even in a background tab,
+  // and its promise had no catch — a single failed refresh was an unhandled
+  // rejection. refetchInterval retries under react-query's error handling and,
+  // because refetchIntervalInBackground defaults to false, stops while hidden.
+  const feedQuery = useQuery({
+    queryKey: ["feed"],
+    queryFn: async () => {
       const [f, p] = await Promise.all([feed({ data: { limit: 30 } }), presence()]);
-      setRows(f.rows);
-      setFriends(p.rows);
-    };
-    load();
+      return { rows: f.rows, friends: p.rows };
+    },
+    refetchInterval: 30_000,
+  });
+
+  const rows: FeedItem[] = feedQuery.data?.rows ?? [];
+  const friends: Array<{
+    id: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    status: PresenceStatus;
+  }> = feedQuery.data?.friends ?? [];
+
+  // Presence heartbeat is fire-and-forget, not data this screen renders, so it
+  // stays a plain interval — but every call needs its own catch or a dropped
+  // network beat becomes an unhandled rejection.
+  useEffect(() => {
     beat().catch(() => undefined);
     const beatIv = setInterval(() => beat().catch(() => undefined), 60_000);
-    const refreshIv = setInterval(load, 30_000);
-    return () => {
-      clearInterval(beatIv);
-      clearInterval(refreshIv);
-    };
+    return () => clearInterval(beatIv);
   }, []);
 
   return (
@@ -63,11 +69,24 @@ function FeedPage() {
             <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Signal</p>
             <h1 className="mt-3 text-4xl md:text-5xl font-serif">Feed</h1>
           </header>
-          {rows.length === 0 ? (
-            <p className="border border-white/10 rounded-md px-4 py-6 text-silver-dim/60">
-              No signal yet. Complete a session or add friends.
-            </p>
-          ) : (
+          {/* Loading is checked before emptiness. This screen used to render
+              "No signal yet" during the very first fetch, so an active circle
+              was told nothing was happening on every slow load. */}
+          <QueryBoundary
+            isPending={feedQuery.isPending}
+            isError={feedQuery.isError}
+            error={feedQuery.error}
+            onRetry={() => feedQuery.refetch()}
+            errorTitle="Couldn't load your feed."
+            loadingLabel="Loading your feed"
+            skeleton={<SkeletonList rows={4} />}
+            isEmpty={rows.length === 0}
+            empty={
+              <p className="border border-white/10 rounded-md px-4 py-6 text-silver-dim/60">
+                No signal yet. Complete a session or add friends.
+              </p>
+            }
+          >
             <Virtuoso
               useWindowScroll
               data={rows}
@@ -77,29 +96,40 @@ function FeedPage() {
                 </div>
               )}
             />
-          )}
+          </QueryBoundary>
         </section>
 
         <aside className="space-y-3">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
-            Circle · {friends.length}
+            {feedQuery.isPending ? "Circle" : `Circle · ${friends.length}`}
           </h2>
           <ul className="border border-white/10 rounded-md divide-y divide-white/5">
-            {friends.length === 0 && (
-              <li className="px-4 py-4 text-silver-dim/60 text-sm">No ties yet.</li>
-            )}
-            {friends.map((f) => (
-              <li key={f.id} className="flex items-center gap-3 px-4 py-3">
-                <StatusDot status={f.status} />
-                <Link
-                  to="/profile/$id"
-                  params={{ id: f.id }}
-                  className="truncate text-sm text-silver hover:text-ember transition-colors"
-                >
-                  {f.display_name ?? "Anonymous"}
-                </Link>
-              </li>
-            ))}
+            {/* Same query, same rule: "No ties yet." only after the fetch
+                settles, never as a stand-in for "still loading". */}
+            <QueryBoundary
+              isPending={feedQuery.isPending}
+              isError={feedQuery.isError}
+              error={feedQuery.error}
+              onRetry={() => feedQuery.refetch()}
+              errorTitle="Couldn't load your circle."
+              loadingLabel="Loading your circle"
+              skeleton={<SkeletonList rows={3} className="px-4 py-3" />}
+              isEmpty={friends.length === 0}
+              empty={<li className="px-4 py-4 text-silver-dim/60 text-sm">No ties yet.</li>}
+            >
+              {friends.map((f) => (
+                <li key={f.id} className="flex items-center gap-3 px-4 py-3">
+                  <StatusDot status={f.status} />
+                  <Link
+                    to="/profile/$id"
+                    params={{ id: f.id }}
+                    className="truncate text-sm text-silver hover:text-ember transition-colors"
+                  >
+                    {f.display_name ?? "Anonymous"}
+                  </Link>
+                </li>
+              ))}
+            </QueryBoundary>
           </ul>
         </aside>
       </main>

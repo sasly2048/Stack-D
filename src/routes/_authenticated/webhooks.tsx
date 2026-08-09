@@ -1,7 +1,9 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 import {
   listWebhooks,
   createWebhook,
@@ -31,36 +33,60 @@ function WebhooksPage() {
   const create = useServerFn(createWebhook);
   const toggle = useServerFn(toggleWebhook);
   const remove = useServerFn(deleteWebhook);
-  const [hooks, setHooks] = useState<Webhook[]>([]);
+  const queryClient = useQueryClient();
   const [url, setUrl] = useState("");
   const [selected, setSelected] = useState<string[]>(["session.complete"]);
-  const [busy, setBusy] = useState(false);
   const [reveal, setReveal] = useState<string | null>(null);
 
-  const refresh = () =>
-    list()
-      .then(setHooks)
-      .catch(() => {});
-  useEffect(() => {
-    refresh();
-  }, []);
+  // The old `.catch(() => {})` swallowed load failures entirely: the page just
+  // rendered "No webhooks yet" to someone whose hooks failed to fetch.
+  const hooksQuery = useQuery({
+    queryKey: ["webhooks"],
+    queryFn: () => list(),
+  });
+  const hooks: Webhook[] = hooksQuery.data ?? [];
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url || selected.length === 0) return;
-    setBusy(true);
-    try {
-      const row = await create({ data: { url, events: selected as never[] } });
-      setHooks((h) => [row, ...h]);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+
+  const createMutation = useMutation({
+    mutationFn: () => create({ data: { url, events: selected as never[] } }),
+    onSuccess: (row) => {
       setReveal(row.id);
       setUrl("");
       haptic("success");
       toast.success("Webhook created. Copy the secret now.");
-    } catch (err) {
-      toast.error((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
+      invalidate();
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+  const busy = createMutation.isPending;
+
+  // Toggle and delete previously wrote the new state into local React state
+  // with no rollback path, so a server-side failure left the UI showing "Live"
+  // for a paused hook — or hiding a hook that still exists. Refetching from the
+  // server on success keeps the list and the database in agreement.
+  const toggleMutation = useMutation({
+    mutationFn: (h: Webhook) => toggle({ data: { id: h.id, active: !h.active } }),
+    onSuccess: (_r, h) => {
+      toast.success(h.active ? "Webhook paused" : "Webhook live");
+      invalidate();
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Webhook deleted");
+      invalidate();
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url || selected.length === 0) return;
+    createMutation.mutate();
   };
 
   return (
@@ -126,27 +152,38 @@ function WebhooksPage() {
         </form>
 
         <div className="space-y-3">
-          {hooks.length === 0 && (
-            <div className="text-sm text-muted-foreground text-center py-12">No webhooks yet.</div>
-          )}
-          {hooks.map((h) => (
-            <HookRow
-              key={h.id}
-              hook={h}
-              revealSecret={reveal === h.id}
-              onToggle={async () => {
-                await toggle({ data: { id: h.id, active: !h.active } });
-                setHooks((all) =>
-                  all.map((x) => (x.id === h.id ? { ...x, active: !x.active } : x)),
-                );
-              }}
-              onDelete={async () => {
-                if (!confirm("Delete this webhook?")) return;
-                await remove({ data: { id: h.id } });
-                setHooks((all) => all.filter((x) => x.id !== h.id));
-              }}
-            />
-          ))}
+          {/* Loading before emptiness: "No webhooks yet." used to appear on
+              every first paint and on every failed load. */}
+          <QueryBoundary
+            isPending={hooksQuery.isPending}
+            isError={hooksQuery.isError}
+            error={hooksQuery.error}
+            onRetry={() => hooksQuery.refetch()}
+            errorTitle="Couldn't load your webhooks."
+            loadingLabel="Loading your webhooks"
+            skeleton={<SkeletonList rows={2} />}
+            isEmpty={hooks.length === 0}
+            empty={
+              <div className="text-sm text-muted-foreground text-center py-12">No webhooks yet.</div>
+            }
+          >
+            {hooks.map((h) => (
+              <HookRow
+                key={h.id}
+                hook={h}
+                revealSecret={reveal === h.id}
+                busy={
+                  (toggleMutation.isPending && toggleMutation.variables?.id === h.id) ||
+                  (deleteMutation.isPending && deleteMutation.variables === h.id)
+                }
+                onToggle={() => toggleMutation.mutate(h)}
+                onDelete={() => {
+                  if (!confirm("Delete this webhook?")) return;
+                  deleteMutation.mutate(h.id);
+                }}
+              />
+            ))}
+          </QueryBoundary>
         </div>
 
         <div className="mt-10 text-center">
@@ -165,38 +202,44 @@ function WebhooksPage() {
 function HookRow({
   hook,
   revealSecret,
+  busy,
   onToggle,
   onDelete,
 }: {
   hook: Webhook;
   revealSecret: boolean;
-  onToggle: () => Promise<void>;
-  onDelete: () => Promise<void>;
+  busy: boolean;
+  onToggle: () => void;
+  onDelete: () => void;
 }) {
   const listDel = useServerFn(listDeliveries);
   const test = useServerFn(testWebhook);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [rows, setRows] = useState<Delivery[]>([]);
-  const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
 
-  const load = () => {
-    setLoading(true);
-    listDel({ data: { webhookId: hook.id } })
-      .then(setRows)
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    if (open) load();
-  }, [open]);
+  // Was `.then(setRows).finally(...)` with no catch: a failed log fetch was an
+  // unhandled rejection that left an empty list, indistinguishable from a
+  // webhook that had genuinely never fired.
+  const deliveriesQuery = useQuery({
+    queryKey: ["webhook-deliveries", hook.id],
+    queryFn: () => listDel({ data: { webhookId: hook.id } }),
+    enabled: open,
+  });
+  const rows: Delivery[] = deliveriesQuery.data ?? [];
+  const loading = deliveriesQuery.isPending && open;
 
   const runTest = async () => {
     setTesting(true);
     haptic("tap");
     try {
       const row = await test({ data: { webhookId: hook.id } });
-      setRows((r) => [row, ...r]);
+      // Show the new delivery immediately rather than waiting for a refetch —
+      // the point of Test is instant feedback.
+      queryClient.setQueryData<Delivery[]>(["webhook-deliveries", hook.id], (prev) => [
+        row,
+        ...(prev ?? []),
+      ]);
       if (!open) setOpen(true);
       if (row.ok) toast.success(`Test delivered · ${row.status_code}`);
       else toast.error(`Test failed · ${row.status_code ?? "network"}`);
@@ -224,7 +267,8 @@ function HookRow({
           </button>
           <button
             onClick={onToggle}
-            className={`text-[10px] font-mono uppercase tracking-widest px-2 py-1 rounded-full border ${
+            disabled={busy}
+            className={`text-[10px] font-mono uppercase tracking-widest px-2 py-1 rounded-full border disabled:opacity-40 ${
               hook.active ? "border-ember/40 text-ember" : "border-white/10 text-muted-foreground"
             }`}
           >
@@ -232,7 +276,8 @@ function HookRow({
           </button>
           <button
             onClick={onDelete}
-            className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground hover:text-ember"
+            disabled={busy}
+            className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground hover:text-ember disabled:opacity-40"
           >
             Delete
           </button>

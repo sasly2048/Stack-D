@@ -18,6 +18,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { FloatingTimer } from "@/components/floating-timer";
 import { GlobalRealtimeToasts } from "@/components/global-realtime-toasts";
 import { QueueBadge } from "@/components/queue-badge";
+import { OfflineBanner } from "@/components/offline-banner";
 import { SessionCeremony } from "@/components/session-ceremony";
 import { siteUrl } from "@/lib/site";
 
@@ -254,6 +255,7 @@ function RootComponent() {
       <FloatingTimer />
       <GlobalRealtimeToasts />
       <QueueBadge />
+      <OfflineBanner />
       <SessionCeremony />
       <Toaster
         theme="dark"

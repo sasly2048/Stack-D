@@ -1,7 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { QueryBoundary } from "@/components/query-states";
 import { getProductivityDna, type DnaProfile } from "@/lib/dna.functions";
 
 export const Route = createFileRoute("/_authenticated/dna")({
@@ -75,13 +76,12 @@ function Radar({ traits }: { traits: { label: string; value: number }[] }) {
 
 function DnaPage() {
   const load = useServerFn(getProductivityDna);
-  const [dna, setDna] = useState<DnaProfile | null>(null);
 
-  useEffect(() => {
-    load()
-      .then(setDna)
-      .catch(() => {});
-  }, []);
+  const dnaQuery = useQuery({
+    queryKey: ["productivity-dna"],
+    queryFn: () => load() as Promise<DnaProfile>,
+  });
+  const dna = dnaQuery.data;
 
   return (
     <div className="min-h-screen bg-obsidian text-silver">
@@ -92,9 +92,21 @@ function DnaPage() {
         </div>
         <h1 className="text-4xl font-serif mt-2 mb-8">Your focus signature</h1>
 
-        {!dna ? (
-          <div className="text-sm text-muted-foreground">Analyzing 60 days of focus…</div>
-        ) : (
+        {/* The previous `.catch(() => {})` meant a failed load sat on
+            "Analyzing 60 days of focus…" indefinitely — a loading state that
+            could never resolve. Errors now surface with a retry. */}
+        <QueryBoundary
+          isPending={dnaQuery.isPending}
+          isError={dnaQuery.isError}
+          error={dnaQuery.error}
+          onRetry={() => dnaQuery.refetch()}
+          errorTitle="Couldn't read your focus signature."
+          loadingLabel="Analyzing 60 days of focus"
+          skeleton={
+            <div className="text-sm text-muted-foreground">Analyzing 60 days of focus…</div>
+          }
+        >
+          {dna && (
           <div className="grid md:grid-cols-2 gap-8">
             <div className="glass rounded-2xl p-6">
               <Radar traits={dna.traits} />
@@ -138,7 +150,8 @@ function DnaPage() {
               </div>
             </div>
           </div>
-        )}
+          )}
+        </QueryBoundary>
       </div>
     </div>
   );

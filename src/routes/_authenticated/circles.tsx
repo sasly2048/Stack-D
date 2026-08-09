@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 import { listMyCircles, getCircleDetail, type CircleDetail } from "@/lib/circles.functions";
 
 export const Route = createFileRoute("/_authenticated/circles")({
@@ -19,22 +21,26 @@ export const Route = createFileRoute("/_authenticated/circles")({
 function CirclesPage() {
   const listFn = useServerFn(listMyCircles);
   const detailFn = useServerFn(getCircleDetail);
-  const [circles, setCircles] = useState<{ id: string; name: string; total_xp: number }[]>([]);
-  const [active, setActive] = useState<string | null>(null);
-  const [detail, setDetail] = useState<CircleDetail | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
 
-  useEffect(() => {
-    listFn().then((rows) => {
-      setCircles(rows);
-      if (rows[0]) setActive(rows[0].id);
-    });
-  }, []);
+  // Both fetches were bare `.then()` chains with no .catch — a failure was an
+  // unhandled rejection and the sidebar simply never appeared, with no error
+  // and no loading state to explain the blank.
+  const circlesQuery = useQuery({
+    queryKey: ["circles"],
+    queryFn: () => listFn(),
+  });
+  const circles = circlesQuery.data ?? [];
+  // Defaulting off the fetched rows instead of a second setState, so there is
+  // no frame where the list is loaded but nothing is selected.
+  const active = picked ?? circles[0]?.id ?? null;
 
-  useEffect(() => {
-    if (!active) return;
-    setDetail(null);
-    detailFn({ data: { id: active } }).then(setDetail);
-  }, [active]);
+  const detailQuery = useQuery({
+    queryKey: ["circle", active],
+    queryFn: () => detailFn({ data: { id: active as string } }),
+    enabled: !!active,
+  });
+  const detail: CircleDetail | null = detailQuery.data ?? null;
 
   return (
     <div className="min-h-screen bg-obsidian text-silver">
@@ -55,25 +61,38 @@ function CirclesPage() {
           </Link>
         </div>
 
-        {circles.length === 0 ? (
-          <div className="glass rounded-xl p-12 text-center">
-            <div className="text-sm text-muted-foreground mb-4">
-              You haven't joined any circles yet.
+        {/* Loading is checked before emptiness. "You haven't joined any circles
+            yet" used to show on every first paint, including for members of
+            five circles. */}
+        <QueryBoundary
+          isPending={circlesQuery.isPending}
+          isError={circlesQuery.isError}
+          error={circlesQuery.error}
+          onRetry={() => circlesQuery.refetch()}
+          errorTitle="Couldn't load your circles."
+          loadingLabel="Loading your circles"
+          skeleton={<SkeletonList rows={3} />}
+          isEmpty={circles.length === 0}
+          empty={
+            <div className="glass rounded-xl p-12 text-center">
+              <div className="text-sm text-muted-foreground mb-4">
+                You haven't joined any circles yet.
+              </div>
+              <Link
+                to="/groups"
+                className="btn-ember px-5 py-2 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest"
+              >
+                Create or join
+              </Link>
             </div>
-            <Link
-              to="/groups"
-              className="btn-ember px-5 py-2 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest"
-            >
-              Create or join
-            </Link>
-          </div>
-        ) : (
+          }
+        >
           <div className="grid md:grid-cols-[240px_1fr] gap-8">
             <aside className="space-y-1">
               {circles.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => setActive(c.id)}
+                  onClick={() => setPicked(c.id)}
                   className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
                     active === c.id
                       ? "bg-ember/10 border-ember/40 text-ember"
@@ -89,9 +108,18 @@ function CirclesPage() {
             </aside>
 
             <section>
-              {!detail ? (
-                <div className="text-sm text-muted-foreground">Loading circle…</div>
-              ) : (
+              <QueryBoundary
+                isPending={detailQuery.isPending}
+                isError={detailQuery.isError}
+                error={detailQuery.error}
+                onRetry={() => detailQuery.refetch()}
+                errorTitle="Couldn't load this circle."
+                loadingLabel="Loading circle"
+                skeleton={<div className="text-sm text-muted-foreground">Loading circle…</div>}
+                isEmpty={!detail}
+                empty={<div className="text-sm text-muted-foreground">This circle is gone.</div>}
+              >
+                {detail && (
                 <>
                   <div className="flex items-baseline justify-between mb-6">
                     <h2 className="text-2xl font-serif">{detail.name}</h2>
@@ -142,10 +170,11 @@ function CirclesPage() {
                     ))}
                   </div>
                 </>
-              )}
+                )}
+              </QueryBoundary>
             </section>
           </div>
-        )}
+        </QueryBoundary>
       </div>
     </div>
   );

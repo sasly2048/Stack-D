@@ -12,8 +12,12 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="glass rounded-2xl p-10 text-center">
-      <div className="text-4xl mb-3">{icon}</div>
+    // role="status" so a screen reader hears "no results" rather than silence
+    // after a list finishes loading with nothing in it.
+    <div role="status" className="glass rounded-2xl p-10 text-center">
+      <div aria-hidden="true" className="text-4xl mb-3">
+        {icon}
+      </div>
       <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
         A quiet space
       </div>

@@ -1,10 +1,12 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Nav } from "@/components/nav";
 import { listCapsules, writeCapsule, openCapsule, type Capsule } from "@/lib/capsules.functions";
 import { EmptyState } from "@/components/empty-state";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 
 export const Route = createFileRoute("/_authenticated/capsule")({
   head: () => ({
@@ -25,29 +27,48 @@ function CapsulePage() {
   const load = useServerFn(listCapsules);
   const write = useServerFn(writeCapsule);
   const open = useServerFn(openCapsule);
-  const [rows, setRows] = useState<Capsule[]>([]);
+  const queryClient = useQueryClient();
   const [msg, setMsg] = useState("");
-  const [days, setDays] = useState(30);
-  const [busy, setBusy] = useState(false);
+  // Kept as a string while editing. The old numeric state ran the raw input
+  // through `parseInt(...) || 30`, so clearing the field to type "7" snapped it
+  // back to 30 under the cursor. Coercion and clamping happen on submit instead.
+  const [days, setDays] = useState("30");
 
-  const refresh = () => load().then((r) => setRows(r.rows));
-  useEffect(() => {
-    refresh();
-  }, []);
+  const capsulesQuery = useQuery({
+    queryKey: ["capsules"],
+    queryFn: async () => (await load()).rows,
+  });
+  const rows: Capsule[] = capsulesQuery.data ?? [];
 
-  const send = async () => {
-    if (!msg.trim()) return;
-    setBusy(true);
-    try {
-      await write({ data: { message: msg, days } });
-      toast.success(`Sealed. Opens in ${days} days.`);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["capsules"] });
+
+  const parsedDays = Math.min(365, Math.max(1, parseInt(days, 10) || 30));
+
+  const writeMutation = useMutation({
+    mutationFn: (vars: { message: string; days: number }) => write({ data: vars }),
+    onSuccess: (_r, vars) => {
+      toast.success(`Sealed. Opens in ${vars.days} days.`);
       setMsg("");
-      refresh();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
+      invalidate();
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  // Opening a capsule is irreversible — it stamps opened_at server-side. The
+  // button had no disabled state, so a double-click fired two opens, and no
+  // toast, so a failure looked identical to success.
+  const openMutation = useMutation({
+    mutationFn: (id: string) => open({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Capsule opened");
+      invalidate();
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not open capsule"),
+  });
+
+  const send = () => {
+    if (!msg.trim()) return;
+    writeMutation.mutate({ message: msg, days: parsedDays });
   };
 
   const now = Date.now();
@@ -87,16 +108,16 @@ function CapsulePage() {
               min={1}
               max={365}
               value={days}
-              onChange={(e) => setDays(parseInt(e.target.value) || 30)}
+              onChange={(e) => setDays(e.target.value)}
               className="w-20 bg-black/50 border border-white/10 rounded px-3 py-1 text-sm text-silver"
             />
             <span className="text-xs text-silver-dim">days</span>
             <button
               onClick={send}
-              disabled={busy || !msg.trim()}
+              disabled={writeMutation.isPending || !msg.trim()}
               className="ml-auto px-5 py-2 rounded-full border border-ember text-ember font-mono text-xs uppercase tracking-widest disabled:opacity-40 hover:bg-ember/10"
             >
-              {busy ? "Sealing…" : "Seal capsule"}
+              {writeMutation.isPending ? "Sealing…" : "Seal capsule"}
             </button>
           </div>
         </section>
@@ -119,13 +140,13 @@ function CapsulePage() {
                     </>
                   ) : (
                     <button
-                      onClick={async () => {
-                        await open({ data: { id: c.id } });
-                        refresh();
-                      }}
-                      className="w-full py-3 border border-dashed border-ember/60 rounded font-serif text-lg text-ember hover:bg-ember/5"
+                      onClick={() => openMutation.mutate(c.id)}
+                      disabled={openMutation.isPending && openMutation.variables === c.id}
+                      className="w-full py-3 border border-dashed border-ember/60 rounded font-serif text-lg text-ember hover:bg-ember/5 disabled:opacity-40"
                     >
-                      Open — sealed {new Date(c.created_at).toLocaleDateString()}
+                      {openMutation.isPending && openMutation.variables === c.id
+                        ? "Opening…"
+                        : `Open — sealed ${new Date(c.created_at).toLocaleDateString()}`}
                     </button>
                   )}
                 </div>
@@ -136,9 +157,22 @@ function CapsulePage() {
 
         <section>
           <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Sealed</p>
-          {sealed.length === 0 ? (
-            <EmptyState title="No sealed capsules" description="Your future self is waiting." />
-          ) : (
+          {/* Loading is checked before emptiness. "No sealed capsules" used to
+              appear during the first load, telling someone with a vault full of
+              letters that it was empty. */}
+          <QueryBoundary
+            isPending={capsulesQuery.isPending}
+            isError={capsulesQuery.isError}
+            error={capsulesQuery.error}
+            onRetry={() => capsulesQuery.refetch()}
+            errorTitle="Couldn't load your capsules."
+            loadingLabel="Loading your capsules"
+            skeleton={<SkeletonList rows={2} className="mt-4" />}
+            isEmpty={sealed.length === 0}
+            empty={
+              <EmptyState title="No sealed capsules" description="Your future self is waiting." />
+            }
+          >
             <ul className="mt-4 space-y-2">
               {sealed.map((c) => (
                 <li
@@ -154,7 +188,7 @@ function CapsulePage() {
                 </li>
               ))}
             </ul>
-          )}
+          </QueryBoundary>
         </section>
       </main>
     </div>

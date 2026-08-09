@@ -1,8 +1,10 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
 import { listPartners, pairPartner, endPartnership, type Partner } from "@/lib/mentor.functions";
 import { searchPeople } from "@/lib/friends.functions";
 
@@ -24,18 +26,21 @@ function PartnersPage() {
   const end = useServerFn(endPartnership);
   const search = useServerFn(searchPeople);
 
-  const [rows, setRows] = useState<Partner[]>([]);
+  const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Array<{ id: string; display_name: string | null }>>([]);
   const [busy, setBusy] = useState(false);
 
+  // The list load previously ended in `.catch(() => {})`, so a failure left an
+  // empty page that looked identical to having no partners.
+  const partnersQuery = useQuery({
+    queryKey: ["partners"],
+    queryFn: async () => (await list()).rows,
+  });
+  const rows: Partner[] = partnersQuery.data ?? [];
   const refresh = async () => {
-    const r = await list();
-    setRows(r.rows);
+    await queryClient.invalidateQueries({ queryKey: ["partners"] });
   };
-  useEffect(() => {
-    refresh().catch(() => {});
-  }, []);
   useEffect(() => {
     if (!q.trim()) {
       setResults([]);
@@ -127,7 +132,19 @@ function PartnersPage() {
 
         <section className="space-y-3">
           <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Active</p>
-          {rows.length === 0 && <p className="text-sm text-silver-dim">No partners yet.</p>}
+          {/* Loading before emptiness: "No partners yet." used to render while
+              the list was still loading. */}
+          <QueryBoundary
+            isPending={partnersQuery.isPending}
+            isError={partnersQuery.isError}
+            error={partnersQuery.error}
+            onRetry={() => partnersQuery.refetch()}
+            errorTitle="Couldn't load your partners."
+            loadingLabel="Loading your partners"
+            skeleton={<SkeletonList rows={2} />}
+            isEmpty={rows.length === 0}
+            empty={<p className="text-sm text-silver-dim">No partners yet.</p>}
+          >
           <ul className="space-y-2">
             {rows.map((r) => (
               <li
@@ -150,6 +167,7 @@ function PartnersPage() {
               </li>
             ))}
           </ul>
+          </QueryBoundary>
         </section>
       </main>
     </div>

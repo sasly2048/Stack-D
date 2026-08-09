@@ -58,6 +58,9 @@ function Start() {
         .maybeSingle();
       setProfile(p ?? { display_name: data.user.email?.split("@")[0] ?? "Anonymous" });
     });
+    // Deliberately swallowed: templates are a shortcut, not a requirement.
+    // Losing them degrades to the manual form, so an error banner here would
+    // report a problem the user cannot act on and does not have.
     fetchTpls()
       .then(setTemplates)
       .catch(() => {});
