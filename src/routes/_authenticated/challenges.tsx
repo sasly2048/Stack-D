@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
 import { EmptyState, QueryBoundary, SkeletonCards } from "@/components/query-states";
+import { BadgeHint } from "@/components/ui/badge-hint";
+import { INTERACTIVE } from "@/components/ui/interactive";
 import { listChallenges, type ChallengeRow } from "@/lib/challenges.functions";
 
 export const Route = createFileRoute("/_authenticated/challenges")({
@@ -81,7 +83,22 @@ function Group({
         loadingLabel={`Loading ${title.toLowerCase()} challenges`}
         skeleton={<SkeletonCards count={2} />}
         isEmpty={rows.length === 0}
-        empty={<EmptyState title={emptyLabel} description="New targets appear as your streak moves." />}
+        empty={
+          <EmptyState
+            title={emptyLabel}
+            description="New targets appear as your streak moves."
+            // "None today" with no way forward is a dead end; the streak that
+            // produces new targets only moves by holding a session.
+            action={
+              <Link
+                to="/start"
+                className={`btn-ember inline-block px-5 py-2 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest ${INTERACTIVE}`}
+              >
+                Hold a session
+              </Link>
+            }
+          />
+        }
       >
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {rows.map((c) => {
@@ -96,7 +113,23 @@ function Group({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="font-serif text-xl">{c.name}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-serif text-xl">{c.name}</h3>
+                    {/* Colour alone carried "done" before — a tinted border is
+                        invisible to a colour-blind user and to a screen reader
+                        entirely. completed_at is real, so name the state. */}
+                    {done ? (
+                      <BadgeHint tone="positive" title="You have completed this challenge">
+                        Completed
+                      </BadgeHint>
+                    ) : (
+                      c.progress > 0 && (
+                        <BadgeHint tone="neutral" title="You have started this challenge">
+                          In progress
+                        </BadgeHint>
+                      )
+                    )}
+                  </div>
                   <p className="mt-1 text-sm text-silver-dim">{c.description}</p>
                 </div>
                 <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-ember shrink-0">

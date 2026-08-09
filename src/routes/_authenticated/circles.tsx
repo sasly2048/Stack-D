@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
 import { QueryBoundary, SkeletonList } from "@/components/query-states";
+import { BadgeHint } from "@/components/ui/badge-hint";
+import { INTERACTIVE, INTERACTIVE_TIGHT } from "@/components/ui/interactive";
 import { listMyCircles, getCircleDetail, type CircleDetail } from "@/lib/circles.functions";
 
 export const Route = createFileRoute("/_authenticated/circles")({
@@ -55,7 +57,7 @@ function CirclesPage() {
           </div>
           <Link
             to="/groups"
-            className="text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-ember"
+            className={`text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-ember ${INTERACTIVE_TIGHT}`}
           >
             Manage →
           </Link>
@@ -80,7 +82,7 @@ function CirclesPage() {
               </div>
               <Link
                 to="/groups"
-                className="btn-ember px-5 py-2 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest"
+                className={`btn-ember inline-block px-5 py-2 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest ${INTERACTIVE}`}
               >
                 Create or join
               </Link>
@@ -93,13 +95,24 @@ function CirclesPage() {
                 <button
                   key={c.id}
                   onClick={() => setPicked(c.id)}
-                  className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
+                  // aria-current, not just a tint: which circle is showing on
+                  // the right was communicated by colour alone.
+                  aria-current={active === c.id ? "true" : undefined}
+                  className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${INTERACTIVE_TIGHT} ${
                     active === c.id
                       ? "bg-ember/10 border-ember/40 text-ember"
                       : "border-white/5 hover:bg-white/5"
                   }`}
                 >
-                  <div className="text-sm font-medium truncate">{c.name}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium truncate">{c.name}</div>
+                    {active === c.id && (
+                      <BadgeHint tone="accent" title="Currently showing this circle">
+                        <span className="sr-only">Selected: </span>
+                        Viewing
+                      </BadgeHint>
+                    )}
+                  </div>
                   <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mt-0.5">
                     {c.total_xp.toLocaleString()} XP
                   </div>
@@ -117,7 +130,17 @@ function CirclesPage() {
                 loadingLabel="Loading circle"
                 skeleton={<div className="text-sm text-muted-foreground">Loading circle…</div>}
                 isEmpty={!detail}
-                empty={<div className="text-sm text-muted-foreground">This circle is gone.</div>}
+                empty={
+                  <div className="text-sm text-muted-foreground">
+                    This circle is gone.{" "}
+                    <Link
+                      to="/groups"
+                      className={`text-ember underline underline-offset-2 ${INTERACTIVE_TIGHT}`}
+                    >
+                      Join another
+                    </Link>
+                  </div>
+                }
               >
                 {detail && (
                 <>

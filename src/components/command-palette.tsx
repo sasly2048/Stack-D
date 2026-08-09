@@ -94,7 +94,14 @@ export function CommandPalette() {
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput aria-label="Search commands" placeholder="Type a command or search…" />
       <CommandList>
-        <CommandEmpty>No results.</CommandEmpty>
+        {/* "No results." alone leaves the user guessing whether they mistyped
+            or the thing simply isn't reachable from here. */}
+        <CommandEmpty>
+          <span className="block text-sm text-silver-dim">Nothing matches that.</span>
+          <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            Try a page name, or press Esc to close
+          </span>
+        </CommandEmpty>
         <CommandGroup heading="Navigate">
           {nav.map((c) => (
             <CommandItem key={c.label} onSelect={c.to ? go(c.to) : c.run}>

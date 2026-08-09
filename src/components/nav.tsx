@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -44,6 +44,12 @@ export function Nav() {
   const [labs] = useLabs();
 
   const [signingOut, setSigningOut] = useState(false);
+  // Resolved after mount: navigator doesn't exist during SSR, and showing a Mac
+  // user "Ctrl" (or the reverse) is worse than showing nothing.
+  const [modKeyLabel, setModKeyLabel] = useState("Ctrl ");
+  useEffect(() => {
+    setModKeyLabel(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl ");
+  }, []);
 
   const signOut = async () => {
     // Guarded because sign-out is a network call: a second click while the
@@ -102,6 +108,16 @@ export function Nav() {
               >
                 · {TIER_LABEL[tier].slice(0, 3)}
               </span>
+              {/* The command palette is bound to Cmd/Ctrl+K but nothing
+                  advertised it, so it existed only for people who guessed.
+                  Hidden on touch widths, where there is no such key. */}
+              <kbd
+                aria-hidden="true"
+                title="Open the command palette"
+                className="hidden lg:inline-flex items-center gap-1 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-muted-foreground"
+              >
+                {modKeyLabel}K
+              </kbd>
               <Link
                 to="/start"
                 className="btn-ember px-4 py-1.5 border border-silver/20 rounded-full text-silver"

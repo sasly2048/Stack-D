@@ -1,8 +1,12 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/nav";
+import { QueryBoundary, SkeletonList } from "@/components/query-states";
+import { BadgeHint } from "@/components/ui/badge-hint";
+import { INTERACTIVE, INTERACTIVE_TIGHT, ROW_INTERACTIVE } from "@/components/ui/interactive";
 import { generateRoomCode } from "@/lib/room";
 import { publishGroupSprint } from "@/lib/invite-channel";
 
@@ -33,13 +37,18 @@ interface MemberRow {
 
 function GroupsPage() {
   const navigate = useNavigate();
-  const [me, setMe] = useState<{ id: string; name: string } | null>(null);
-  const [groups, setGroups] = useState<GroupRow[]>([]);
-  const [members, setMembers] = useState<MemberRow[]>([]);
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [sprintBusy, setSprintBusy] = useState(false);
+  // Validate the circle name only once the field has been left, so the form
+  // never turns red while the first character is being typed.
+  const [nameTouched, setNameTouched] = useState(false);
+  const nameInvalid = nameTouched && name.trim().length === 0;
+  // Which join/leave is mid-flight, so only that row's button disables — a
+  // single global `busy` greyed out every row on the page.
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
   // Per-group cooldowns: groupId -> { until: epoch ms, total: seconds }
   const [cooldowns, setCooldowns] = useState<Record<string, { until: number; total: number }>>({});
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -51,39 +60,50 @@ function GroupsPage() {
     return () => window.clearInterval(id);
   }, [cooldowns]);
 
+  // Was a hand-rolled `load()` that discarded every Supabase error and had no
+  // loading state, so a failure rendered as "no circles exist" and a slow
+  // network rendered as the same thing. Brought onto react-query to match the
+  // rest of the app's four-state handling.
+  const groupsQuery = useQuery({
+    queryKey: ["groups"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Not signed in");
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", u.user.id)
+        .maybeSingle();
+
+      const { data: gs, error: gsErr } = await supabase
+        .from("focus_groups")
+        .select("*")
+        .order("total_group_xp", { ascending: false });
+      if (gsErr) throw gsErr;
+
+      const ids = (gs ?? []).map((g) => g.id);
+      const { data: ms, error: msErr } = ids.length
+        ? await supabase
+            .from("group_members")
+            .select("group_id, profile_id, profiles(display_name, lifetime_xp)")
+            .in("group_id", ids)
+        : { data: [], error: null };
+      if (msErr) throw msErr;
+
+      return {
+        me: { id: u.user.id, name: p?.display_name ?? "You" },
+        groups: (gs ?? []) as GroupRow[],
+        members: (ms ?? []) as unknown as MemberRow[],
+      };
+    },
+  });
+
+  const me = groupsQuery.data?.me ?? null;
+  const groups = groupsQuery.data?.groups ?? [];
+  const members = groupsQuery.data?.members ?? [];
   const load = async () => {
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
-    const { data: p } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", u.user.id)
-      .maybeSingle();
-    setMe({ id: u.user.id, name: p?.display_name ?? "You" });
-
-    const { data: gs } = await supabase
-      .from("focus_groups")
-      .select("*")
-      .order("total_group_xp", { ascending: false });
-    setGroups((gs ?? []) as GroupRow[]);
-
-    if ((gs ?? []).length) {
-      const { data: ms } = await supabase
-        .from("group_members")
-        .select("group_id, profile_id, profiles(display_name, lifetime_xp)")
-        .in(
-          "group_id",
-          (gs ?? []).map((g) => g.id),
-        );
-      setMembers((ms ?? []) as unknown as MemberRow[]);
-    } else {
-      setMembers([]);
-    }
+    await queryClient.invalidateQueries({ queryKey: ["groups"] });
   };
-
-  useEffect(() => {
-    load();
-  }, []);
 
   const myGroupIds = useMemo(
     () => new Set(members.filter((m) => m.profile_id === me?.id).map((m) => m.group_id)),
@@ -111,20 +131,29 @@ function GroupsPage() {
 
   const join = async (groupId: string) => {
     if (!me) return;
+    setRowBusy(groupId);
     const { error } = await supabase
       .from("group_members")
       .insert({ group_id: groupId, profile_id: me.id });
     if (error) {
+      setRowBusy(null);
       toast.error(error.message);
       return;
     }
-    load();
+    // Joining and leaving were the only mutations on this page with no
+    // confirmation at all — the row just quietly swapped its button.
+    toast.success("Joined circle");
+    await load();
+    setRowBusy(null);
   };
 
   const leave = async (groupId: string) => {
     if (!me) return;
+    setRowBusy(groupId);
     await supabase.from("group_members").delete().eq("group_id", groupId).eq("profile_id", me.id);
-    load();
+    toast.success("Left circle");
+    await load();
+    setRowBusy(null);
   };
 
   const startGroupSprint = async (group: GroupRow) => {
@@ -237,11 +266,21 @@ function GroupsPage() {
         <section className="mb-14">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
             CREATE_CIRCLE
+            {/* The asterisk is decorative; the word is what gets announced. */}
+            <span aria-hidden="true" className="ml-1 text-ember">
+              *
+            </span>
+            <span className="sr-only"> (required)</span>
           </h2>
           <div className="flex gap-3">
             <input
+              id="circle-name-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => setNameTouched(true)}
+              aria-label="Circle name (required)"
+              aria-invalid={nameInvalid || undefined}
+              aria-describedby={nameInvalid ? "circle-name-hint" : "circle-name-count"}
               placeholder="Circle name (e.g. Dev Team)"
               maxLength={80}
               className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-silver/50"
@@ -249,22 +288,74 @@ function GroupsPage() {
             <button
               onClick={create}
               disabled={busy || !name.trim()}
-              className="bg-silver text-obsidian px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40"
+              aria-busy={busy}
+              className={`bg-silver text-obsidian px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40 ${INTERACTIVE}`}
             >
               Forge
             </button>
           </div>
+          {nameInvalid && (
+            <p
+              id="circle-name-hint"
+              role="alert"
+              className="mt-1.5 font-mono text-[10px] tracking-wide text-breach"
+            >
+              Give the circle a name before forging it.
+            </p>
+          )}
+          {/* A disabled Forge with no stated reason is a dead end; the counter
+              only appears near the cap so it isn't noise the whole time. */}
+          {!nameInvalid && !name.trim() && (
+            <p
+              aria-live="polite"
+              className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+            >
+              Name the circle to forge it
+            </p>
+          )}
+          {name.length > 60 && (
+            <p
+              id="circle-name-count"
+              aria-live="polite"
+              className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+            >
+              {80 - name.length} characters left
+            </p>
+          )}
         </section>
 
         <section className="grid md:grid-cols-2 gap-8 mb-14">
           <div>
             <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
-              ALL_CIRCLES · {groups.length}
+              ALL_CIRCLES{groupsQuery.isPending ? "" : ` · ${groups.length}`}
             </h2>
             <div className="space-y-3">
-              {groups.length === 0 && (
-                <p className="font-mono text-xs text-muted-foreground">None yet.</p>
-              )}
+              <QueryBoundary
+                isPending={groupsQuery.isPending}
+                isError={groupsQuery.isError}
+                error={groupsQuery.error}
+                onRetry={() => groupsQuery.refetch()}
+                errorTitle="Couldn't load circles."
+                loadingLabel="Loading circles"
+                skeleton={<SkeletonList rows={3} />}
+                isEmpty={groups.length === 0}
+                empty={
+                  /* "None yet." stated the problem and stopped. The action that
+                     resolves it is the form directly above, so point at it. */
+                  <div className="p-4 border border-white/10 rounded-lg bg-white/[0.02]">
+                    <p className="font-mono text-xs text-muted-foreground">None yet.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        document.getElementById("circle-name-input")?.focus();
+                      }}
+                      className={`mt-3 border border-silver/30 px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-silver hover:text-obsidian ${INTERACTIVE_TIGHT}`}
+                    >
+                      Forge the first circle
+                    </button>
+                  </div>
+                }
+              >
               {groups.map((g) => {
                 const ms = members.filter((m) => m.group_id === g.id);
                 const isMember = myGroupIds.has(g.id);
@@ -289,11 +380,29 @@ function GroupsPage() {
                 return (
                   <div key={g.id} className="p-4 border border-white/10 rounded-lg bg-white/[0.02]">
                     <div className="flex items-center justify-between mb-2">
+                      {/* The whole name block is the expand target, not just
+                          the text: a 2-line row with a 1-word hit area is the
+                          most common mis-click on this screen. */}
                       <button
                         onClick={() => setOpenGroup(openGroup === g.id ? null : g.id)}
-                        className="text-left"
+                        aria-expanded={openGroup === g.id}
+                        aria-label={`${g.name} — ${openGroup === g.id ? "hide" : "show"} members`}
+                        className={`flex-1 min-w-0 -m-2 p-2 rounded-lg text-left ${ROW_INTERACTIVE} cursor-pointer active:scale-[0.99]`}
                       >
-                        <div className="font-medium">{g.name}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium truncate">{g.name}</div>
+                          {/* Membership and ownership are both real columns, so
+                              these say something the row otherwise hides. */}
+                          {isOwner ? (
+                            <BadgeHint tone="accent" title="You created this circle">
+                              Owner
+                            </BadgeHint>
+                          ) : isMember ? (
+                            <BadgeHint tone="positive" title="You are a member of this circle">
+                              Joined
+                            </BadgeHint>
+                          ) : null}
+                        </div>
                         <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
                           {ms.length} member{ms.length === 1 ? "" : "s"} · {g.total_group_xp} XP
                         </div>
@@ -310,7 +419,7 @@ function GroupsPage() {
                                   ? `Rate limited. Retry in ${cdRemainingSec} seconds`
                                   : "Start sprint"
                               }
-                              className="relative overflow-hidden bg-silver text-obsidian px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40 disabled:hover:filter-none min-w-[110px]"
+                              className={`relative overflow-hidden bg-silver text-obsidian px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40 disabled:hover:filter-none min-w-[110px] ${INTERACTIVE_TIGHT}`}
                             >
                               {cdActive && (
                                 <span
@@ -326,7 +435,9 @@ function GroupsPage() {
                             {!isOwner && (
                               <button
                                 onClick={() => leave(g.id)}
-                                className="border border-breach/40 text-breach px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-breach hover:text-obsidian transition-all"
+                                disabled={rowBusy === g.id}
+                                aria-busy={rowBusy === g.id}
+                                className={`border border-breach/40 text-breach px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-breach hover:text-obsidian transition-all ${INTERACTIVE_TIGHT}`}
                               >
                                 Leave
                               </button>
@@ -335,7 +446,9 @@ function GroupsPage() {
                         ) : (
                           <button
                             onClick={() => join(g.id)}
-                            className="border border-silver/30 px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-silver hover:text-obsidian transition-all"
+                            disabled={rowBusy === g.id}
+                            aria-busy={rowBusy === g.id}
+                            className={`border border-silver/30 px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-silver hover:text-obsidian transition-all ${INTERACTIVE_TIGHT}`}
                           >
                             Join
                           </button>
@@ -369,6 +482,7 @@ function GroupsPage() {
                   </div>
                 );
               })}
+              </QueryBoundary>
             </div>
           </div>
 
@@ -393,7 +507,16 @@ function GroupsPage() {
                   </li>
                 ))}
                 {groupBoard.length === 0 && (
-                  <li className="font-mono text-xs text-muted-foreground">No circles yet.</li>
+                  <li className="font-mono text-xs text-muted-foreground">
+                    No circles yet.{" "}
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById("circle-name-input")?.focus()}
+                      className={`text-ember underline underline-offset-2 ${INTERACTIVE_TIGHT}`}
+                    >
+                      Forge one
+                    </button>
+                  </li>
                 )}
               </ol>
             </div>
@@ -418,7 +541,15 @@ function GroupsPage() {
                   </li>
                 ))}
                 {personalBoard.length === 0 && (
-                  <li className="font-mono text-xs text-muted-foreground">No XP yet.</li>
+                  <li className="font-mono text-xs text-muted-foreground">
+                    No XP yet.{" "}
+                    <Link
+                      to="/start"
+                      className={`text-ember underline underline-offset-2 ${INTERACTIVE_TIGHT}`}
+                    >
+                      Hold a session
+                    </Link>
+                  </li>
                 )}
               </ol>
             </div>

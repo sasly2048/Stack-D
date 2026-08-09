@@ -6,6 +6,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Nav } from "@/components/nav";
 import { QueryBoundary, Skeleton, SkeletonCards } from "@/components/query-states";
+import { BadgeHint } from "@/components/ui/badge-hint";
+import { INTERACTIVE } from "@/components/ui/interactive";
 import { useAuth } from "@/hooks/use-auth";
 import { getProfile, updateMyProfile, type PublicProfile } from "@/lib/profile.functions";
 import { LowPowerToggle } from "@/components/low-power-toggle";
@@ -53,10 +55,24 @@ function MyProfile() {
     void queryClient.invalidateQueries({ queryKey: ["my-profile"] });
   });
 
+  // A toast in the top corner is easy to miss when your eyes are on the button
+  // you just pressed, so the button confirms for itself and then reverts.
+  const [justSaved, setJustSaved] = useState(false);
+  useEffect(() => {
+    if (!justSaved) return;
+    const t = setTimeout(() => setJustSaved(false), 2000);
+    return () => clearTimeout(t);
+  }, [justSaved]);
+
+  // Blur-only validation: flagging "name required" mid-word is noise.
+  const [nameTouched, setNameTouched] = useState(false);
+  const nameInvalid = nameTouched && name.trim().length === 0;
+
   const saveMutation = useMutation({
     mutationFn: () => save({ data: { display_name: name, bio } }),
     onSuccess: () => {
       toast.success("Profile updated");
+      setJustSaved(true);
       queryClient.invalidateQueries({ queryKey: ["my-profile"] });
     },
     onError: () => toast.error("Could not save"),
@@ -100,6 +116,16 @@ function MyProfile() {
   const hours = Math.floor(p.total_focus_seconds / 3600);
   const initial = (p.display_name ?? "?").slice(0, 1).toUpperCase();
 
+  // There is no tier column on the profile — the only tier the server actually
+  // returns is per unlocked achievement, so "your tier" is the highest one you
+  // have reached. Nothing is shown until at least one unlock exists.
+  const TIER_ORDER = ["bronze", "silver", "gold", "obsidian"];
+  const currentTier = p.achievements.reduce<string | null>((best, a) => {
+    const i = TIER_ORDER.indexOf(a.tier);
+    if (i < 0) return best;
+    return best === null || i > TIER_ORDER.indexOf(best) ? a.tier : best;
+  }, null);
+
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
@@ -116,8 +142,14 @@ function MyProfile() {
             <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">
               Your record
             </p>
-            <h1 className="mt-1 text-3xl md:text-4xl font-serif">
+            <h1 className="mt-1 flex flex-wrap items-center gap-3 text-3xl md:text-4xl font-serif">
               {p.display_name ?? "Anonymous"}
+              {currentTier && (
+                <BadgeHint tone="accent" title="Highest achievement tier you have unlocked">
+                  <span className="sr-only">Current tier: </span>
+                  {currentTier}
+                </BadgeHint>
+              )}
             </h1>
             {p.productivity_dna && (
               <p className="mt-1 font-mono text-[11px] tracking-[0.25em] uppercase text-ember">
@@ -141,13 +173,36 @@ function MyProfile() {
 
         <form onSubmit={submit} className="space-y-4">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Edit</h2>
-          <Field label="Display name">
+          <Field label="Display name" required>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              // Validate on blur, not per keystroke — see auth.tsx.
+              onBlur={() => setNameTouched(true)}
               maxLength={40}
+              aria-invalid={nameInvalid || undefined}
+              aria-describedby={nameInvalid ? "profile-name-hint" : undefined}
               className="w-full bg-transparent border border-white/10 focus:border-ember/60 rounded-md px-4 py-3 outline-none transition-colors"
             />
+            {nameInvalid && (
+              <p
+                id="profile-name-hint"
+                role="alert"
+                className="mt-1.5 font-mono text-[10px] tracking-wide text-breach"
+              >
+                A display name is required.
+              </p>
+            )}
+            {/* maxLength silently swallows further typing; the counter appears
+                near the cap so the truncation is expected, not mysterious. */}
+            {name.length > 30 && (
+              <p
+                aria-live="polite"
+                className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-silver-dim"
+              >
+                {40 - name.length} characters left
+              </p>
+            )}
           </Field>
           <Field label="Bio">
             <textarea
@@ -157,14 +212,32 @@ function MyProfile() {
               rows={3}
               className="w-full bg-transparent border border-white/10 focus:border-ember/60 rounded-md px-4 py-3 outline-none transition-colors resize-none"
             />
+            {bio.length > 220 && (
+              <p
+                aria-live="polite"
+                className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-silver-dim"
+              >
+                {280 - bio.length} characters left
+              </p>
+            )}
           </Field>
           <button
             type="submit"
-            disabled={saving}
-            className="font-mono text-[10px] tracking-[0.3em] uppercase px-5 py-2.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full transition-colors disabled:opacity-50"
+            disabled={saving || nameInvalid || name.trim().length === 0}
+            aria-busy={saving}
+            className={`font-mono text-[10px] tracking-[0.3em] uppercase px-5 py-2.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full transition-colors disabled:opacity-50 ${INTERACTIVE}`}
           >
-            {saving ? "Sealing…" : "Save"}
+            {saving ? "Sealing…" : justSaved ? "Saved ✓" : "Save"}
           </button>
+          {/* A greyed-out Save with no stated cause reads as a broken form. */}
+          {!saving && name.trim().length === 0 && (
+            <p
+              aria-live="polite"
+              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+            >
+              Enter a display name to save
+            </p>
+          )}
         </form>
 
         <section className="space-y-3">
@@ -187,11 +260,29 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  required = false,
+  children,
+}: {
+  label: string;
+  /** Marks the field visually and for assistive tech. */
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block space-y-2">
       <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
         {label}
+        {required && (
+          <>
+            {/* The asterisk is decorative; the word is what gets announced. */}
+            <span aria-hidden="true" className="ml-1 text-ember">
+              *
+            </span>
+            <span className="sr-only"> (required)</span>
+          </>
+        )}
       </span>
       {children}
     </label>

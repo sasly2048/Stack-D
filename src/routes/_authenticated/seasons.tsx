@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
+import { BadgeHint } from "@/components/ui/badge-hint";
+import { INTERACTIVE } from "@/components/ui/interactive";
 import {
   getActiveSeason,
   joinSeason,
@@ -104,7 +106,7 @@ function SeasonsPage() {
                 setLoading(true);
                 refresh();
               }}
-              className="px-5 py-2 rounded-full border border-silver/20 text-xs font-mono uppercase tracking-widest"
+              className={`px-5 py-2 rounded-full border border-silver/20 text-xs font-mono uppercase tracking-widest ${INTERACTIVE}`}
             >
               Retry
             </button>
@@ -114,6 +116,15 @@ function SeasonsPage() {
             <div className="text-sm text-muted-foreground">
               No active season right now. Check back soon.
             </div>
+            {/* Seasons are seeded server-side, so there is no "create a season"
+                action — the useful thing to offer is the XP that will carry
+                into the next one. */}
+            <Link
+              to="/start"
+              className={`mt-6 inline-block btn-ember px-5 py-2 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest ${INTERACTIVE}`}
+            >
+              Hold a session
+            </Link>
           </div>
         ) : (
           <>
@@ -122,7 +133,22 @@ function SeasonsPage() {
               <div className="relative">
                 <div className="flex items-start justify-between gap-6 flex-wrap">
                   <div>
-                    <h2 className="text-4xl font-serif text-ember">{season.name}</h2>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-4xl font-serif text-ember">{season.name}</h2>
+                      {/* The server only ever returns the season whose window
+                          contains now, so "running" is a fact — but the clock
+                          can cross ends_at while this page is open, and then
+                          the label must stop claiming it. */}
+                      {countdown === "ended" ? (
+                        <BadgeHint tone="neutral" title="This season's window has closed">
+                          Ended
+                        </BadgeHint>
+                      ) : (
+                        <BadgeHint tone="positive" title="This is the season currently running">
+                          Active
+                        </BadgeHint>
+                      )}
+                    </div>
                     {season.description && (
                       <p className="text-sm text-muted-foreground mt-2 max-w-md">
                         {season.description}
@@ -147,7 +173,8 @@ function SeasonsPage() {
                   <button
                     onClick={join}
                     disabled={busy}
-                    className="mt-6 btn-ember px-6 py-2.5 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest disabled:opacity-60"
+                    aria-busy={busy}
+                    className={`mt-6 btn-ember px-6 py-2.5 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest disabled:opacity-60 ${INTERACTIVE}`}
                   >
                     {busy ? "Joining…" : "Enter Season"}
                   </button>
@@ -162,6 +189,14 @@ function SeasonsPage() {
               {top.length === 0 && (
                 <div className="text-sm text-muted-foreground text-center py-8">
                   Be the first to score.
+                  <div>
+                    <Link
+                      to="/start"
+                      className={`mt-4 inline-block btn-ember px-5 py-2 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest ${INTERACTIVE}`}
+                    >
+                      Hold a session
+                    </Link>
+                  </div>
                 </div>
               )}
               {top.map((s) => (
