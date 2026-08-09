@@ -36,6 +36,26 @@ export function notifyXpChanged() {
   }
 }
 
+/**
+ * Query keys whose data is derived from XP, streaks or progression.
+ *
+ * Subscribing per-screen is opt-in, so it degrades silently: leaderboard,
+ * groups and achievements all render XP-derived numbers and none of them had
+ * subscribed, meaning they showed stale totals after a session finalised.
+ * Listing the keys here lets one root-level subscriber keep them all honest,
+ * so a new screen using one of these keys is correct by default.
+ */
+export const XP_DERIVED_QUERY_KEYS = [
+  "analytics",
+  "leaderboard",
+  "groups",
+  "achievements",
+  "challenges",
+  "my-profile",
+  "seasons",
+  "productivity-dna",
+] as const;
+
 /** Re-run `handler` whenever XP changes anywhere in the app. */
 export function useXpSync(handler: () => void) {
   const ref = useRef(handler);

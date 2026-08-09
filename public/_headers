@@ -1,10 +1,5 @@
 # Cloudflare Pages header rules. Merged with the caching rules Nitro emits at
 # build time, so this file only needs to carry what the build does not.
-#
-# Deliberately NOT setting Content-Security-Policy here. A correct CSP for this
-# app has to allow Supabase (auth + realtime websockets), Google Fonts, and the
-# Turnstile widget, and a wrong one silently breaks sign-in in production. It
-# needs to be authored against a real page load in report-only mode first.
 
 /*
   # Clickjacking protection. The sign-in page takes Google, Apple and email
@@ -16,3 +11,19 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   # Isolates window.opener for any tab this site opens.
   Cross-Origin-Opener-Policy: same-origin-allow-popups
+  # REPORT-ONLY, deliberately. This observes and reports violations without
+  # blocking anything, because a wrong CSP does not fail loudly — it silently
+  # breaks sign-in or realtime for users while the page still looks fine.
+  # Watch the console for violations across a real session (sign in, start a
+  # room, let realtime reconnect, solve a Turnstile challenge), fix whatever
+  # legitimately reports, and only then rename this header to
+  # Content-Security-Policy to enforce it.
+  #
+  # Origins below are the ones actually referenced in the source:
+  #   *.supabase.co        auth, REST and realtime websockets
+  #   fonts.googleapis.com / fonts.gstatic.com   the two bundled families
+  #   challenges.cloudflare.com                  Turnstile widget
+  #   ai.gateway.lovable.dev                     AI features
+  # 'unsafe-inline' on style-src is required by the styling approach and by
+  # the inline critical CSS; script-src does not need it.
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://ai.gateway.lovable.dev; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'

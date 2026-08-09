@@ -18,6 +18,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { FloatingTimer } from "@/components/floating-timer";
 import { GlobalRealtimeToasts } from "@/components/global-realtime-toasts";
 import { QueueBadge } from "@/components/queue-badge";
+import { useXpSync, XP_DERIVED_QUERY_KEYS } from "@/lib/xp-sync";
 import { OfflineBanner } from "@/components/offline-banner";
 import { SessionCeremony } from "@/components/session-ceremony";
 import { siteUrl, SOCIAL_PROFILES, X_HANDLE } from "@/lib/site";
@@ -206,11 +207,32 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
 
+  // One subscriber for every XP-derived surface. Screens used to opt in
+  // individually, so leaderboard, groups and achievements silently showed
+  // stale totals after a session finalised — they simply had not subscribed.
+  // Centralising it means a new screen using one of these keys is correct
+  // without having to remember this rule exists.
+  useXpSync(() => {
+    for (const key of XP_DERIVED_QUERY_KEYS) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
+  });
+
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      if (event === "SIGNED_OUT") {
+        // Clear, don't invalidate. Query keys here are unscoped by design
+        // (["friends"], ["analytics"], ["leaderboard"]…), so leaving the cache
+        // populated after sign-out means the next person to sign in on this
+        // device is served the previous user's data until each query happens
+        // to refetch. invalidateQueries would also refetch immediately — as
+        // the signed-out user — so removal is the correct operation.
+        queryClient.clear();
+      } else {
+        queryClient.invalidateQueries();
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, [queryClient, router]);
