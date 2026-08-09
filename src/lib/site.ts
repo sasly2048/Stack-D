@@ -20,6 +20,16 @@ export const SITE_URL: string = (import.meta.env?.VITE_SITE_URL || FALLBACK_ORIG
 );
 
 /**
+ * The one address a human actually reads.
+ *
+ * Kept here because it appears in the footer and twice in the privacy policy —
+ * including as the route for account-deletion requests, which is the one place
+ * a stale address does real harm. It previously pointed at invented
+ * `hello@`/`press@` mailboxes on a domain that serves no mail.
+ */
+export const CONTACT_EMAIL = "raghavendrasujith204800@gmail.com";
+
+/**
  * Absolute URL for a site-relative path.
  * `siteUrl("/philosophy")` → `https://stackd.raghav.studio/philosophy`
  * `siteUrl("/")` → `https://stackd.raghav.studio/`

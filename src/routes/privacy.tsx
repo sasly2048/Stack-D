@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { Nav } from "@/components/nav";
-import { siteUrl } from "@/lib/site";
+import { CONTACT_EMAIL, siteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
@@ -88,10 +88,10 @@ const SECTIONS: Array<{ k: string; title: string; body: React.ReactNode }> = [
       <>
         Ask and your account and its history are removed. Write to{" "}
         <a
-          href="mailto:hello@stackd.raghav.studio"
-          className="text-ember underline underline-offset-4"
+          href={`mailto:${CONTACT_EMAIL}`}
+          className="cursor-pointer rounded text-ember underline underline-offset-4 transition-colors hover:text-ember-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
         >
-          hello@stackd.raghav.studio
+          {CONTACT_EMAIL}
         </a>{" "}
         and the deletion is permanent — sessions, scores, memberships and security records included.
       </>
@@ -138,8 +138,13 @@ function Privacy() {
         <div className="mx-auto mt-20 max-w-3xl border-t border-white/5 pt-8">
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             Questions about any of this →{" "}
-            <a href="mailto:hello@stackd.raghav.studio" className="hover:text-ember">
-              hello@stackd.raghav.studio
+            {/* normal-case: an email address forced to uppercase by the
+                surrounding style is harder to read and to copy accurately. */}
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="cursor-pointer rounded normal-case tracking-normal transition-colors hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+            >
+              {CONTACT_EMAIL}
             </a>
           </p>
           <Link

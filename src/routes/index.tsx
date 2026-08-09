@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { validateRoomCode } from "@/lib/room.functions";
 import { ERROR_COPY, type CodeError } from "@/lib/room-code";
 import { track } from "@/lib/observability";
-import { siteUrl } from "@/lib/site";
+import { CONTACT_EMAIL, siteUrl } from "@/lib/site";
 import { MatrixText } from "@/components/fx/matrix-text";
 import { ShinyText } from "@/components/fx/shiny-text";
 import { Particles } from "@/components/fx/particles";
@@ -910,25 +910,25 @@ function Landing() {
             <div className="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Signal
             </div>
+            {/* "Press" was a media-enquiry link — the address a journalist uses
+                to request comment. Stack'd has no press function and the
+                address it pointed at did not exist, so it promised a channel
+                nobody was staffing. One real inbox is worth more than two
+                invented ones. */}
             <ul className="space-y-3 text-sm">
               <li>
                 <a
-                  href="mailto:press@stackd.raghav.studio"
-                  className="transition-colors hover:text-ember"
-                >
-                  Press
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:hello@stackd.raghav.studio"
-                  className="transition-colors hover:text-ember"
+                  href={`mailto:${CONTACT_EMAIL}`}
+                  className="cursor-pointer rounded transition-colors hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
                 >
                   Contact
                 </a>
               </li>
               <li>
-                <Link to="/privacy" className="transition-colors hover:text-ember">
+                <Link
+                  to="/privacy"
+                  className="cursor-pointer rounded transition-colors hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
+                >
                   Privacy
                 </Link>
               </li>
