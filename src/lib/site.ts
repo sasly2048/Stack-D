@@ -34,6 +34,16 @@ export const X_HANDLE = "StackD_HQ";
 export const X_URL = `https://x.com/${X_HANDLE}`;
 
 /**
+ * The company page, deliberately not a personal profile: the footer sits next
+ * to a privacy policy and speaks as the product, so a consumer arriving here
+ * should land on Stack'd rather than on someone's professional network.
+ */
+export const LINKEDIN_URL = "https://www.linkedin.com/company/stackd_hq";
+
+/** Every profile that represents this same entity, for `sameAs`. */
+export const SOCIAL_PROFILES = [X_URL, LINKEDIN_URL];
+
+/**
  * Absolute URL for a site-relative path.
  * `siteUrl("/philosophy")` → `https://stackd.raghav.studio/philosophy`
  * `siteUrl("/")` → `https://stackd.raghav.studio/`

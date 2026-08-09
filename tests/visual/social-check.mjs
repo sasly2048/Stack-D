@@ -11,6 +11,7 @@ const BASE = process.env.BASE || "http://localhost:3100";
 const OUT = process.env.OUT || ".";
 const HANDLE = "StackD_HQ";
 const URL_ = `https://x.com/${HANDLE}`;
+const LINKEDIN = "https://www.linkedin.com/company/stackd_hq";
 
 const browser = await chromium.launch();
 
@@ -49,49 +50,71 @@ report(
   Array.isArray(org?.sameAs) && org.sameAs.includes(URL_),
   JSON.stringify(org?.sameAs ?? null),
 );
+report(
+  "Organization sameAs links the LinkedIn page",
+  Array.isArray(org?.sameAs) && org.sameAs.includes(LINKEDIN),
+  JSON.stringify(org?.sameAs ?? null),
+);
+// A personal profile in a product footer is a different claim than a company
+// page — /in/ would mean the wrong one got wired up.
+report(
+  "LinkedIn points at the company page, not a personal profile",
+  !JSON.stringify(org?.sameAs ?? []).includes("linkedin.com/in/"),
+);
 
 // --- footer link ---
 await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 await page.waitForTimeout(400);
 
-const link = await page.evaluate((url) => {
-  const a = [...document.querySelectorAll("a")].find((el) => el.getAttribute("href") === url);
-  if (!a) return null;
-  const r = a.getBoundingClientRect();
-  // Visible text excludes sr-only spans — the icon is already the wordmark, so
-  // a visible "X" beside it renders as "X X". Checking only the accessible
-  // name missed exactly that.
-  const visible = [...a.childNodes]
-    .filter((n) => !(n.nodeType === 1 && n.classList?.contains("sr-only")))
-    .map((n) => n.textContent ?? "")
-    .join("")
-    .replace(/\s+/g, " ")
-    .trim();
-  return {
-    target: a.getAttribute("target"),
-    rel: a.getAttribute("rel"),
-    text: a.textContent.replace(/\s+/g, " ").trim(),
-    visible,
-    hasSvg: !!a.querySelector("svg"),
-    inViewport: r.right <= document.documentElement.clientWidth + 1 && r.width > 0,
-  };
-}, URL_);
+const probe = async (url) =>
+  page.evaluate((u) => {
+    const a = [...document.querySelectorAll("a")].find((el) => el.getAttribute("href") === u);
+    if (!a) return null;
+    const r = a.getBoundingClientRect();
+    // Visible text excludes sr-only spans — the icon is already the wordmark, so
+    // a visible "X" beside it renders as "X X". Checking only the accessible
+    // name missed exactly that.
+    const visible = [...a.childNodes]
+      .filter((n) => !(n.nodeType === 1 && n.classList?.contains("sr-only")))
+      .map((n) => n.textContent ?? "")
+      .join("")
+      .replace(/\s+/g, " ")
+      .trim();
+    return {
+      target: a.getAttribute("target"),
+      rel: a.getAttribute("rel"),
+      text: a.textContent.replace(/\s+/g, " ").trim(),
+      visible,
+      hasSvg: !!a.querySelector("svg"),
+      inViewport: r.right <= document.documentElement.clientWidth + 1 && r.width > 0,
+    };
+  }, url);
 
-report("footer links to the X profile", !!link);
-if (link) {
-  report("opens in a new tab", link.target === "_blank", String(link.target));
+for (const [label, url, platform] of [
+  ["X", URL_, "X"],
+  ["LinkedIn", LINKEDIN, "LinkedIn"],
+]) {
+  const l = await probe(url);
+  report(`footer links to the ${label} profile`, !!l);
+  if (!l) continue;
+  report(`${label}: opens in a new tab`, l.target === "_blank", String(l.target));
   // noopener stops the opened page reaching back via window.opener; rel=me is
   // the identity convention for a site's own account.
-  report("carries rel=me and noopener", /me/.test(link.rel) && /noopener/.test(link.rel), link.rel);
-  report("announces the handle and new tab", /StackD_HQ/.test(link.text) && /new tab/i.test(link.text), link.text);
-  report("renders the X mark", link.hasSvg);
-  // The icon already says "X"; a visible label repeating it reads as "X X".
+  report(`${label}: carries rel=me and noopener`, /me/.test(l.rel) && /noopener/.test(l.rel), l.rel);
   report(
-    "visible label does not duplicate the mark",
-    !/^X\s+X\b/.test(link.visible) && link.visible !== "X",
-    link.visible,
+    `${label}: announces the platform and new tab`,
+    new RegExp(platform).test(l.text) && /new tab/i.test(l.text),
+    l.text,
   );
-  report("stays inside the viewport", link.inViewport);
+  report(`${label}: renders its mark`, l.hasSvg);
+  // The icon already carries the platform name; a visible label repeating it
+  // reads as "X X".
+  report(
+    `${label}: visible label does not duplicate the mark`,
+    l.visible !== platform && !new RegExp(`^${platform}\\s+${platform}\\b`).test(l.visible),
+    l.visible,
+  );
+  report(`${label}: stays inside the viewport`, l.inViewport);
 }
 
 // "Press" must not have come back.

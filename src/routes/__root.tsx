@@ -20,7 +20,7 @@ import { GlobalRealtimeToasts } from "@/components/global-realtime-toasts";
 import { QueueBadge } from "@/components/queue-badge";
 import { OfflineBanner } from "@/components/offline-banner";
 import { SessionCeremony } from "@/components/session-ceremony";
-import { siteUrl, X_HANDLE, X_URL } from "@/lib/site";
+import { siteUrl, SOCIAL_PROFILES, X_HANDLE } from "@/lib/site";
 
 function NotFoundComponent() {
   return (
@@ -166,7 +166,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               // sameAs is how a search engine ties this site to the same entity
               // elsewhere — without it the X account and the site look like two
               // unrelated things.
-              sameAs: [X_URL],
+              sameAs: SOCIAL_PROFILES,
               description:
                 "Stack'd builds shared focus rooms where friends stack their phones and hold the silence together.",
             },

@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { validateRoomCode } from "@/lib/room.functions";
 import { ERROR_COPY, type CodeError } from "@/lib/room-code";
 import { track } from "@/lib/observability";
-import { CONTACT_EMAIL, siteUrl, X_HANDLE, X_URL } from "@/lib/site";
+import { CONTACT_EMAIL, LINKEDIN_URL, siteUrl, X_HANDLE, X_URL } from "@/lib/site";
 import { MatrixText } from "@/components/fx/matrix-text";
 import { ShinyText } from "@/components/fx/shiny-text";
 import { Particles } from "@/components/fx/particles";
@@ -915,28 +915,17 @@ function Landing() {
                 nobody staffs is worse than a shorter list. */}
             <ul className="space-y-3 text-sm">
               <li>
-                {/* rel="me" marks this as the site's own account — the
-                    convention verification tools and X itself read. noopener is
-                    the security default for any target="_blank". */}
-                <a
-                  href={X_URL}
-                  target="_blank"
-                  rel="me noopener noreferrer"
-                  className="group inline-flex cursor-pointer items-center gap-2 rounded transition-colors hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
-                >
-                  <XIcon />
-                  {/* The mark IS the wordmark, so pairing it with a literal "X"
-                      label rendered as "X X". The handle carries more meaning
-                      than the platform name anyway. */}
-                  <span>@{X_HANDLE}</span>
-                  <span className="sr-only"> on X (opens in a new tab)</span>
-                  <span
-                    aria-hidden="true"
-                    className="text-[10px] text-muted-foreground transition-transform duration-200 ease-[var(--ease-ritual)] group-hover:-translate-y-px group-hover:translate-x-px"
-                  >
-                    ↗
-                  </span>
-                </a>
+                {/* The mark IS the wordmark, so pairing it with a literal "X"
+                    label rendered as "X X". The handle carries more meaning
+                    than the platform name anyway. */}
+                <SocialLink href={X_URL} icon={<XIcon />} platform="X">
+                  @{X_HANDLE}
+                </SocialLink>
+              </li>
+              <li>
+                <SocialLink href={LINKEDIN_URL} icon={<LinkedInIcon />} platform="LinkedIn">
+                  Stack&apos;d
+                </SocialLink>
               </li>
               <li>
                 <a
@@ -962,6 +951,62 @@ function Landing() {
         </div>
       </footer>
     </div>
+  );
+}
+
+/**
+ * An outbound link to one of the project's own profiles.
+ *
+ * `rel="me"` marks it as this site's account — the convention identity and
+ * verification tools read. `noopener` is the security default for any
+ * `target="_blank"`, stopping the opened page reaching back via `window.opener`.
+ * The platform name lives in sr-only text because the icon conveys it visually
+ * but reaches no screen reader.
+ */
+function SocialLink({
+  href,
+  icon,
+  platform,
+  children,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  platform: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="me noopener noreferrer"
+      className="group inline-flex cursor-pointer items-center gap-2 rounded transition-colors hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
+    >
+      {icon}
+      <span>{children}</span>
+      <span className="sr-only"> on {platform} (opens in a new tab)</span>
+      <span
+        aria-hidden="true"
+        className="text-[10px] text-muted-foreground transition-transform duration-200 ease-[var(--ease-ritual)] group-hover:-translate-y-px group-hover:translate-x-px"
+      >
+        ↗
+      </span>
+    </a>
+  );
+}
+
+/** The LinkedIn mark. Solid glyph, matching XIcon's treatment. */
+function LinkedInIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.63-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zm1.78 13.02H3.55V9h3.57v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z" />
+    </svg>
   );
 }
 
