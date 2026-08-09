@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
 import { EmptyState, QueryBoundary, SkeletonCards } from "@/components/query-states";
+import { BadgeHint } from "@/components/ui/badge-hint";
 import { listAchievements, type Achievement } from "@/lib/achievements.functions";
 import { NARRATIVE_CHAPTERS, chapterForXp, nextChapter } from "@/lib/copy";
 import { useAuth } from "@/hooks/use-auth";
@@ -130,6 +131,10 @@ function AchievementsPage() {
           <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {rows.map((a) => {
             const locked = !a.unlocked_at;
+            // Fresh marks are what the user came to see; without this they are
+            // indistinguishable from ones earned months ago.
+            const fresh =
+              !!a.unlocked_at && Date.now() - new Date(a.unlocked_at).getTime() < 24 * 60 * 60 * 1000;
             return (
               <li
                 key={a.id}
@@ -145,9 +150,12 @@ function AchievementsPage() {
                   >
                     {a.tier}
                   </p>
-                  <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-silver-dim">
-                    +{a.xp_reward} XP
-                  </p>
+                  <div className="flex items-center gap-2">
+                    {fresh && <BadgeHint tone="positive">New</BadgeHint>}
+                    <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-silver-dim">
+                      +{a.xp_reward} XP
+                    </p>
+                  </div>
                 </div>
                 <h3
                   className={`mt-3 text-xl font-serif ${locked ? "text-silver-dim" : "text-silver"}`}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/nav";
 import { QueryBoundary, SkeletonList } from "@/components/query-states";
+import { BadgeHint } from "@/components/ui/badge-hint";
 
 export const Route = createFileRoute("/_authenticated/leaderboard")({
   head: () => ({
@@ -118,7 +119,8 @@ function Leaderboard() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-5 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest transition-all ${
+              aria-pressed={tab === t}
+              className={`px-5 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest transition-all active:scale-[0.99] duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember ${
                 tab === t ? "bg-silver text-obsidian" : "text-muted-foreground hover:text-silver"
               }`}
             >
@@ -160,7 +162,15 @@ function IndividualList({ rows, meId }: { rows: IndividualRow[]; meId: string | 
   if (rows.length === 0) {
     return (
       <div className="py-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest">
-        No sessions recorded yet.
+        No sessions recorded yet.{" "}
+        {/* The board is empty because nobody has stacked — the only useful next
+            step is to be the first, so link straight at it. */}
+        <Link
+          to="/start"
+          className="text-silver underline rounded active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+        >
+          Start the first one.
+        </Link>
       </div>
     );
   }
@@ -171,7 +181,7 @@ function IndividualList({ rows, meId }: { rows: IndividualRow[]; meId: string | 
         return (
           <li
             key={r.id}
-            className={`flex items-center gap-4 px-5 sm:px-7 py-4 ${mine ? "bg-ember/5" : ""}`}
+            className={`flex items-center gap-4 px-5 sm:px-7 py-4 hover:bg-white/[0.03] transition-all duration-200 ease-[var(--ease-ritual)] ${mine ? "bg-ember/5" : ""}`}
           >
             <span
               className="w-8 font-mono text-sm font-bold tabular-nums"
@@ -187,9 +197,18 @@ function IndividualList({ rows, meId }: { rows: IndividualRow[]; meId: string | 
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate">
-                {r.display_name ?? "Anonymous"}{" "}
-                {mine && <span className="text-ember text-[10px] font-mono ml-1">YOU</span>}
+              <div className="flex items-center gap-2 text-sm font-semibold truncate">
+                <span className="truncate">{r.display_name ?? "Anonymous"}</span>
+                {/* The bare "YOU" span became a BadgeHint so self-identification
+                    reads the same here as everywhere else in the app. */}
+                {mine && <BadgeHint tone="accent">You</BadgeHint>}
+                {/* Rank 1 already has the amber numeral, which is easy to miss
+                    on a long board — the word is what actually lands. */}
+                {i === 0 && (
+                  <BadgeHint tone="info" title="Highest lifetime XP">
+                    Leader
+                  </BadgeHint>
+                )}
               </div>
               <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 streak · {r.current_focus_streak}
@@ -224,7 +243,10 @@ function GroupList({ rows }: { rows: GroupRow[] }) {
   return (
     <ul className="divide-y divide-white/5">
       {rows.map((g, i) => (
-        <li key={g.id} className="flex items-center gap-4 px-5 sm:px-7 py-4">
+        <li
+          key={g.id}
+          className="flex items-center gap-4 px-5 sm:px-7 py-4 hover:bg-white/[0.03] transition-all duration-200 ease-[var(--ease-ritual)]"
+        >
           <span
             className="w-8 font-mono text-sm font-bold tabular-nums"
             style={{ color: rankBadge(i) }}
@@ -232,7 +254,14 @@ function GroupList({ rows }: { rows: GroupRow[] }) {
             {String(i + 1).padStart(2, "0")}
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold truncate">{g.name}</div>
+            <div className="flex items-center gap-2 text-sm font-semibold truncate">
+              <span className="truncate">{g.name}</span>
+              {i === 0 && (
+                <BadgeHint tone="info" title="Highest total group XP">
+                  Leader
+                </BadgeHint>
+              )}
+            </div>
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               {g.member_count} {g.member_count === 1 ? "member" : "members"}
             </div>

@@ -34,7 +34,8 @@ export function CsvExportButton({ className = "" }: { className?: string }) {
     <button
       onClick={download}
       disabled={busy}
-      className={`px-4 py-2 border border-white/10 rounded-full text-xs font-mono uppercase tracking-widest hover:border-ember/40 hover:text-ember transition-colors disabled:opacity-50 ${className}`}
+      aria-busy={busy}
+      className={`px-4 py-2 border border-white/10 rounded-full text-xs font-mono uppercase tracking-widest hover:border-ember/40 hover:text-ember hover:bg-white/[0.04] active:scale-[0.99] cursor-pointer transition-all duration-200 ease-[var(--ease-ritual)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${className}`}
     >
       {busy ? "Exporting…" : "Export CSV"}
     </button>

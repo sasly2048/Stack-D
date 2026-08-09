@@ -1,4 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/logo";
@@ -41,9 +43,22 @@ export function Nav() {
   const { tier, power } = useNavTier();
   const [labs] = useLabs();
 
+  const [signingOut, setSigningOut] = useState(false);
+
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/", replace: true });
+    // Guarded because sign-out is a network call: a second click while the
+    // first is in flight raced two navigations.
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+      navigate({ to: "/", replace: true });
+    } catch {
+      // Failing silently would leave the user apparently signed in with no
+      // idea the attempt happened.
+      toast.error("Couldn't sign out. Check your connection and retry.");
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -68,8 +83,14 @@ export function Nav() {
                   <Link
                     key={item.to}
                     to={item.to}
-                    className={`hover:text-silver transition-colors ${item.visibility}`}
-                    activeProps={{ className: "text-ember" }}
+                    // aria-current is what actually tells a screen reader which
+                    // page you are on; the ember colour alone conveys it to
+                    // sighted users only.
+                    className={`relative rounded transition-colors hover:text-silver focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian ${item.visibility}`}
+                    activeProps={{
+                      className: "text-ember",
+                      "aria-current": "page",
+                    }}
                   >
                     {item.label}
                   </Link>
@@ -90,9 +111,11 @@ export function Nav() {
               <button
                 type="button"
                 onClick={signOut}
-                className="cursor-pointer transition-colors hover:text-silver"
+                disabled={signingOut}
+                aria-busy={signingOut}
+                className="cursor-pointer rounded transition-all duration-200 ease-[var(--ease-ritual)] hover:text-silver active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
               >
-                Exit
+                {signingOut ? "Exiting…" : "Exit"}
               </button>
             </>
           ) : (

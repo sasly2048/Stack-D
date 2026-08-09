@@ -11,6 +11,14 @@ import {
   createRoomFromTemplate,
   type RoomTemplate,
 } from "@/lib/rooms2.functions";
+import {
+  getLastSessionMinutes,
+  setLastSessionMinutes,
+  hasCompletedSession,
+  isTipDismissed,
+  dismissTip,
+} from "@/lib/prefs";
+import { BadgeHint } from "@/components/ui/badge-hint";
 
 export const Route = createFileRoute("/_authenticated/start")({
   head: () => ({
@@ -32,9 +40,20 @@ export const Route = createFileRoute("/_authenticated/start")({
   component: Start,
 });
 
+/**
+ * The app's suggested length, and the value the slider starts on. Named so the
+ * "Recommended" badge and the initial state can never drift apart.
+ */
+const RECOMMENDED_MINUTES = 30;
+const QUICK_DURATIONS = [15, 25, 30, 45, 60, 90];
+
 function Start() {
   const navigate = useNavigate();
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState(RECOMMENDED_MINUTES);
+  // localStorage-backed, so read after mount — during render there is no
+  // localStorage on the server and the markup would desync on hydration.
+  const [lastMinutes, setLastMinutes] = useState<number | null>(null);
+  const [showIntro, setShowIntro] = useState(false);
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState<{ display_name: string } | null>(null);
   const [mode, setMode] = useState<EnforcementMode>("absolute");
@@ -49,6 +68,14 @@ function Start() {
   useEffect(() => {
     const saved = typeof localStorage !== "undefined" ? localStorage.getItem("stackd:mode") : null;
     if (saved === "gentle" || saved === "absolute") setMode(saved);
+    const last = getLastSessionMinutes();
+    if (last !== null) {
+      setLastMinutes(last);
+      setDuration(last);
+    }
+    // First-run coaching only: someone who has already held a room knows what
+    // one is, and a permanently-repeating explainer reads as nagging.
+    setShowIntro(!hasCompletedSession() && !isTipDismissed("start-intro"));
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
       const { data: p } = await supabase
@@ -81,6 +108,9 @@ function Start() {
             collective_goal_seconds: goalHours > 0 ? goalHours * 3600 : null,
           },
         });
+        // Written only once the room exists — a duration the user picked but
+        // never actually started is not a preference, it's an abandoned draft.
+        setLastSessionMinutes(duration);
         navigate({ to: "/room/$code", params: { code } });
         return;
       }
@@ -119,6 +149,7 @@ function Start() {
         display_name: profile?.display_name ?? "Host",
       });
 
+      setLastSessionMinutes(duration);
       navigate({ to: "/room/$code", params: { code: room.code } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create room");
@@ -135,6 +166,26 @@ function Start() {
         </div>
         <h1 className="text-5xl font-extrabold tracking-tighter mb-12">Set the protocol.</h1>
 
+        {showIntro && (
+          <div className="mb-10 flex items-start justify-between gap-4 rounded-lg border border-ember/25 bg-ember/[0.06] px-4 py-3">
+            <p className="text-xs leading-relaxed text-silver-dim">
+              A room is a shared timer — everyone stacks their phones face-down and holds the
+              silence until it runs out.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                dismissTip("start-intro");
+                setShowIntro(false);
+              }}
+              aria-label="Dismiss the explainer"
+              className="shrink-0 cursor-pointer rounded font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-silver active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+            >
+              Got it
+            </button>
+          </div>
+        )}
+
         <div className="space-y-10">
           {templates.length > 0 && (
             <div>
@@ -146,9 +197,13 @@ function Start() {
                   type="button"
                   onClick={() => setTplKey("")}
                   aria-pressed={tplKey === ""}
-                  className={`text-left p-3 rounded-lg border transition-all ${tplKey === "" ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30"}`}
+                  className={`text-left p-3 rounded-lg border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === "" ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
                 >
-                  <div className="font-mono text-[10px] tracking-widest uppercase mb-1">Custom</div>
+                  {/* The tick is what carries "selected" for anyone who can't
+                      separate the ember border from the neutral one. */}
+                  <div className="font-mono text-[10px] tracking-widest uppercase mb-1">
+                    Custom{tplKey === "" && <span aria-hidden="true"> ✓</span>}
+                  </div>
                   <p className="text-[11px] text-muted-foreground">Configure manually.</p>
                 </button>
                 {templates.map((t) => (
@@ -160,10 +215,11 @@ function Start() {
                       setDuration(Math.round(t.target_duration_seconds / 60));
                     }}
                     aria-pressed={tplKey === t.key}
-                    className={`text-left p-3 rounded-lg border transition-all ${tplKey === t.key ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30"}`}
+                    className={`text-left p-3 rounded-lg border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === t.key ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
                   >
                     <div className="font-mono text-[10px] tracking-widest uppercase mb-1">
                       {t.title}
+                      {tplKey === t.key && <span aria-hidden="true"> ✓</span>}
                     </div>
                     <p className="text-[11px] text-muted-foreground line-clamp-2">
                       {t.description}
@@ -232,6 +288,56 @@ function Start() {
               <span>2h</span>
               <span>4h</span>
             </div>
+
+            {/* Quick picks alongside the slider: a slider alone can't say which
+                value is the sensible default or which one you chose last, and
+                dragging to an exact minute on a phone is fiddly. */}
+            <div
+              role="radiogroup"
+              aria-label="Quick duration presets"
+              className="mt-5 flex flex-wrap gap-2"
+            >
+              {QUICK_DURATIONS.map((m) => {
+                const selected = duration === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={!!tplKey}
+                    onClick={() => setDuration(m)}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-mono text-[10px] uppercase tracking-widest cursor-pointer transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${
+                      selected
+                        ? "border-silver bg-white/[0.08] text-silver"
+                        : "border-white/10 text-muted-foreground hover:border-white/30 hover:text-silver hover:bg-white/[0.03]"
+                    }`}
+                  >
+                    <span>
+                      {selected && <span aria-hidden="true">✓ </span>}
+                      {m}m
+                    </span>
+                    {m === RECOMMENDED_MINUTES && (
+                      <BadgeHint tone="accent" title="The length most sessions settle on">
+                        Recommended
+                      </BadgeHint>
+                    )}
+                    {lastMinutes === m && m !== RECOMMENDED_MINUTES && (
+                      <BadgeHint tone="neutral" title="The length you started last time">
+                        Last used
+                      </BadgeHint>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {/* A remembered value that isn't one of the presets would otherwise
+                be silently restored with no explanation for the odd number. */}
+            {lastMinutes !== null && !QUICK_DURATIONS.includes(lastMinutes) && (
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                {lastMinutes}m <BadgeHint tone="neutral">Last used</BadgeHint>
+              </p>
+            )}
           </div>
 
           <fieldset>
@@ -257,10 +363,21 @@ function Start() {
           <button
             onClick={create}
             disabled={busy}
-            className="w-full bg-silver text-obsidian py-5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-50"
+            aria-busy={busy}
+            className="w-full bg-silver text-obsidian py-5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
           >
             {busy ? "Forging key..." : "Forge Room Key"}
           </button>
+          {/* Busy already speaks for itself in the label; anything else that
+              greys the button out must say why, or it's a dead end. */}
+          {busy && (
+            <p
+              aria-live="polite"
+              className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest text-center"
+            >
+              Opening the room…
+            </p>
+          )}
 
           <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest text-center">
             A 6-character key will be generated. Share it with the table.
@@ -287,10 +404,10 @@ function ModeOption({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`text-left p-5 rounded-xl border transition-all ${
+      className={`text-left p-5 rounded-xl border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${
         active
           ? "border-silver bg-white/[0.06]"
-          : "border-white/10 bg-transparent hover:border-white/30"
+          : "border-white/10 bg-transparent hover:border-white/30 hover:bg-white/[0.03]"
       }`}
     >
       <div
@@ -298,6 +415,7 @@ function ModeOption({
         style={{ color: active ? "#E2E2E2" : "var(--muted-foreground)" }}
       >
         {title}
+        {active && <span aria-hidden="true"> ✓</span>}
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
     </button>

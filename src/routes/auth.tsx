@@ -6,6 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/use-auth";
 import { siteUrl } from "@/lib/site";
+import {
+  getLastAuthProvider,
+  setLastAuthProvider,
+  type AuthProviderId,
+} from "@/lib/prefs";
+import { LastUsedBadge } from "@/components/ui/badge-hint";
 import { Logo } from "@/components/logo";
 import { guardSignIn, logAuthAttempt } from "@/lib/auth.functions";
 import { Turnstile, getDeviceFingerprint } from "@/components/turnstile";
@@ -58,11 +64,25 @@ function Auth() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [emailFailures, setEmailFailures] = useState(0);
   const fpRef = useRef<string>("nofp");
+  // Read after mount, never during render: localStorage doesn't exist on the
+  // server, and reading it inline would desync SSR markup from the client.
+  const [lastProvider, setLastProvider] = useState<AuthProviderId | null>(null);
   useEffect(() => {
     fpRef.current = getDeviceFingerprint();
+    setLastProvider(getLastAuthProvider());
   }, []);
   // CAPTCHA shown always on sign-up; on sign-in only after a failed attempt.
   const showCaptcha = mode === "sign-up" || emailFailures >= 1;
+
+  const [showPassword, setShowPassword] = useState(false);
+  // A field only reports its own error once the user has left it, so the form
+  // never turns red while it is being filled in for the first time.
+  const [touched, setTouched] = useState({ email: false, password: false });
+  const emailInvalid = touched.email && email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const passwordInvalid = touched.password && password.length > 0 && password.length < 6;
+  // Submit stays available until something is actually wrong — a button that
+  // is disabled from the start gives the user nothing to act on.
+  const submitBlocked = emailInvalid || passwordInvalid;
 
   useEffect(() => {
     if (!loading && user) setConfirmStep(true);
@@ -104,6 +124,10 @@ function Auth() {
     }
 
     try {
+      // Recorded before the redirect, not after: a successful OAuth run
+      // navigates away from this page and never returns to this line, so
+      // storing on "success" would mean the badge never appears.
+      setLastAuthProvider(provider);
       const res = await lovable.auth.signInWithOAuth(provider, {
         redirect_uri:
           window.location.origin + "/auth" + (next ? `?next=${encodeURIComponent(next)}` : ""),
@@ -168,6 +192,7 @@ function Auth() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        setLastAuthProvider("email");
         void log({ data: { provider: "email", email, success: true } });
       }
     } catch (err) {
@@ -230,11 +255,20 @@ function Auth() {
               disabled={!!pending}
               aria-busy={pending === "apple"}
               aria-describedby={errors.apple ? "apple-err" : undefined}
-              aria-label="Continue with Apple"
-              className="w-full bg-silver text-obsidian py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+              aria-label={
+                lastProvider === "apple"
+                  ? "Continue with Apple — previously used"
+                  : "Continue with Apple"
+              }
+              className="relative w-full bg-silver text-obsidian py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:bg-white active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
             >
               {pending === "apple" ? <Spinner className="text-obsidian" /> : <AppleIcon />}
-              <span>{pending === "apple" ? "Connecting to Apple…" : "Continue with Apple"}</span>
+              <span className="truncate">
+                {pending === "apple" ? "Connecting to Apple…" : "Continue with Apple"}
+              </span>
+              {lastProvider === "apple" && !pending && (
+                <LastUsedBadge className="border-obsidian/25 bg-obsidian/10 text-obsidian/70" />
+              )}
             </button>
             <ProviderError
               id="apple-err"
@@ -252,11 +286,18 @@ function Auth() {
               disabled={!!pending}
               aria-busy={pending === "google"}
               aria-describedby={errors.google ? "google-err" : undefined}
-              aria-label="Continue with Google"
-              className="w-full bg-white/5 border border-white/15 text-silver py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+              aria-label={
+                lastProvider === "google"
+                  ? "Continue with Google — previously used"
+                  : "Continue with Google"
+              }
+              className="relative w-full bg-white/5 border border-white/15 text-silver py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:bg-white/10 hover:border-white/25 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
             >
               {pending === "google" ? <Spinner /> : <GoogleIcon />}
-              <span>{pending === "google" ? "Connecting to Google…" : "Continue with Google"}</span>
+              <span className="truncate">
+                {pending === "google" ? "Connecting to Google…" : "Continue with Google"}
+              </span>
+              {lastProvider === "google" && !pending && <LastUsedBadge />}
             </button>
             <ProviderError
               id="google-err"
@@ -271,8 +312,9 @@ function Auth() {
 
           <div className="flex items-center gap-4 my-8">
             <div className="flex-1 h-px bg-white/10" />
-            <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
+            <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
               or continue with email
+              {lastProvider === "email" && <LastUsedBadge />}
             </span>
             <div className="flex-1 h-px bg-white/10" />
           </div>
@@ -301,7 +343,7 @@ function Auth() {
                 />
               </Field>
             )}
-            <Field label="Email" htmlFor="auth-email">
+            <Field label="Email" htmlFor="auth-email" required>
               <input
                 id="auth-email"
                 ref={emailRef}
@@ -309,26 +351,66 @@ function Auth() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                // Validate on blur, not on keystroke: flagging "invalid email"
+                // while someone is still typing the first character is noise.
+                onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                 className="auth-input"
                 placeholder="you@domain.com"
                 autoComplete="email"
                 inputMode="email"
                 spellCheck={false}
-                aria-describedby={errors.email ? "email-err" : undefined}
+                aria-invalid={emailInvalid || undefined}
+                aria-describedby={
+                  emailInvalid ? "auth-email-hint" : errors.email ? "email-err" : undefined
+                }
               />
+              <FieldHint id="auth-email-hint" show={emailInvalid}>
+                Enter a complete address, like you@domain.com.
+              </FieldHint>
             </Field>
-            <Field label="Password" htmlFor="auth-password">
+            <Field label="Password" htmlFor="auth-password" required>
               <input
                 id="auth-password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="auth-input"
+                onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                className="auth-input pr-20"
                 placeholder="••••••••"
                 autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+                aria-invalid={passwordInvalid || undefined}
+                aria-describedby={
+                  passwordInvalid
+                    ? "auth-password-hint"
+                    : mode === "sign-up"
+                      ? "auth-password-req"
+                      : undefined
+                }
               />
+              {/* Revealing the password is the single most requested affordance
+                  on a sign-in form — without it a typo in a masked field is
+                  unfindable and reads as "wrong password". */}
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                aria-pressed={showPassword}
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer rounded font-mono text-[9px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-silver focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+              <FieldHint id="auth-password-hint" show={passwordInvalid}>
+                At least 6 characters.
+              </FieldHint>
+              {mode === "sign-up" && !passwordInvalid && (
+                <p
+                  id="auth-password-req"
+                  className="mt-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground"
+                >
+                  Minimum 6 characters
+                </p>
+              )}
             </Field>
             {showCaptcha && (
               <div className="pt-1">
@@ -340,9 +422,9 @@ function Auth() {
             )}
             <button
               type="submit"
-              disabled={!!pending || (showCaptcha && !captchaToken)}
+              disabled={!!pending || submitBlocked || (showCaptcha && !captchaToken)}
               aria-busy={pending === "email"}
-              className="btn-ember w-full border border-silver/40 py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold text-silver disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+              className="btn-ember w-full border border-silver/40 py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold text-silver transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
             >
               {pending === "email" ? <Spinner /> : <MailIcon />}
               <span>
@@ -355,6 +437,17 @@ function Auth() {
                     : "Create Account"}
               </span>
             </button>
+            {/* A disabled button with no stated reason is a dead end. The
+                CAPTCHA case in particular is invisible — the widget can still
+                be solving while the button sits greyed out. */}
+            {showCaptcha && !captchaToken && !pending && (
+              <p
+                aria-live="polite"
+                className="text-center font-mono text-[9px] uppercase tracking-widest text-muted-foreground"
+              >
+                Complete the check above to continue
+              </p>
+            )}
             <ProviderError
               id="email-err"
               msg={errors.email}
@@ -368,8 +461,15 @@ function Auth() {
 
           <button
             type="button"
-            onClick={() => setMode(mode === "sign-in" ? "sign-up" : "sign-in")}
-            className="mt-8 w-full text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-ember transition-colors focus-visible:outline-none focus-visible:text-ember"
+            onClick={() => {
+              // Clear the other mode's leftovers: a "wrong password" error
+              // still sitting there after switching to Create Account reads as
+              // the new form already being broken.
+              setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+              setErrors({});
+              setTouched({ email: false, password: false });
+            }}
+            className="mt-8 w-full cursor-pointer text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-ember transition-colors focus-visible:outline-none focus-visible:text-ember"
           >
             {mode === "sign-in" ? "No protocol key? Create one →" : "Already have one? Sign in →"}
           </button>
@@ -628,22 +728,58 @@ function ProviderError({
 function Field({
   label,
   htmlFor,
+  required = false,
   children,
 }: {
   label: string;
   htmlFor: string;
+  /** Marks the field visually and for assistive tech. */
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    // relative so a field can position an affordance (the password reveal)
+    // against its own box rather than the form.
+    <div className="relative">
       <label
         htmlFor={htmlFor}
         className="block font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2"
       >
         {label}
+        {required && (
+          <>
+            {/* The asterisk is decorative; the word is what gets announced. */}
+            <span aria-hidden="true" className="ml-1 text-ember">
+              *
+            </span>
+            <span className="sr-only"> (required)</span>
+          </>
+        )}
       </label>
       {children}
     </div>
+  );
+}
+
+/**
+ * Inline, per-field validation message. `role="alert"` so it is announced the
+ * moment it appears — a hint that only exists visually leaves a screen-reader
+ * user with a form that silently refuses to submit.
+ */
+function FieldHint({
+  id,
+  show,
+  children,
+}: {
+  id: string;
+  show: boolean;
+  children: React.ReactNode;
+}) {
+  if (!show) return null;
+  return (
+    <p id={id} role="alert" className="mt-1.5 font-mono text-[10px] tracking-wide text-breach">
+      {children}
+    </p>
   );
 }
 

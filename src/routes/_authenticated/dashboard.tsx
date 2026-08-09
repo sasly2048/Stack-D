@@ -18,6 +18,8 @@ import { DailyRewardCard } from "@/components/rewards/daily-reward-card";
 import { useXpSync } from "@/lib/xp-sync";
 import { AtlasWhisper } from "@/components/atlas-whisper";
 import { PrestigeCeremony } from "@/components/profile/prestige-ceremony";
+import { EmptyState, Skeleton, LoadingAnnouncer } from "@/components/query-states";
+import { BadgeHint } from "@/components/ui/badge-hint";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -244,13 +246,13 @@ function Dashboard() {
             <CsvExportButton />
             <Link
               to="/leaderboard"
-              className="px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold border border-white/15 text-silver hover:bg-white/5 transition-all"
+              className="px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold border border-white/15 text-silver hover:bg-white/5 hover:border-white/30 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
             >
               Leaderboard
             </Link>
             <Link
               to="/start"
-              className="bg-silver text-obsidian px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all"
+              className="bg-silver text-obsidian px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
             >
               New Session
             </Link>
@@ -263,13 +265,44 @@ function Dashboard() {
         </div>
 
         {loading ? (
-          <div className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
-            Loading…
-          </div>
+          // Sized to the real grid below, so the page doesn't jump a full
+          // screen-height when the data lands.
+          <>
+            <LoadingAnnouncer label="Loading your analytics" />
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
+              <Skeleton className="md:col-span-4 lg:col-span-4 h-[22rem]" />
+              <div className="md:col-span-2 lg:col-span-2 space-y-6">
+                <Skeleton className="h-40" />
+                <Skeleton className="h-[7.5rem]" />
+              </div>
+              <Skeleton className="md:col-span-6 lg:col-span-3 h-80" />
+              <Skeleton className="md:col-span-6 lg:col-span-3 h-80" />
+              <Skeleton className="md:col-span-6 h-64" />
+            </div>
+          </>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
-              <div className="md:col-span-4 lg:col-span-4 p-10 bg-white/5 border border-white/10 rounded-2xl flex flex-col justify-between">
+              {/* A wall of zeros looks like the app is broken rather than new.
+                  Before the first session the honest widget is the invitation. */}
+              {history.length === 0 ? (
+                <div className="md:col-span-6">
+                  <EmptyState
+                    title="Your first session writes the first line"
+                    description="Nothing has been measured yet. Open a room, stack your phone and the ledger starts filling itself."
+                    action={
+                      <Link
+                        to="/start"
+                        className="bg-silver text-obsidian px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+                      >
+                        Start your first session →
+                      </Link>
+                    }
+                  />
+                </div>
+              ) : (
+                <>
+              <div className="md:col-span-4 lg:col-span-4 p-10 bg-white/5 border border-white/10 rounded-2xl flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 ease-[var(--ease-ritual)]">
                 <div>
                   <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-12">
                     LIFETIME_PRESENCE
@@ -305,7 +338,7 @@ function Dashboard() {
               </div>
 
               <div className="md:col-span-2 lg:col-span-2 space-y-6">
-                <div className="p-8 bg-white/5 border border-white/10 rounded-2xl">
+                <div className="p-8 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 ease-[var(--ease-ritual)]">
                   <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-4">
                     CURRENT_STREAK
                   </h3>
@@ -316,7 +349,7 @@ function Dashboard() {
                     </span>
                   </div>
                 </div>
-                <div className="p-8 border border-white/5 rounded-2xl flex items-center justify-between">
+                <div className="p-8 border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200 ease-[var(--ease-ritual)]">
                   <div>
                     <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-1">
                       AVG_SCORE
@@ -337,6 +370,8 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
+                </>
+              )}
 
               {/* AI-recommended next session — based on focus_history */}
               <div className="md:col-span-6 lg:col-span-3 relative p-8 border border-ember/25 rounded-2xl bg-gradient-to-br from-ember/[0.06] via-transparent to-transparent overflow-hidden">
@@ -532,10 +567,19 @@ function Dashboard() {
                             +{h.xp_earned}
                           </span>
                           <span
-                            className="text-right text-[10px] font-mono uppercase tracking-widest"
+                            className="flex items-center justify-end gap-2 text-right text-[10px] font-mono uppercase tracking-widest"
                             style={{ color: tier.hex }}
                           >
                             {tier.label}
+                            {/* Real earn time, straight off the row — no
+                                achievement table is loaded here, so this is the
+                                only "recently earned" the dashboard can honestly
+                                claim. */}
+                            {Date.now() - new Date(h.created_at).getTime() < 86_400_000 && (
+                              <BadgeHint tone="positive" title="Earned in the last 24 hours">
+                                New
+                              </BadgeHint>
+                            )}
                           </span>
                         </>
                       );

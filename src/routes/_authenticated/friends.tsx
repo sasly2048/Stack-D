@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy";
@@ -39,6 +39,7 @@ function FriendsPage() {
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const friendsQuery = useQuery({
     queryKey: ["friends"],
@@ -60,6 +61,10 @@ function FriendsPage() {
     enabled: debouncedQ.length > 0,
   });
   const results: Person[] = debouncedQ.length > 0 ? (searchQuery.data ?? []) : [];
+  // In flight covers both the debounce window (typed but not yet dispatched)
+  // and the request itself, so the indicator never blinks out mid-search.
+  const searching = q.trim().length > 0 && (q.trim() !== debouncedQ || searchQuery.isFetching);
+  const noResults = !searching && debouncedQ.length > 0 && searchQuery.isSuccess && results.length === 0;
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["friends"] });
 
@@ -121,19 +126,65 @@ function FriendsPage() {
         </header>
 
         <section className="space-y-3">
-          <label className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
+          <label
+            htmlFor="friend-search"
+            className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim"
+          >
             Find someone
           </label>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Display name…"
-            className="w-full bg-transparent border border-white/10 focus:border-ember/60 rounded-md px-4 py-3 text-silver placeholder:text-silver-dim/40 outline-none transition-colors"
-          />
+          <div className="relative">
+            <input
+              id="friend-search"
+              ref={searchRef}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Display name…"
+              aria-describedby="search-status"
+              className="w-full bg-transparent border border-white/10 focus:border-ember/60 rounded-md px-4 py-3 text-silver placeholder:text-silver-dim/40 outline-none transition-colors pr-20"
+            />
+            {/* The debounce means a keystroke buys 250ms of apparent nothing.
+                Without a spinner that reads as "search is broken". */}
+            {searching && (
+              <span
+                aria-hidden="true"
+                className="absolute right-11 top-1/2 -translate-y-1/2 size-3.5 rounded-full border-2 border-ember/30 border-t-ember animate-spin"
+              />
+            )}
+            {q.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setQ("")}
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer rounded-full px-2 py-1 font-mono text-xs text-silver-dim hover:text-silver hover:bg-white/5 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          {/* "Nothing matched Ada" and "start typing" are different situations;
+              collapsing them into one blank panel told neither story. */}
+          <p id="search-status" role="status" aria-live="polite" className="sr-only">
+            {searching
+              ? "Searching"
+              : noResults
+                ? `No results for ${debouncedQ}`
+                : results.length > 0
+                  ? `${results.length} result${results.length === 1 ? "" : "s"}`
+                  : ""}
+          </p>
+          {noResults && (
+            <p className="border border-white/10 rounded-md px-4 py-6 text-sm text-silver-dim/60">
+              No one matches “{debouncedQ}”. Check the spelling, or ask them for their display
+              name.
+            </p>
+          )}
           {results.length > 0 && (
             <ul className="divide-y divide-white/5 border border-white/10 rounded-md overflow-hidden">
               {results.map((p) => (
-                <li key={p.id} className="flex items-center justify-between px-4 py-3">
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] transition-all duration-200 ease-[var(--ease-ritual)]"
+                >
                   <PersonRow p={p} />
                   {pendingIds.has(p.id) ? (
                     <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-silver-dim">
@@ -143,7 +194,7 @@ function FriendsPage() {
                     <button
                       onClick={() => doSend(p.id)}
                       disabled={busy === p.id}
-                      className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full transition-colors disabled:opacity-50"
+                      className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full transition-colors disabled:opacity-50 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
                     >
                       {busy === p.id ? "…" : "Send tie"}
                     </button>
@@ -157,7 +208,10 @@ function FriendsPage() {
         {incoming.length > 0 && (
           <Section title="Incoming">
             {incoming.map((r) => (
-              <li key={r.id} className="flex items-center justify-between px-4 py-3">
+              <li
+                key={r.id}
+                className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] transition-all duration-200 ease-[var(--ease-ritual)]"
+              >
                 <PersonRow
                   p={{ id: r.user_id, display_name: r.display_name, avatar_url: r.avatar_url }}
                 />
@@ -165,14 +219,14 @@ function FriendsPage() {
                   <button
                     onClick={() => doRespond(r.id, true)}
                     disabled={busy === r.id}
-                    className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full transition-colors disabled:opacity-50"
+                    className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full transition-colors disabled:opacity-50 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
                   >
                     Accept
                   </button>
                   <button
                     onClick={() => doRespond(r.id, false)}
                     disabled={busy === r.id}
-                    className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-silver rounded-full transition-colors disabled:opacity-50"
+                    className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-silver rounded-full transition-colors disabled:opacity-50 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
                   >
                     Decline
                   </button>
@@ -185,14 +239,17 @@ function FriendsPage() {
         {outgoing.length > 0 && (
           <Section title="Awaiting">
             {outgoing.map((r) => (
-              <li key={r.id} className="flex items-center justify-between px-4 py-3">
+              <li
+                key={r.id}
+                className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] transition-all duration-200 ease-[var(--ease-ritual)]"
+              >
                 <PersonRow
                   p={{ id: r.user_id, display_name: r.display_name, avatar_url: r.avatar_url }}
                 />
                 <button
                   onClick={() => doRemove(r.id)}
                   disabled={busy === r.id}
-                  className="font-mono text-[10px] tracking-[0.2em] uppercase text-silver-dim hover:text-silver transition-colors disabled:opacity-50"
+                  className="font-mono text-[10px] tracking-[0.2em] uppercase text-silver-dim hover:text-silver transition-colors disabled:opacity-50 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:cursor-not-allowed rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
                 >
                   Cancel
                 </button>
@@ -217,12 +274,28 @@ function FriendsPage() {
             empty={
               <li className="px-4 py-6 text-silver-dim/60 text-sm">
                 Your circle is empty. Search above to send a tie.
+                {/* An empty state that only describes the emptiness leaves the
+                    user to find the fix themselves. */}
+                <button
+                  type="button"
+                  onClick={() => searchRef.current?.focus()}
+                  className="ml-2 cursor-pointer rounded font-mono text-[10px] tracking-[0.2em] uppercase text-ember hover:text-silver active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+                >
+                  Find someone →
+                </button>
               </li>
             }
           >
             {friends.map((r) => (
-              <li key={r.id} className="flex items-center justify-between px-4 py-3">
-                <Link to="/profile/$id" params={{ id: r.user_id }} className="flex-1 min-w-0">
+              <li
+                key={r.id}
+                className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] transition-all duration-200 ease-[var(--ease-ritual)]"
+              >
+                <Link
+                  to="/profile/$id"
+                  params={{ id: r.user_id }}
+                  className="flex-1 min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+                >
                   <PersonRow
                     p={{ id: r.user_id, display_name: r.display_name, avatar_url: r.avatar_url }}
                   />
@@ -230,7 +303,7 @@ function FriendsPage() {
                 <button
                   onClick={() => doRemove(r.id)}
                   disabled={busy === r.id}
-                  className="font-mono text-[10px] tracking-[0.2em] uppercase text-silver-dim hover:text-silver transition-colors disabled:opacity-50"
+                  className="font-mono text-[10px] tracking-[0.2em] uppercase text-silver-dim hover:text-silver transition-colors disabled:opacity-50 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:cursor-not-allowed rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
                 >
                   Sever
                 </button>

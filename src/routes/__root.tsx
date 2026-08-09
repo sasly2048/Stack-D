@@ -31,12 +31,23 @@ function NotFoundComponent() {
         </div>
         <h1 className="text-7xl font-extrabold tracking-tighter">404</h1>
         <p className="mt-4 text-sm text-muted-foreground">This signal does not exist.</p>
-        <Link
-          to="/"
-          className="mt-8 inline-block bg-silver text-obsidian px-8 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all"
-        >
-          Return to Origin
-        </Link>
+        {/* Two ways out, not one: someone who mistyped a room code wants to go
+            back, not to the marketing page. */}
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            to="/"
+            className="inline-block cursor-pointer rounded-lg bg-silver px-8 py-3 font-mono text-xs font-bold uppercase tracking-widest text-obsidian transition-all duration-200 ease-[var(--ease-ritual)] hover:invert active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+          >
+            Return to Origin
+          </Link>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="inline-block cursor-pointer rounded-lg border border-silver/20 px-8 py-3 font-mono text-xs uppercase tracking-widest text-silver transition-all duration-200 ease-[var(--ease-ritual)] hover:bg-white/5 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     </div>
   );
