@@ -42,7 +42,7 @@
 
 </div>
 
-🔗 **Live:** [stack-d.lovable.app](https://stack-d.lovable.app)
+🔗 **Live:** [stack-d.lovable.app](https://stackd.raghav.studio/)
 
 ---
 
