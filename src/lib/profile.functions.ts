@@ -5,8 +5,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export type PublicProfile = {
   id: string;
   display_name: string | null;
+  username: string | null;
   avatar_url: string | null;
   bio: string | null;
+
   created_at: string;
   lifetime_xp: number;
   current_focus_streak: number;
