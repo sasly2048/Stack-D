@@ -129,7 +129,8 @@ export function hasMixedScript(input: string): boolean {
     else if (/[\u0600-\u06FF]/.test(ch)) scripts.add("arabic");
     else if (/[\u0900-\u097F]/.test(ch)) scripts.add("devanagari");
     else if (/[\u4E00-\u9FFF]/.test(ch)) scripts.add("han");
-    else scripts.add("other");
+    // Anything else (emoji, symbols) is rejected by the format rule instead;
+    // counting it here would mislabel it as a homoglyph attack.
   }
   return scripts.size > 1;
 }
