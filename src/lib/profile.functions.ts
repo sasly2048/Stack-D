@@ -88,7 +88,9 @@ export const getProfile = createServerFn({ method: "GET" })
     return {
       id: p.id,
       display_name: p.display_name,
+      username: (p as { username?: string | null }).username ?? null,
       avatar_url: p.avatar_url,
+
       bio: (p as { bio?: string | null }).bio ?? null,
       productivity_dna: (p as { productivity_dna?: string | null }).productivity_dna ?? null,
       created_at: p.created_at,
