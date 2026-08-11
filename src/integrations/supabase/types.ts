@@ -402,6 +402,7 @@ export type Database = {
           profile_id: string
           room_id?: string | null
           score: number
+          scoring_version?: number
           tags?: string[]
           tier?: string
           xp_earned?: number
@@ -415,6 +416,7 @@ export type Database = {
           profile_id?: string
           room_id?: string | null
           score?: number
+          scoring_version?: number
           tags?: string[]
           tier?: string
           xp_earned?: number
@@ -1517,22 +1519,30 @@ export type Database = {
         Returns: undefined
       }
       evaluate_milestones: { Args: { _user_id: string }; Returns: string[] }
-      finalize_focus_session: {
-        Args: {
-          _breaches_count: number
-          _duration_seconds: number
-          _room_id: string
-          _score: number
-          _scoring_version?: number
-          _tier: string
-          _xp: number
-        }
-        Returns: string
-      }
-      start_focus_session: {
-        Args: { _room_id: string }
-        Returns: string
-      }
+      finalize_focus_session:
+        | {
+            Args: {
+              _breaches_count: number
+              _duration_seconds: number
+              _room_id: string
+              _score: number
+              _tier: string
+              _xp: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _breaches_count: number
+              _duration_seconds: number
+              _room_id: string
+              _score: number
+              _scoring_version?: number
+              _tier: string
+              _xp: number
+            }
+            Returns: string
+          }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
@@ -1574,6 +1584,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reap_stale_rooms: { Args: never; Returns: number }
       recent_auth_failures:
         | {
             Args: { _email: string; _provider: string; _window_seconds: number }
@@ -1624,6 +1635,7 @@ export type Database = {
           xp: number
         }[]
       }
+      start_focus_session: { Args: { _room_id: string }; Returns: string }
       update_session_meta: {
         Args: { _history_id: string; _notes: string; _tags: string[] }
         Returns: undefined
