@@ -1,4 +1,6 @@
 import { MilestoneShelf } from "@/components/profile/milestone-shelf";
+import { UsernameForm } from "@/components/profile/username-form";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
