@@ -71,12 +71,16 @@ export function validateUsername(raw: unknown): UsernameCheck {
   if (/[\u200B-\u200F\u2060-\u206F\uFEFF\u00AD\u180E\u3164]/.test(username)) {
     return fail("invisible_characters");
   }
-  if (hasMixedScript(username)) return fail("mixed_script");
 
   if (username.length < USERNAME_MIN) return fail("too_short");
   if (username.length > USERNAME_MAX) return fail("too_long");
   if (!/^[A-Za-z]/.test(username)) return fail("must_start_with_letter");
-  if (!USERNAME_PATTERN.test(username)) return fail("invalid_characters");
+  // Mixed-script check runs after the ASCII pattern so that emoji and other
+  // stray characters get the plainer "invalid characters" explanation.
+  if (!USERNAME_PATTERN.test(username)) {
+    return fail(hasMixedScript(username) ? "mixed_script" : "invalid_characters");
+  }
+
 
   const canonical = canonicalUsername(username);
   if (canonical.length < USERNAME_MIN) return fail("too_short");
