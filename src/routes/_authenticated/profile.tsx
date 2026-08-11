@@ -172,8 +172,11 @@ function MyProfile() {
 
         <MilestoneShelf />
 
+        <UsernameForm current={p.username} />
+
         <form onSubmit={submit} className="space-y-4">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Edit</h2>
+
           <Field label="Display name" required>
             <input
               value={name}
