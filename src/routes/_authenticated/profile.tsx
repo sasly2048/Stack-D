@@ -157,8 +157,9 @@ function MyProfile() {
               </p>
             )}
             <p className="text-silver-dim text-sm font-mono mt-1">
-              {formatHandle(p.id, p.display_name)}
+              {p.username ? `@${p.username}` : formatHandle(p.id, p.display_name)}
             </p>
+
           </div>
         </header>
 
