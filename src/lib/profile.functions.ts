@@ -5,8 +5,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export type PublicProfile = {
   id: string;
   display_name: string | null;
+  username: string | null;
   avatar_url: string | null;
   bio: string | null;
+
   created_at: string;
   lifetime_xp: number;
   current_focus_streak: number;
@@ -86,7 +88,9 @@ export const getProfile = createServerFn({ method: "GET" })
     return {
       id: p.id,
       display_name: p.display_name,
+      username: (p as { username?: string | null }).username ?? null,
       avatar_url: p.avatar_url,
+
       bio: (p as { bio?: string | null }).bio ?? null,
       productivity_dna: (p as { productivity_dna?: string | null }).productivity_dna ?? null,
       created_at: p.created_at,

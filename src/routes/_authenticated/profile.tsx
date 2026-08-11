@@ -1,4 +1,6 @@
 import { MilestoneShelf } from "@/components/profile/milestone-shelf";
+import { UsernameForm } from "@/components/profile/username-form";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -157,8 +159,9 @@ function MyProfile() {
               </p>
             )}
             <p className="text-silver-dim text-sm font-mono mt-1">
-              {formatHandle(p.id, p.display_name)}
+              {p.username ? `@${p.username}` : formatHandle(p.id, p.display_name)}
             </p>
+
           </div>
         </header>
 
@@ -171,8 +174,11 @@ function MyProfile() {
 
         <MilestoneShelf />
 
+        <UsernameForm current={p.username} />
+
         <form onSubmit={submit} className="space-y-4">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Edit</h2>
+
           <Field label="Display name" required>
             <input
               value={name}
