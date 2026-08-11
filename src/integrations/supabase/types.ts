@@ -668,6 +668,9 @@ export type Database = {
           title: string | null
           total_focus_seconds: number
           updated_at: string
+          username: string | null
+          username_canonical: string | null
+          username_changed_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -687,6 +690,9 @@ export type Database = {
           title?: string | null
           total_focus_seconds?: number
           updated_at?: string
+          username?: string | null
+          username_canonical?: string | null
+          username_changed_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -706,6 +712,9 @@ export type Database = {
           title?: string | null
           total_focus_seconds?: number
           updated_at?: string
+          username?: string | null
+          username_canonical?: string | null
+          username_changed_at?: string | null
         }
         Relationships: []
       }
