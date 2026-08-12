@@ -34,21 +34,62 @@ describe("uniqueness canonicalization", () => {
   });
 });
 
+describe("false positives", () => {
+  // Regression: leetspeak-undoing this yields "...abo..." which naive
+  // substring matching flags as a slur.
+  it("accepts Sasly204800", () => {
+    expect(reason("Sasly204800")).toBe("ok");
+  });
+
+  it("accepts alphanumeric names with long numeric suffixes", () => {
+    for (const n of [
+      "Sasly204800", "sasly2048", "Milan13370", "Tarun500700", "kiran8008",
+      "Neha1010101", "arjun404", "Bhavya1337", "dev80085", "zoya007",
+    ]) {
+      expect(reason(n), n).toBe("ok");
+    }
+  });
+
+  it("accepts legitimate names that embed blocked stems", () => {
+    for (const n of [
+      "Cassandra", "cassandra99", "Scunthorpe", "grasshopper", "bassist",
+      "Hancock", "peacock_dev", "cocktail99", "Dickens", "analyst",
+      "therapist", "classical", "Titanium", "Assange", "Sussex",
+      "Mongolia", "pakistan", "japanese", "raccoon99", "unisex_lab",
+      "debugger", "scrapyard", "Lynch", "Randy", "Fannie", "grapevine",
+      "sextant", "spice_dev", "negroni", "firecracker", "homosapien",
+      "Nagasaki", "Curry_House", "camel_case", "abolition", "Lundberg",
+    ]) {
+      expect(reason(n), n).toBe("ok");
+    }
+  });
+
+  it("accepts legitimate names against every category", () => {
+    for (const n of ["Adminah", "teammate", "Helpful", "Rooman", "Sexton"]) {
+      expect(reason(n), n).toBe("ok");
+    }
+  });
+});
+
 describe("moderation bypass resistance", () => {
   it("blocks plain prohibited terms", () => {
     expect(reason("fuckyou")).toBe("prohibited");
     expect(reason("bigdick69")).toBe("prohibited");
+    expect(reason("pornlover")).toBe("prohibited");
+    expect(reason("nigger1")).toBe("prohibited");
   });
 
   it("blocks separator splitting", () => {
     expect(reason("f_u_c_k")).toBe("prohibited");
     expect(reason("fu-ck-er")).toBe("prohibited");
+    expect(reason("n_i_g_g_e_r")).toBe("prohibited");
   });
 
   it("blocks leetspeak and repeats", () => {
     expect(reason("fuuuuck")).toBe("prohibited");
     expect(reason("sh1tlord")).toBe("prohibited");
     expect(reason("b00bs")).toBe("prohibited");
+    expect(reason("p0rnking")).toBe("prohibited");
   });
 
   it("blocks homoglyph and mixed-script attempts", () => {
@@ -60,14 +101,31 @@ describe("moderation bypass resistance", () => {
     expect(reason("fu\u200Bck")).toBe("invisible_characters");
   });
 
-  it("blocks reserved and impersonation names without revealing why", () => {
+  it("blocks each moderation category", () => {
+    expect(reason("shitpost")).toBe("prohibited"); // profanity
+    expect(reason("hentaifan")).toBe("prohibited"); // nsfw
+    expect(reason("faggot99")).toBe("prohibited"); // slurs
+    expect(reason("admin")).toBe("reserved"); // reserved
+    expect(reason("stackd_support")).toBe("reserved"); // impersonation
+  });
+
+  it("blocks reserved names without revealing why", () => {
     const r = validateUsername("admin");
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.reason).toBe("reserved");
       expect(r.message).toBe("That username isn't available.");
+      expect(r.message).not.toContain("admin");
     }
-    expect(reason("stackd_support")).toBe("reserved");
+  });
+
+  it("keeps matched terms out of user-facing messages", () => {
+    const r = validateUsername("fuckyou");
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.message).toBe("That username breaks our naming rules. Try something else.");
+      expect(r.debug?.category).toBe("profanity");
+    }
   });
 
   it("normalizes to a comparable moderation form", () => {
