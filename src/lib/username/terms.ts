@@ -60,14 +60,14 @@ const PROFANITY_SUBSTRING = [
 ];
 
 const PROFANITY_WORD = [
-  "fck", "twat", "slut", "whore", "skank", "bugger", "crap", "piss", "fanny",
-  "minge", "randi", "lund", "lauda", "gaand", "kutta", "puta", "puto",
-  "carajo", "merde", "cazzo", "damn",
+  "fck", "twat", "slut", "whore", "skank", "piss", "minge", "kutta", "puta",
+  "puto", "carajo", "merde", "cazzo", "gaand", "prick",
 ];
 
 const PROFANITY_EXACT = [
   "ass", "arse", "bum", "wank", "fap", "wtf", "stfu", "gtfo", "phuk", "fuc",
-  "knt", "hoe", "hoes", "cono",
+  "knt", "hoe", "hoes", "cono", "damn", "crap", "bugger", "randi", "lund",
+  "lauda", "fanny",
 ];
 
 /* ------------------------------------------------------------------ */
@@ -83,19 +83,19 @@ const NSFW_SUBSTRING = [
   "gangbang", "threesome", "bukkake", "fetish", "bondage", "incest",
   "bestiality", "zoophilia", "necrophilia", "pedophile", "childporn",
   "molest", "upskirt", "voyeur", "striptease", "buttplug", "vibrator",
-  "fleshlight", "sextape", "sexting", "cumming", "squirt", "sexy", "nsfw",
+  "fleshlight", "sextape", "sexting", "sexchat", "sexslave", "sexvideo", "sexdoll", "hotsex", "freesex", "cumming", "squirt", "sexy", "nsfw",
 ];
 
 const NSFW_WORD = [
-  "sex", "nude", "naked", "boob", "tits", "titty", "clit", "dick", "cock",
-  "anus", "semen", "sperm", "climax", "bdsm", "milf", "dilf", "rape",
-  "rapist", "erotic", "stripper", "orgy", "dildo", "horny", "thot",
-  "grooming", "lolicon", "shotacon", "hardcore", "softcore", "twerk",
+  "nude", "naked", "boob", "tits", "titty", "clit", "dick", "cock", "anus",
+  "semen", "sperm", "climax", "bdsm", "milf", "dilf", "rapist", "erotic",
+  "stripper", "orgy", "dildo", "horny", "thot", "grooming", "lolicon",
+  "shotacon", "hardcore", "softcore", "twerk",
 ];
 
 const NSFW_EXACT = [
   "cum", "tit", "cok", "dik", "pussi", "balls", "pron", "pedo", "paedo",
-  "cp", "jizz",
+  "cp", "jizz", "sex", "rape",
 ];
 
 /* ------------------------------------------------------------------ */
@@ -113,14 +113,15 @@ const SLURS_SUBSTRING = [
 ];
 
 const SLURS_WORD = [
-  "negro", "coon", "spic", "gypsy", "dyke", "homo", "queerbait", "spastic",
-  "mongol", "cripple", "midget", "goyim", "zhid", "lynch", "lynching",
-  "genocide", "hitler", "nazi", "terrorist", "jihadi", "isis", "taliban",
-  "alqaeda", "squaw", "injun", "boong", "honky", "cracker", "paki",
+  "gypsy", "queerbait", "spastic", "cripple", "midget", "goyim", "lynching",
+  "genocide", "hitler", "nazi", "terrorist", "jihadi", "taliban", "alqaeda",
+  "boong", "honky",
 ];
 
 const SLURS_EXACT = [
   "nig", "fag", "abo", "jap", "yid", "kys", "kkk", "spaz", "curry", "camel",
+  "negro", "coon", "spic", "dyke", "homo", "paki", "squaw", "injun",
+  "cracker", "zhid", "isis",
 ];
 
 /* ------------------------------------------------------------------ */
