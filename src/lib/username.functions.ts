@@ -5,6 +5,7 @@ import {
   USERNAME_CHANGE_COOLDOWN_HOURS,
   USERNAME_MESSAGES,
   validateUsername,
+  type UsernameCheck,
   type UsernameRejection,
 } from "./username/validate";
 
@@ -15,15 +16,60 @@ export type UsernameResult =
 const input = (d: unknown) => z.object({ username: z.string().max(64) }).parse(d);
 
 /**
- * Availability probe for the form. Runs the same validation as the mutation so
- * the UX never promises something the write will reject.
+ * Runs the authoritative check against the database-backed ruleset and records
+ * an internal decision log (category / matched term / list version). None of
+ * that detail is ever returned to the caller.
+ */
+async function screen(
+  username: string,
+  userId: string,
+  persist: boolean,
+): Promise<UsernameCheck> {
+  const { loadModerationRuleset } = await import("./username/ruleset.server");
+  const ruleset = await loadModerationRuleset();
+  const result = validateUsername(username, ruleset);
+
+  if (persist) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("username_moderation_events").insert({
+        user_id: userId,
+        attempted: username.slice(0, 64),
+        canonical: result.ok ? result.canonical : null,
+        decision: result.ok ? "allowed" : "rejected",
+        reason: result.ok ? null : result.reason,
+        category: result.ok ? null : (result.debug?.category ?? null),
+        matched_term: result.ok ? null : (result.debug?.term ?? null),
+        match_mode: result.ok ? null : (result.debug?.mode ?? null),
+        matched_form: result.ok ? null : (result.debug?.form ?? null),
+        confidence: result.ok ? null : (result.debug?.confidence ?? null),
+        list_version: result.ok ? result.listVersion : (result.debug?.listVersion ?? ruleset.version),
+      });
+    } catch {
+      // Logging must never block a username decision.
+    }
+  }
+
+  return result;
+}
+
+/** Strip internals before anything crosses the wire. */
+function publicResult(check: UsernameCheck): UsernameResult {
+  return check.ok
+    ? { ok: true, username: check.username }
+    : { ok: false, reason: check.reason, message: check.message };
+}
+
+/**
+ * Availability probe for the form. Runs exactly the same rules as the mutation
+ * so the UX never promises something the write will reject.
  */
 export const checkUsername = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(input)
   .handler(async ({ data, context }): Promise<UsernameResult> => {
-    const check = validateUsername(data.username);
-    if (!check.ok) return { ok: false, reason: check.reason, message: check.message };
+    const check = await screen(data.username, context.userId, false);
+    if (!check.ok) return publicResult(check);
 
     const { data: existing } = await context.supabase
       .from("profiles")
@@ -31,6 +77,7 @@ export const checkUsername = createServerFn({ method: "POST" })
       .eq("username_canonical", check.canonical)
       .maybeSingle();
 
+    // Same wording as "reserved": never reveal that another account holds it.
     if (existing && existing.id !== context.userId) {
       return { ok: false, reason: "taken", message: USERNAME_MESSAGES.taken };
     }
@@ -42,8 +89,8 @@ export const setMyUsername = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(input)
   .handler(async ({ data, context }): Promise<UsernameResult> => {
-    const check = validateUsername(data.username);
-    if (!check.ok) return { ok: false, reason: check.reason, message: check.message };
+    const check = await screen(data.username, context.userId, true);
+    if (!check.ok) return publicResult(check);
 
     const { data: me } = await context.supabase
       .from("profiles")
