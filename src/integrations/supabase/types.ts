@@ -599,6 +599,87 @@ export type Database = {
         }
         Relationships: []
       }
+      moderation_allowlist: {
+        Row: {
+          canonical: string
+          created_at: string
+          id: string
+          list_version: number
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          canonical: string
+          created_at?: string
+          id?: string
+          list_version?: number
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canonical?: string
+          created_at?: string
+          id?: string
+          list_version?: number
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      moderation_list_versions: {
+        Row: {
+          category: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          category: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          category?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      moderation_terms: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          id: string
+          list_version: number
+          match_mode: string
+          notes: string | null
+          term: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          created_at?: string
+          id?: string
+          list_version?: number
+          match_mode?: string
+          notes?: string | null
+          term: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          list_version?: number
+          match_mode?: string
+          notes?: string | null
+          term?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       participants: {
         Row: {
           breach_at: string | null
@@ -1360,6 +1441,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      username_moderation_events: {
+        Row: {
+          attempted: string
+          canonical: string | null
+          category: string | null
+          confidence: number | null
+          created_at: string
+          decision: string
+          id: string
+          list_version: number | null
+          match_mode: string | null
+          matched_form: string | null
+          matched_term: string | null
+          reason: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempted: string
+          canonical?: string | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string
+          decision: string
+          id?: string
+          list_version?: number | null
+          match_mode?: string | null
+          matched_form?: string | null
+          matched_term?: string | null
+          reason?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempted?: string
+          canonical?: string | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string
+          decision?: string
+          id?: string
+          list_version?: number | null
+          match_mode?: string | null
+          matched_form?: string | null
+          matched_term?: string | null
+          reason?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       webhook_deliveries: {
         Row: {

@@ -65,9 +65,27 @@ function undoLeet(input: string): string {
 }
 
 /** "fuuuuck" → "fuck"; caps any run at a single character. */
-function collapseRepeats(input: string): string {
+export function collapseRepeats(input: string): string {
   return input.replace(/(.)\1+/g, "$1");
 }
+
+/** Case-folded, diacritic-free, invisible-free, confusable-folded form. */
+export function foldedBase(input: string): string {
+  return foldConfusables(baseNormalize(input));
+}
+
+/** Folded form with separators and non-alphanumerics removed (digits kept). */
+export function strippedForm(input: string): string {
+  return foldedBase(input).replace(SEPARATORS, "").replace(/[^a-z0-9]/g, "");
+}
+
+/** Lossy: leetspeak undone, letters only. */
+export function deleetForm(input: string): string {
+  return undoLeet(foldedBase(input))
+    .replace(SEPARATORS, "")
+    .replace(/[^a-z]/g, "");
+}
+
 
 /**
  * Uniqueness key: lowercase, separators removed, confusables folded so a
