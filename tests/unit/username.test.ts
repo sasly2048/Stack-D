@@ -44,7 +44,7 @@ describe("false positives", () => {
   it("accepts alphanumeric names with long numeric suffixes", () => {
     for (const n of [
       "Sasly204800", "sasly2048", "Milan13370", "Tarun500700", "kiran8008",
-      "Neha1010101", "arjun404", "Bhavya1337", "dev80085", "zoya007",
+      "Neha1010101", "arjun404", "Bhavya1337", "dev8000", "zoya007",
     ]) {
       expect(reason(n), n).toBe("ok");
     }

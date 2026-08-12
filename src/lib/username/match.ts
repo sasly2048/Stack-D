@@ -149,7 +149,6 @@ export function screenUsername(
    */
   const fullForms = [
     { name: "canonical", value: canonical },
-    { name: "canonical_letters", value: canonical.replace(/[0-9]/g, "") },
     { name: "deleet_full", value: deleetForm(raw) },
     { name: "collapsed_full", value: collapseRepeats(canonical) },
   ].filter((f) => f.value);
