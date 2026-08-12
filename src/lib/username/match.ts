@@ -127,7 +127,7 @@ export function screenUsername(
   const stripped = strippedForm(neutralized);
   const lettersOnly = stripped.replace(/[0-9]/g, "");
 
-  /** Full-trust forms: every mode applies. */
+  /** Full-trust forms for substring/word matching. */
   const strong = [
     { name: "base", value: base },
     { name: "stripped", value: stripped },
@@ -135,12 +135,24 @@ export function screenUsername(
   ].filter((f) => f.value);
 
   const deleet = deleetForm(neutralized);
-  /** Lossy forms: exact match, or long substrings only. */
+  /** Lossy forms: long substrings only — never loose token matches. */
   const weak = [
     { name: "deleet", value: deleet },
     { name: "collapsed", value: collapseRepeats(lettersOnly) },
     { name: "collapsed_deleet", value: collapseRepeats(deleet) },
   ].filter((f) => f.value && !strong.some((s) => s.value === f.value));
+
+  /**
+   * "exact" terms compare against whole-name forms built from the ORIGINAL
+   * input: after allowlist neutralization a leftover fragment ("dev" in
+   * "peacock_dev") must not be treated as the entire username.
+   */
+  const fullForms = [
+    { name: "canonical", value: canonical },
+    { name: "canonical_letters", value: canonical.replace(/[0-9]/g, "") },
+    { name: "deleet_full", value: deleetForm(raw) },
+    { name: "collapsed_full", value: collapseRepeats(canonical) },
+  ].filter((f) => f.value);
 
   const strongTokens = strong.map((f) => ({ name: f.name, tokens: tokenize(f.value) }));
 
@@ -151,38 +163,36 @@ export function screenUsername(
   };
 
   for (const t of ruleset.terms) {
-    // --- strong forms -------------------------------------------------
-    for (const form of strong) {
-      if (t.mode === "exact") {
+    if (t.mode === "exact") {
+      for (const form of fullForms) {
         if (form.value === t.term) {
           consider({ ...t, form: form.name, confidence: CONFIDENCE.exact });
         }
-      } else if (t.mode === "substring") {
+      }
+      continue;
+    }
+
+    if (t.mode === "substring") {
+      for (const form of strong) {
         if (form.value.includes(t.term)) {
           consider({ ...t, form: form.name, confidence: CONFIDENCE.substring });
         }
       }
-    }
-    if (t.mode === "word") {
-      for (const form of strongTokens) {
-        if (form.tokens.some((tok) => tokenMatches(tok, t.term))) {
-          consider({ ...t, form: form.name, confidence: CONFIDENCE.word });
+      for (const form of weak) {
+        if (t.term.length >= WEAK_MIN_LENGTH && form.value.includes(t.term)) {
+          consider({ ...t, form: form.name, confidence: CONFIDENCE_THRESHOLD });
         }
+      }
+      continue;
+    }
+
+    // word
+    for (const form of strongTokens) {
+      if (form.tokens.some((tok) => tokenMatches(tok, t.term))) {
+        consider({ ...t, form: form.name, confidence: CONFIDENCE.word });
       }
     }
 
-    // --- lossy forms --------------------------------------------------
-    for (const form of weak) {
-      if (form.value === t.term) {
-        consider({ ...t, form: form.name, confidence: CONFIDENCE.exact });
-      } else if (
-        t.mode === "substring" &&
-        t.term.length >= WEAK_MIN_LENGTH &&
-        form.value.includes(t.term)
-      ) {
-        consider({ ...t, form: form.name, confidence: CONFIDENCE_THRESHOLD });
-      }
-    }
   }
 
   return best;
