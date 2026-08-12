@@ -41,7 +41,7 @@ export interface ModerationHit {
 /** Block threshold. Weak-form hits land exactly on it. */
 export const CONFIDENCE_THRESHOLD = 0.7;
 /** Lossy forms only consider substrings at least this long. */
-const WEAK_MIN_LENGTH = 5;
+const WEAK_MIN_LENGTH = 4;
 
 const CONFIDENCE: Record<MatchMode, number> = {
   exact: 1,
@@ -64,6 +64,27 @@ function tokenMatches(token: string, term: string): boolean {
 
 function digitsTrimmed(value: string): string {
   return value.replace(/[0-9]+$/, "");
+}
+
+/**
+ * Blanks out whole tokens that are on the reviewed allowlist. Token-level (not
+ * whole-name) so a legitimate stem stays legitimate when combined with other
+ * words or digits.
+ */
+function neutralizeAllowlisted(raw: string, allowlist: ReadonlySet<string>): string {
+  const folded = foldedBase(raw);
+  const kept = folded
+    .split(/([^a-z0-9]+)/)
+    .map((part) => {
+      const letters = part.replace(/[^a-z0-9]/g, "");
+      if (!letters) return part;
+      if (allowlist.has(letters) || allowlist.has(digitsTrimmed(letters))) {
+        return " ";
+      }
+      return part;
+    })
+    .join("");
+  return kept;
 }
 
 export function buildRuleset(
@@ -98,8 +119,12 @@ export function screenUsername(
     return null;
   }
 
-  const base = foldedBase(raw);
-  const stripped = strippedForm(raw);
+  // Allowlisted tokens are removed before matching, so "peacock_dev" and
+  // "cocktail99" clear even though their stems are blocked elsewhere.
+  const neutralized = neutralizeAllowlisted(raw, ruleset.allowlist);
+
+  const base = foldedBase(neutralized);
+  const stripped = strippedForm(neutralized);
   const lettersOnly = stripped.replace(/[0-9]/g, "");
 
   /** Full-trust forms: every mode applies. */
@@ -109,7 +134,7 @@ export function screenUsername(
     { name: "letters", value: lettersOnly },
   ].filter((f) => f.value);
 
-  const deleet = deleetForm(raw);
+  const deleet = deleetForm(neutralized);
   /** Lossy forms: exact match, or long substrings only. */
   const weak = [
     { name: "deleet", value: deleet },
