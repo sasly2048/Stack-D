@@ -579,6 +579,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          initiator_id: string | null
           mentee_id: string
           mentor_id: string
           status: string
@@ -586,6 +587,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          initiator_id?: string | null
           mentee_id: string
           mentor_id: string
           status?: string
@@ -593,6 +595,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          initiator_id?: string | null
           mentee_id?: string
           mentor_id?: string
           status?: string
