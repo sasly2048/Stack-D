@@ -5,7 +5,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Nav } from "@/components/nav";
 import { QueryBoundary, SkeletonList } from "@/components/query-states";
-import { listPartners, pairPartner, endPartnership, type Partner } from "@/lib/mentor.functions";
+import {
+  listPartners,
+  pairPartner,
+  endPartnership,
+  respondToPairing,
+  type Partner,
+} from "@/lib/mentor.functions";
 import { searchPeople } from "@/lib/friends.functions";
 
 export const Route = createFileRoute("/_authenticated/partners")({
@@ -24,6 +30,7 @@ function PartnersPage() {
   const list = useServerFn(listPartners);
   const pair = useServerFn(pairPartner);
   const end = useServerFn(endPartnership);
+  const respondFn = useServerFn(respondToPairing);
   const search = useServerFn(searchPeople);
 
   const queryClient = useQueryClient();
@@ -61,12 +68,25 @@ function PartnersPage() {
     setBusy(true);
     try {
       await pair({ data: { partnerId, asRole } });
-      toast.success("Partnership formed");
+      toast.success("Invitation sent");
       setQ("");
       setResults([]);
       await refresh();
     } catch (e) {
       toast.error("Failed to pair", { description: String((e as Error).message) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const respond = async (id: string, accept: boolean) => {
+    setBusy(true);
+    try {
+      await respondFn({ data: { relationshipId: id, accept } });
+      toast.success(accept ? "Partnership active" : "Invitation declined");
+      await refresh();
+    } catch (e) {
+      toast.error("Couldn't respond", { description: String((e as Error).message) });
     } finally {
       setBusy(false);
     }
