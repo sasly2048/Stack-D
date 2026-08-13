@@ -1697,6 +1697,7 @@ export type Database = {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
+      join_season: { Args: { _season_id: string }; Returns: undefined }
       move_to_dlq: {
         Args: {
           dlq_name: string
