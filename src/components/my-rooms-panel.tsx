@@ -143,7 +143,7 @@ export function MyRoomsPanel() {
         </p>
       ) : current ? (
         <>
-          <div className="space-y-1">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] gap-x-4 gap-y-1">
             {current.items.map((r) => {
               const elapsed =
                 r.started_at && r.ended_at
@@ -159,7 +159,7 @@ export function MyRoomsPanel() {
                   key={r.id}
                   to="/room/$code"
                   params={{ code: r.code }}
-                  className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-4 py-3 rounded border border-transparent hover:border-white/10 hover:bg-white/5 transition-colors"
+                  className="grid grid-cols-subgrid col-span-4 items-center px-4 py-3 rounded border border-transparent hover:border-white/10 hover:bg-white/5 transition-colors"
                 >
                   <span
                     className={`size-1.5 rounded-full ${
@@ -172,11 +172,11 @@ export function MyRoomsPanel() {
                             : "bg-white/20"
                     }`}
                   />
-                  <span className="font-mono text-sm text-silver">{r.code}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <span className="min-w-0 font-mono text-sm text-silver truncate">{r.code}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground justify-self-start">
                     {r.is_host ? "HOST" : "GUEST"} · {r.status}
                   </span>
-                  <span className="font-mono text-xs tabular-nums text-silver-dim">
+                  <span className="font-mono text-xs tabular-nums text-silver-dim justify-self-end">
                     {elapsed !== null
                       ? formatDuration(elapsed)
                       : formatDuration(r.target_duration_seconds)}
