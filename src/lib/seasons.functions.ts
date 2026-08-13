@@ -82,12 +82,11 @@ export const joinSeason = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ seasonId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("season_participants")
-      .upsert(
-        { season_id: data.seasonId, user_id: context.userId, xp: 0 },
-        { onConflict: "season_id,user_id" },
-      );
+    // XP is server-derived: clients can no longer write season_participants
+    // directly, only enroll at zero through this SECURITY DEFINER RPC.
+    const { error } = await context.supabase.rpc("join_season" as never, {
+      _season_id: data.seasonId,
+    } as never);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
