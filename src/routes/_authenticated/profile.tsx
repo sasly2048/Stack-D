@@ -41,7 +41,10 @@ function MyProfile() {
   const seeded = useRef(false);
 
   const profileQuery = useQuery({
-    queryKey: ["my-profile"],
+    queryKey: ["my-profile", user?.id],
+    // The bearer token comes from the Supabase session; firing before it is
+    // hydrated makes the serverFn 401 with "No authorization header provided".
+    enabled: Boolean(user?.id),
     queryFn: () => fetchProfile({ data: {} }) as Promise<PublicProfile>,
   });
   const p = profileQuery.data;

@@ -7,6 +7,7 @@ import { formatHandle } from "@/lib/handle";
 import { Nav } from "@/components/nav";
 import { getProfile, type PublicProfile } from "@/lib/profile.functions";
 import { sendFriendRequest, respondFriendRequest, removeFriend } from "@/lib/friends.functions";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/profile/$id")({
   head: () => ({
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/profile/$id")({
 
 function PublicProfileView() {
   const { id } = useParams({ from: "/_authenticated/profile/$id" });
+  const { user } = useAuth();
   const fetchProfile = useServerFn(getProfile);
   const send = useServerFn(sendFriendRequest);
   const respond = useServerFn(respondFriendRequest);
@@ -35,8 +37,10 @@ function PublicProfileView() {
     setP(res);
   };
   useEffect(() => {
+    // Wait for the Supabase session, else the serverFn call has no bearer token.
+    if (!user?.id) return;
     refresh().catch(() => toast.error("Profile not found"));
-  }, [id]);
+  }, [id, user?.id]);
 
   if (!p) {
     return (
