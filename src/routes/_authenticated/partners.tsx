@@ -157,14 +157,35 @@ function PartnersPage() {
                     {r.role} · {r.status}
                   </p>
                 </div>
-                <button
-                  disabled={busy}
-                  onClick={() => drop(r.relationship_id)}
-                  className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-breach rounded-full disabled:opacity-50"
-                >
-                  End
-                </button>
+                <div className="flex gap-2">
+                  {r.incoming && (
+                    <>
+                      <button
+                        disabled={busy}
+                        onClick={() => respond(r.relationship_id, true)}
+                        className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full disabled:opacity-50"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        disabled={busy}
+                        onClick={() => respond(r.relationship_id, false)}
+                        className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-silver rounded-full disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </>
+                  )}
+                  <button
+                    disabled={busy}
+                    onClick={() => drop(r.relationship_id)}
+                    className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-breach rounded-full disabled:opacity-50"
+                  >
+                    End
+                  </button>
+                </div>
               </li>
+
             ))}
           </ul>
           </QueryBoundary>
