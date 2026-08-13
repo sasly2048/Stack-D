@@ -34,20 +34,30 @@ async function postWebhook(ctx: AlertContext) {
   }
 }
 
+/** Escape user-controlled values before they land in alert email HTML. */
+function esc(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function sendAlertEmail(ctx: AlertContext) {
   const to = process.env.ADMIN_ALERT_EMAIL;
   if (!to) return { ok: false, skipped: true as const };
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const subject = `Auth alert — failure spike on ${ctx.email}`;
+    const subject = `Auth alert — failure spike on ${ctx.email.replace(/[\r\n<>]/g, "")}`;
     const html = `
       <h2>Suspicious authentication activity</h2>
-      <p><strong>${ctx.failureCount}</strong> failed sign-in attempts for
-      <code>${ctx.email}</code> in the last 10 minutes.</p>
+      <p><strong>${esc(ctx.failureCount)}</strong> failed sign-in attempts for
+      <code>${esc(ctx.email)}</code> in the last 10 minutes.</p>
       <ul>
-        <li><strong>IP:</strong> ${ctx.ip}</li>
-        <li><strong>User-Agent:</strong> ${ctx.userAgent || "unknown"}</li>
-        <li><strong>Detected:</strong> ${new Date().toISOString()}</li>
+        <li><strong>IP:</strong> ${esc(ctx.ip)}</li>
+        <li><strong>User-Agent:</strong> ${esc(ctx.userAgent) || "unknown"}</li>
+        <li><strong>Detected:</strong> ${esc(new Date().toISOString())}</li>
       </ul>
       <p>The account is auto-locked for 10 minutes after the threshold is hit.</p>`;
     // enqueue_email RPC is provided by the Lovable email infrastructure once

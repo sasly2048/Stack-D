@@ -579,6 +579,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          initiator_id: string | null
           mentee_id: string
           mentor_id: string
           status: string
@@ -586,6 +587,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          initiator_id?: string | null
           mentee_id: string
           mentor_id: string
           status?: string
@@ -593,6 +595,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          initiator_id?: string | null
           mentee_id?: string
           mentor_id?: string
           status?: string
@@ -1697,6 +1700,7 @@ export type Database = {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
+      join_season: { Args: { _season_id: string }; Returns: undefined }
       move_to_dlq: {
         Args: {
           dlq_name: string
