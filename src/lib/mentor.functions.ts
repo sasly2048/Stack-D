@@ -46,6 +46,11 @@ export const listPartners = createServerFn({ method: "GET" })
     };
   });
 
+/**
+ * Sends a pairing *invitation*. The row is created as `pending` and the
+ * counterparty must accept before it becomes active — RLS enforces both the
+ * pending-on-insert rule and that only the invitee can activate it.
+ */
 export const pairPartner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { partnerId: string; asRole: "mentor" | "mentee" }) => input)
@@ -56,13 +61,31 @@ export const pairPartner = createServerFn({ method: "POST" })
     const { data: row, error } = await context.supabase
       .from("mentor_relationships")
       .upsert(
-        { mentor_id: mentor, mentee_id: mentee, status: "active" },
+        {
+          mentor_id: mentor,
+          mentee_id: mentee,
+          status: "pending",
+          initiator_id: context.userId,
+        } as never,
         { onConflict: "mentor_id,mentee_id" },
       )
       .select("id")
       .single();
     if (error) throw new Error(error.message);
     return { id: row!.id };
+  });
+
+/** Only the invited party can accept or decline. */
+export const respondToPairing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { relationshipId: string; accept: boolean }) => input)
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { error } = await context.supabase
+      .from("mentor_relationships")
+      .update({ status: data.accept ? "active" : "declined" })
+      .eq("id", data.relationshipId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const endPartnership = createServerFn({ method: "POST" })
