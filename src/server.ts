@@ -72,9 +72,11 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response));
+      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(request, response));
     } catch (error) {
+      if (isClientAbort(request, error)) return new Response(null, { status: 499 });
       console.error(error);
+
       return withSecurityHeaders(
         new Response(renderErrorPage(), {
           status: 500,
