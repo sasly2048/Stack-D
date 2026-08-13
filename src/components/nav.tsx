@@ -7,6 +7,7 @@ import { Logo } from "@/components/logo";
 import { useLabs } from "@/hooks/use-labs";
 import { routeVisible } from "@/lib/feature-flags";
 import { useNavTier, tierUnlocked, NAV_MIN_TIER, type NavTier } from "@/hooks/use-nav-tier";
+import { MobileNavMenu } from "@/components/mobile-nav-menu";
 
 type NavItem = { to: string; label: string; visibility: string };
 
@@ -51,6 +52,14 @@ export function Nav() {
     setModKeyLabel(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl ");
   }, []);
 
+  // Every link the user is allowed to see, regardless of responsive hiding —
+  // the drawer is the only way to reach most of these on phone/tablet.
+  const menuLinks = AUTHED_ITEMS.filter(
+    (item) =>
+      routeVisible(item.to, labs) &&
+      tierUnlocked(tier, NAV_MIN_TIER[item.to] ?? "starter", power),
+  ).map((item) => ({ to: item.to, label: item.label }));
+
   const signOut = async () => {
     // Guarded because sign-out is a network call: a second click while the
     // first is in flight raced two navigations.
@@ -69,15 +78,15 @@ export function Nav() {
 
   return (
     <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-obsidian/80 backdrop-blur-md safe-top">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-        <Link to={user ? "/dashboard" : "/"} className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6 sm:gap-10 lg:gap-12">
+        <Link to={user ? "/dashboard" : "/"} className="mr-auto flex min-w-0 items-center gap-2 sm:gap-3">
           <Logo className="size-7 shrink-0" />
           <span className="whitespace-nowrap font-mono text-xs tracking-[0.3em] uppercase">
             Stack&apos;d{" "}
             <span className="hidden text-muted-foreground sm:inline">/ Protocol.01</span>
           </span>
         </Link>
-        <div className="flex items-center gap-6 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-4 lg:gap-6 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
           {user ? (
             <>
               {AUTHED_ITEMS.map((item) => {
@@ -129,10 +138,11 @@ export function Nav() {
                 onClick={signOut}
                 disabled={signingOut}
                 aria-busy={signingOut}
-                className="cursor-pointer rounded transition-all duration-200 ease-[var(--ease-ritual)] hover:text-silver active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
+                className="hidden lg:inline cursor-pointer rounded transition-all duration-200 ease-[var(--ease-ritual)] hover:text-silver active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
               >
                 {signingOut ? "Exiting…" : "Exit"}
               </button>
+              <MobileNavMenu links={menuLinks} onSignOut={signOut} signingOut={signingOut} />
             </>
           ) : (
             <>
@@ -151,6 +161,13 @@ export function Nav() {
                     Philosophy
                   </>
                 )}
+              </Link>
+              <Link
+                to="/philosophy"
+                className="hover:text-silver transition-colors sm:hidden"
+                activeProps={{ className: "!text-ember" }}
+              >
+                Philosophy
               </Link>
               <Link
                 to="/auth"
