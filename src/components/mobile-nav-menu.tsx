@@ -32,10 +32,11 @@ export function MobileNavMenu({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         aria-label="Open navigation menu"
-        className="grid size-9 shrink-0 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:text-silver focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian lg:hidden"
+        className="grid size-9 shrink-0 place-items-center rounded-full border border-white/10 text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:-translate-y-px hover:bg-white/5 hover:text-silver hover:shadow-[0_0_14px_-4px_var(--color-ember,#F0A968)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian lg:hidden"
       >
         <Menu className="size-4" aria-hidden="true" />
       </SheetTrigger>
+
       <SheetContent
         side="right"
         className="w-[85vw] max-w-sm overflow-y-auto border-white/10 bg-obsidian text-silver"
@@ -55,12 +56,13 @@ export function MobileNavMenu({
               key={item.to}
               to={item.to}
               onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-3 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:bg-white/5 hover:text-silver focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+              className="rounded-lg px-3 py-3 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:-translate-y-px hover:bg-white/5 hover:text-silver hover:shadow-[0_0_16px_-6px_var(--color-ember,#F0A968)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
               activeProps={{ className: "bg-white/5 text-ember", "aria-current": "page" }}
             >
               {item.label}
             </Link>
           ))}
+
 
           <button
             type="button"
@@ -69,7 +71,7 @@ export function MobileNavMenu({
               onSignOut();
             }}
             disabled={signingOut}
-            className="mt-4 cursor-pointer rounded-lg border border-white/10 px-3 py-3 text-left font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-silver disabled:opacity-50"
+            className="mt-4 cursor-pointer rounded-lg border border-white/10 px-3 py-3 text-left font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:-translate-y-px hover:bg-white/5 hover:text-silver hover:shadow-[0_0_16px_-6px_var(--color-ember,#F0A968)] disabled:opacity-50"
           >
             {signingOut ? "Exiting…" : "Exit"}
           </button>

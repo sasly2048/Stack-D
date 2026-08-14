@@ -6,31 +6,39 @@ import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/logo";
 import { useLabs } from "@/hooks/use-labs";
 import { routeVisible } from "@/lib/feature-flags";
-import { useNavTier, tierUnlocked, NAV_MIN_TIER, type NavTier } from "@/hooks/use-nav-tier";
+import { useNavTier, type NavTier } from "@/hooks/use-nav-tier";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
 
 type NavItem = { to: string; label: string; visibility: string };
 
+// Tablet and below show only "New Session" + the drawer trigger, so every link
+// here is desktop-only (`lg`). The drawer is the single source of truth for
+// tablet/phone navigation.
 const AUTHED_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Analytics", visibility: "hidden sm:inline" },
-  { to: "/groups", label: "Circles", visibility: "hidden sm:inline" },
-  { to: "/seasons", label: "Seasons", visibility: "hidden md:inline" },
-  { to: "/leaderboard", label: "Ranks", visibility: "hidden sm:inline" },
-  { to: "/challenges", label: "Rites", visibility: "hidden md:inline" },
-  { to: "/insights", label: "Insights", visibility: "hidden md:inline" },
-  { to: "/timeline", label: "Timeline", visibility: "hidden md:inline" },
-  { to: "/feed", label: "Feed", visibility: "hidden md:inline" },
-  { to: "/friends", label: "Friends", visibility: "hidden md:inline" },
-  { to: "/achievements", label: "Marks", visibility: "hidden md:inline" },
-  { to: "/wrapped", label: "Wrapped", visibility: "hidden md:inline" },
-  { to: "/vault", label: "Vault", visibility: "hidden md:inline" },
-  { to: "/dna", label: "DNA", visibility: "hidden lg:inline" },
-  { to: "/replay", label: "Replay", visibility: "hidden lg:inline" },
-  { to: "/partners", label: "Partners", visibility: "hidden lg:inline" },
-  { to: "/capsule", label: "Capsule", visibility: "hidden lg:inline" },
-  { to: "/profile", label: "Profile", visibility: "hidden sm:inline" },
-  { to: "/companion", label: "Atlas", visibility: "hidden lg:inline" },
+  { to: "/dashboard", label: "Analytics", visibility: "hidden lg:inline" },
+  { to: "/groups", label: "Circles", visibility: "hidden lg:inline" },
+  { to: "/seasons", label: "Seasons", visibility: "hidden xl:inline" },
+  { to: "/leaderboard", label: "Ranks", visibility: "hidden lg:inline" },
+  { to: "/challenges", label: "Rites", visibility: "hidden xl:inline" },
+  { to: "/insights", label: "Insights", visibility: "hidden xl:inline" },
+  { to: "/timeline", label: "Timeline", visibility: "hidden 2xl:inline" },
+  { to: "/feed", label: "Feed", visibility: "hidden 2xl:inline" },
+  { to: "/friends", label: "Friends", visibility: "hidden xl:inline" },
+  { to: "/achievements", label: "Marks", visibility: "hidden 2xl:inline" },
+  { to: "/wrapped", label: "Wrapped", visibility: "hidden 2xl:inline" },
+  { to: "/vault", label: "Vault", visibility: "hidden 2xl:inline" },
+  { to: "/dna", label: "DNA", visibility: "hidden 2xl:inline" },
+  { to: "/replay", label: "Replay", visibility: "hidden 2xl:inline" },
+  { to: "/partners", label: "Partners", visibility: "hidden 2xl:inline" },
+  { to: "/capsule", label: "Capsule", visibility: "hidden 2xl:inline" },
+  { to: "/profile", label: "Profile", visibility: "hidden lg:inline" },
+  { to: "/companion", label: "Atlas", visibility: "hidden 2xl:inline" },
 ];
+
+/** Shared hover treatment: soft ember glow + 1px lift, no layout shift. */
+const NAV_GLOW =
+  "rounded px-2 py-1 transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:bg-white/5 hover:shadow-[0_0_14px_-4px_var(--color-ember,#F0A968)] hover:-translate-y-px";
+
 
 const TIER_LABEL: Record<NavTier, string> = {
   starter: "Starter",
@@ -52,13 +60,14 @@ export function Nav() {
     setModKeyLabel(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl ");
   }, []);
 
-  // Every link the user is allowed to see, regardless of responsive hiding —
-  // the drawer is the only way to reach most of these on phone/tablet.
-  const menuLinks = AUTHED_ITEMS.filter(
-    (item) =>
-      routeVisible(item.to, labs) &&
-      tierUnlocked(tier, NAV_MIN_TIER[item.to] ?? "starter", power),
-  ).map((item) => ({ to: item.to, label: item.label }));
+  // Every signed-in user gets the identical menu. Tier is a progression signal,
+  // not a permission, so it no longer hides destinations — access is enforced by
+  // route guards and RLS, and hiding links only made the app feel broken.
+  const menuLinks = AUTHED_ITEMS.filter((item) => routeVisible(item.to, labs)).map((item) => ({
+    to: item.to,
+    label: item.label,
+  }));
+
 
   const signOut = async () => {
     // Guarded because sign-out is a network call: a second click while the
@@ -91,9 +100,6 @@ export function Nav() {
             <>
               {AUTHED_ITEMS.map((item) => {
                 if (!routeVisible(item.to, labs)) return null;
-                const needed = NAV_MIN_TIER[item.to] ?? "starter";
-                const unlocked = tierUnlocked(tier, needed, power);
-                if (!unlocked) return null;
                 return (
                   <Link
                     key={item.to}
@@ -101,7 +107,7 @@ export function Nav() {
                     // aria-current is what actually tells a screen reader which
                     // page you are on; the ember colour alone conveys it to
                     // sighted users only.
-                    className={`relative rounded transition-colors hover:text-silver focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian ${item.visibility}`}
+                    className={`relative ${NAV_GLOW} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian ${item.visibility}`}
                     activeProps={{
                       className: "text-ember",
                       "aria-current": "page",
@@ -111,6 +117,7 @@ export function Nav() {
                   </Link>
                 );
               })}
+
               <span
                 title={`${TIER_LABEL[tier]} tier${power ? " · Power" : ""}`}
                 className="hidden xl:inline font-mono text-[9px] tracking-[0.3em] text-silver-dim"
@@ -138,7 +145,7 @@ export function Nav() {
                 onClick={signOut}
                 disabled={signingOut}
                 aria-busy={signingOut}
-                className="hidden lg:inline cursor-pointer rounded transition-all duration-200 ease-[var(--ease-ritual)] hover:text-silver active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
+                className={`hidden lg:inline cursor-pointer ${NAV_GLOW} active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian`}
               >
                 {signingOut ? "Exiting…" : "Exit"}
               </button>
@@ -148,7 +155,7 @@ export function Nav() {
             <>
               <Link
                 to="/philosophy"
-                className="relative hover:text-silver transition-colors hidden sm:inline-flex items-center gap-2"
+                className={`relative hidden sm:inline-flex items-center gap-2 ${NAV_GLOW}`}
                 activeProps={{ className: "!text-ember" }}
               >
                 {({ isActive }) => (
@@ -164,7 +171,7 @@ export function Nav() {
               </Link>
               <Link
                 to="/philosophy"
-                className="hover:text-silver transition-colors sm:hidden"
+                className={`sm:hidden ${NAV_GLOW}`}
                 activeProps={{ className: "!text-ember" }}
               >
                 Philosophy

@@ -159,14 +159,14 @@ function TimelinePage() {
               if (hasMore) loadMore();
             }}
             itemContent={(_, s) => (
-              <div className="relative border-l border-white/10 pl-6 pb-6">
+              <div className="relative border-l border-white/10 pl-6 pb-8 sm:pl-8">
                 <span
                   className={`absolute -left-[5px] top-2 size-2 rounded-full ${s.tier === "flow" ? "bg-ember" : s.tier === "compromised" ? "bg-breach" : "bg-white/30"}`}
                 />
                 <div
-                  className={`border rounded-lg p-4 space-y-3 bg-white/[0.02] ${TIER_COLOR[s.tier] ?? "border-white/10"}`}
+                  className={`border rounded-lg p-5 sm:p-6 space-y-4 bg-white/[0.02] ${TIER_COLOR[s.tier] ?? "border-white/10"}`}
                 >
-                  <div className="flex items-baseline justify-between gap-3">
+                  <div className="flex items-baseline justify-between gap-4 pb-1">
                     <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
                       {fmtDate(s.created_at)}
                     </div>
@@ -176,7 +176,7 @@ function TimelinePage() {
                       {s.tier}
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+                  <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm leading-relaxed">
                     <span className="text-silver font-mono">
                       {s.score}
                       <span className="text-muted-foreground">/100</span>
@@ -192,14 +192,14 @@ function TimelinePage() {
                     )}
                   </div>
                   {s.notes && (
-                    <p className="text-xs text-silver-dim italic">&ldquo;{s.notes}&rdquo;</p>
+                    <p className="text-xs leading-relaxed text-silver-dim italic">&ldquo;{s.notes}&rdquo;</p>
                   )}
                   {s.tags && s.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-2 pt-1">
                       {s.tags.map((t) => (
                         <span
                           key={t}
-                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-silver-dim"
+                          className="text-[10px] font-mono px-2 py-1 rounded bg-white/5 border border-white/10 text-silver-dim"
                         >
                           #{t}
                         </span>
