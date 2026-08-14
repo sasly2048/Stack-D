@@ -71,7 +71,7 @@ export function MobileNavMenu({
               onSignOut();
             }}
             disabled={signingOut}
-            className="mt-4 cursor-pointer rounded-lg border border-white/10 px-3 py-3 text-left font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-silver disabled:opacity-50"
+            className="mt-4 cursor-pointer rounded-lg border border-white/10 px-3 py-3 text-left font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:-translate-y-px hover:bg-white/5 hover:text-silver hover:shadow-[0_0_16px_-6px_var(--color-ember,#F0A968)] disabled:opacity-50"
           >
             {signingOut ? "Exiting…" : "Exit"}
           </button>
