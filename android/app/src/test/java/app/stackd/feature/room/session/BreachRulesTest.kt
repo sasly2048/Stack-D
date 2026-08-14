@@ -147,23 +147,70 @@ class BreachRulesTest {
 
     // --- shake ------------------------------------------------------------
 
+    private fun mag(m: Float, at: Long) = BreachRules.TimedMagnitude(m, at)
+    private val absThresh = BreachRules.shakeThreshold(EnforcementMode.ABSOLUTE) // 16
+    private val gentleThresh = BreachRules.shakeThreshold(EnforcementMode.GENTLE) // 22
+
     @Test
-    fun `resting phone at one g is never a shake`() {
-        // Gravity alone reads ~9.81 on the vertical axis.
-        assertTrue(!BreachRules.isShake(EnforcementMode.ABSOLUTE, 0f, 0f, 9.81f))
-        assertTrue(!BreachRules.isShake(EnforcementMode.GENTLE, 0f, 0f, 9.81f))
+    fun `a single spike over threshold is not a shake`() {
+        // The core fail-safe: one sample must never end a session. A table bump
+        // or passing truck produces exactly this — one magnitude over threshold.
+        val window = listOf(mag(30f, 100))
+        assertTrue(!BreachRules.isShakeSustained(window, absThresh, 100))
     }
 
     @Test
-    fun `a jolt past the threshold is a shake`() {
-        assertTrue(BreachRules.isShake(EnforcementMode.ABSOLUTE, 0f, 0f, 17f))
-        assertTrue(BreachRules.isShake(EnforcementMode.GENTLE, 0f, 0f, 23f))
+    fun `three peaks inside the window is a real shake`() {
+        val window = listOf(mag(20f, 0), mag(20f, 200), mag(20f, 400))
+        assertTrue(BreachRules.isShakeSustained(window, absThresh, 500))
     }
 
     @Test
-    fun `gentle mode absorbs a jolt that absolute mode would flag`() {
-        assertTrue(BreachRules.isShake(EnforcementMode.ABSOLUTE, 0f, 0f, 18f))
-        assertTrue(!BreachRules.isShake(EnforcementMode.GENTLE, 0f, 0f, 18f))
+    fun `peaks that aged out of the window do not count`() {
+        // Two peaks 700ms and 650ms ago are past the 600ms window; only the
+        // fresh one remains, so a lone recent spike is still not a shake.
+        val window = listOf(mag(20f, 0), mag(20f, 50), mag(20f, 700))
+        assertTrue(!BreachRules.isShakeSustained(window, absThresh, 700))
+    }
+
+    @Test
+    fun `gentle mode absorbs agitation that absolute mode flags`() {
+        // Sustained 18-magnitude agitation: over the 16 absolute threshold,
+        // under the 22 gentle one.
+        val window = listOf(mag(18f, 0), mag(18f, 200), mag(18f, 400))
+        assertTrue(BreachRules.isShakeSustained(window, absThresh, 500))
+        assertTrue(!BreachRules.isShakeSustained(window, gentleThresh, 500))
+    }
+
+    @Test
+    fun `pruneWindow drops aged samples and keeps fresh ones`() {
+        // Window is 600ms, inclusive. At now=700: at=0 is 700ms old (dropped),
+        // at=100 is exactly 600ms old (kept), at=700 is fresh (kept).
+        val window = listOf(mag(20f, 0), mag(20f, 100), mag(20f, 700))
+        val kept = BreachRules.pruneWindow(window, 700)
+        assertEquals(2, kept.size)
+    }
+
+    @Test
+    fun `computeBaseline takes the median, not the first sample`() {
+        // A phone caught mid-placement emits a wild first reading (80f) then
+        // settles near 2f. The median must reject the outlier — the whole point
+        // of calibrating instead of trusting sample one.
+        val betas = listOf(80f, 1f, 2f, 3f, 2f)
+        val gammas = listOf(70f, 0f, 1f, 2f, 1f)
+        val base = BreachRules.computeBaseline(betas, gammas)!!
+        assertEquals(2f, base.first, 0.0001f)
+        assertEquals(1f, base.second, 0.0001f)
+    }
+
+    @Test
+    fun `calibration completes only after both time and sample floors`() {
+        // Enough samples but too soon: not complete.
+        assertTrue(!BreachRules.isCalibrationComplete(sampleCount = 5, elapsedMs = 100))
+        // Enough time but too few samples: not complete.
+        assertTrue(!BreachRules.isCalibrationComplete(sampleCount = 2, elapsedMs = 1000))
+        // Both floors met: complete.
+        assertTrue(BreachRules.isCalibrationComplete(sampleCount = 5, elapsedMs = 800))
     }
 
     @Test

@@ -58,14 +58,35 @@ class BreachDetector(
      *  without tearing down and rebinding sensor listeners (web "Optim 01"). */
     var onBreach: ((BreachReason, BreachSeverity) -> Unit)? = null
 
+    /** Fires once the orientation baseline settles and tilt detection is armed. */
+    var onCalibrated: (() -> Unit)? = null
+
+    /**
+     * Fail-safe surface for the UI. Reports which signals are actually guarding
+     * the session — a device with no rotation-vector sensor has no tilt
+     * protection at all, and the user must be told rather than left believing
+     * the stack is watched when it isn't. Mirrors the web hook reporting
+     * wake-lock capability separately from breaches.
+     */
+    var onCapability: ((SensorCapability) -> Unit)? = null
+
     var mode: EnforcementMode = EnforcementMode.ABSOLUTE
 
     private var baselineBeta: Float? = null
     private var baselineGamma: Float? = null
+
+    // Calibration state — samples gathered before the baseline is fixed.
+    private var calibrationStartedAt: Long = 0
+    private val calBetas = ArrayList<Float>()
+    private val calGammas = ArrayList<Float>()
+
     private var tiltStartedAt: Long = 0
     private var firedSevere: Boolean = false
     private var lastMinorAt: Long = 0
     private var running: Boolean = false
+
+    // Bounded shake window — sustained agitation, not one spike.
+    private var accelWindow = emptyList<BreachRules.TimedMagnitude>()
 
     private val rotationMatrix = FloatArray(9)
     private val orientation = FloatArray(3)
@@ -74,12 +95,27 @@ class BreachDetector(
         if (running) return
         running = true
         reset()
-        sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-        }
-        sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-        }
+
+        val rotation = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        val accel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        rotation?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
+        accel?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
+
+        // Report capability up front so the UI can warn on a device that can't
+        // fully guard a session. A missing rotation vector means no tilt/lift
+        // detection; a missing accelerometer means no shake detection.
+        onCapability?.invoke(
+            SensorCapability(
+                tiltAvailable = rotation != null,
+                shakeAvailable = accel != null,
+            ),
+        )
+
+        // No rotation vector ⇒ handleOrientation never runs ⇒ the baseline never
+        // settles ⇒ onCalibrated would never fire and the "arming" UI would hang
+        // forever. Arm immediately so the session can still run on whatever
+        // signals do exist (shake, backgrounding).
+        if (rotation == null) onCalibrated?.invoke()
     }
 
     fun stop() {
@@ -88,13 +124,17 @@ class BreachDetector(
         sensorManager.unregisterListener(this)
     }
 
-    /** Clears the baseline and the severe latch, re-arming for a new session. */
+    /** Clears the baseline, calibration, and the severe latch, re-arming for a new session. */
     fun reset() {
         baselineBeta = null
         baselineGamma = null
+        calibrationStartedAt = 0
+        calBetas.clear()
+        calGammas.clear()
         tiltStartedAt = 0
         firedSevere = false
         lastMinorAt = 0
+        accelWindow = emptyList()
     }
 
     /**
@@ -132,8 +172,24 @@ class BreachDetector(
         val bBase = baselineBeta
         val gBase = baselineGamma
         if (bBase == null || gBase == null) {
-            baselineBeta = beta
-            baselineGamma = gamma
+            // Calibrate before arming. Taking the first sample as baseline (the
+            // old behaviour) reads a phone caught mid-placement as the resting
+            // pose, so every later reading is measured against a wrong zero —
+            // false breaches on honest users, and real tilts masked. Instead,
+            // gather a short window and take its median.
+            val t = now()
+            if (calibrationStartedAt == 0L) calibrationStartedAt = t
+            calBetas.add(beta)
+            calGammas.add(gamma)
+            if (!BreachRules.isCalibrationComplete(calBetas.size, t - calibrationStartedAt)) return
+
+            BreachRules.computeBaseline(calBetas, calGammas)?.let { (b, g) ->
+                baselineBeta = b
+                baselineGamma = g
+            }
+            calBetas.clear()
+            calGammas.clear()
+            onCalibrated?.invoke()
             return
         }
 
@@ -159,10 +215,24 @@ class BreachDetector(
     }
 
     private fun handleMotion(event: SensorEvent) {
+        // Motion before the baseline settles is the user placing the phone —
+        // ignore it, matching the web hook's `if (!state.baseline) return`.
+        if (baselineBeta == null) return
+
         val x = event.values.getOrElse(0) { 0f }
         val y = event.values.getOrElse(1) { 0f }
         val z = event.values.getOrElse(2) { 0f }
-        if (BreachRules.isShake(mode, x, y, z)) fireSevere(BreachReason.SHAKE)
+        val mag = BreachRules.magnitude(x, y, z)
+        val t = now()
+
+        accelWindow = BreachRules.pruneWindow(accelWindow + BreachRules.TimedMagnitude(mag, t), t)
+
+        // A shake is sustained agitation, not one spike: require repeated peaks
+        // inside the window before firing an irreversible severe breach, so a
+        // table bump or passing truck no longer ends a session.
+        if (BreachRules.isShakeSustained(accelWindow, BreachRules.shakeThreshold(mode), t)) {
+            fireSevere(BreachReason.SHAKE)
+        }
     }
 
     private fun fireSevere(reason: BreachReason) {
@@ -179,4 +249,17 @@ class BreachDetector(
         vibrate(BreachRules.VIBRATE_MINOR_MS)
         onBreach?.invoke(reason, BreachSeverity.MINOR)
     }
+}
+
+/**
+ * Which breach signals are actually available on this device. A false here is a
+ * hole in the guarantee the room makes — the UI surfaces it so a session is
+ * never silently unprotected.
+ */
+data class SensorCapability(
+    val tiltAvailable: Boolean,
+    val shakeAvailable: Boolean,
+) {
+    /** True when at least one motion signal is guarding the stack. */
+    val anyMotionGuard: Boolean get() = tiltAvailable || shakeAvailable
 }

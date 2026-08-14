@@ -1,0 +1,367 @@
+package app.stackd.feature.room
+
+import android.content.Context
+import android.hardware.SensorManager
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import app.stackd.core.appContainer
+import app.stackd.core.formatDuration
+import app.stackd.core.stackdViewModel
+import app.stackd.core.theme.MonoLabel
+import app.stackd.core.theme.MonoLabelSmall
+import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.ErrorBanner
+import app.stackd.core.ui.GhostButton
+import app.stackd.core.ui.NoticeBanner
+import app.stackd.core.ui.SectionLabel
+import app.stackd.feature.room.session.BreachDetector
+import app.stackd.feature.room.session.FocusScore
+
+/**
+ * The room screen. The [RoomViewModel] owns all session state and realtime; this
+ * composable renders the current phase and bridges the two things a ViewModel
+ * can't hold: the live sensor loop (via [BreachDetector]) and the Android
+ * lifecycle (leaving the app is itself a breach).
+ */
+@Composable
+fun RoomRoute(
+    code: String,
+    onExit: () -> Unit,
+    vm: RoomViewModel = viewModel(
+        factory = stackdViewModel { RoomViewModel(it, code) },
+    ),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Sensor + lifecycle bridge. Bound only while this user is armed — the
+    // detector's own listeners are the battery cost, so they exist exactly when
+    // detection should. Rebinding on every timer tick is avoided by keying the
+    // effect on `armed` alone, matching the web hook's "Optim 01".
+    DisposableEffect(state.armed) {
+        if (!state.armed) return@DisposableEffect onDispose { }
+
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val detector = BreachDetector(
+            sensorManager = sensorManager,
+            vibrate = { ms -> vibrate(context, ms) },
+        ).apply {
+            mode = vm.enforcementMode
+            onBreach = vm::onBreach
+            onCalibrated = vm::onCalibrated
+            onCapability = { cap ->
+                vm.onSensorWarning(
+                    when {
+                        !cap.anyMotionGuard -> "No motion sensors — this device can't detect tilt or shake."
+                        !cap.tiltAvailable -> "No orientation sensor — tilt and lift won't be detected."
+                        !cap.shakeAvailable -> "No accelerometer — shaking won't be detected."
+                        else -> null
+                    },
+                )
+            }
+        }
+        detector.start()
+
+        // Leaving the app foreground breaks the stack — the web's tab-hidden.
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) detector.onAppBackgrounded()
+            if (event == Lifecycle.Event.ON_RESUME) vm.reconcile()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            detector.stop()
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    RoomScreen(
+        state = state,
+        onStart = vm::startRitual,
+        onEnd = vm::endSession,
+        onAbort = vm::abortSession,
+        onExit = onExit,
+    )
+}
+
+@Composable
+fun RoomScreen(
+    state: RoomUiState,
+    onStart: () -> Unit,
+    onEnd: () -> Unit,
+    onAbort: () -> Unit,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = Stackd.colors
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("ROOM / ${state.code}", style = MonoLabel, color = colors.textMuted)
+        Spacer(Modifier.height(24.dp))
+
+        when (state.phase) {
+            RoomPhase.LOADING -> Loading()
+            RoomPhase.ERROR -> ErrorBanner(state.error ?: "Something went wrong.", onRetry = onExit)
+            RoomPhase.LOBBY -> Lobby(state, onStart, onAbort, onExit)
+            RoomPhase.COUNTDOWN -> Countdown(state)
+            RoomPhase.ACTIVE -> Active(state, onEnd, onAbort)
+            RoomPhase.ENDED -> Ended(state, onExit)
+        }
+    }
+}
+
+@Composable
+private fun Loading() {
+    SectionLabel("ENTERING")
+    Spacer(Modifier.height(12.dp))
+    Text("Claiming your seat…", style = MaterialTheme.typography.bodyMedium, color = Stackd.colors.textMuted)
+}
+
+@Composable
+private fun Lobby(state: RoomUiState, onStart: () -> Unit, onAbort: () -> Unit, onExit: () -> Unit) {
+    val colors = Stackd.colors
+    SectionLabel("LOBBY")
+    Spacer(Modifier.height(12.dp))
+    Text(
+        state.room?.title?.takeIf { it.isNotBlank() } ?: "Waiting to begin",
+        style = MaterialTheme.typography.headlineMedium,
+        color = colors.textPrimary,
+        fontWeight = FontWeight.ExtraBold,
+        textAlign = TextAlign.Center,
+    )
+    Spacer(Modifier.height(8.dp))
+    Text(
+        "${(state.room?.targetDurationSeconds ?: 0) / 60} min · ${state.participants.size} in the room",
+        style = MonoLabelSmall,
+        color = colors.textMuted,
+    )
+    Spacer(Modifier.height(28.dp))
+    Roster(state)
+    Spacer(Modifier.height(28.dp))
+
+    if (state.isHost) {
+        EmberButton(text = "Start Session", onClick = onStart)
+        Spacer(Modifier.height(12.dp))
+        GhostButton(text = "Abort Room", onClick = onAbort)
+    } else {
+        NoticeBanner("Waiting for the host to start the session.")
+        Spacer(Modifier.height(12.dp))
+        GhostButton(text = "Leave", onClick = onExit)
+    }
+}
+
+@Composable
+private fun Countdown(state: RoomUiState) {
+    val colors = Stackd.colors
+    SectionLabel("STARTING")
+    Spacer(Modifier.height(24.dp))
+    Text(
+        state.countdown?.toString() ?: "…",
+        style = MaterialTheme.typography.displayLarge,
+        color = colors.accent,
+        fontWeight = FontWeight.ExtraBold,
+    )
+    Spacer(Modifier.height(12.dp))
+    Text("Stack your phones face-down.", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+}
+
+@Composable
+private fun Active(state: RoomUiState, onEnd: () -> Unit, onAbort: () -> Unit) {
+    val colors = Stackd.colors
+
+    // Progress ring + remaining time.
+    val progress = if ((state.room?.targetDurationSeconds ?: 0) > 0) {
+        (state.elapsedSeconds.toFloat() / state.room!!.targetDurationSeconds).coerceIn(0f, 1f)
+    } else 0f
+
+    Box(
+        modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val stroke = 14.dp.toPx()
+            val inset = stroke / 2
+            val arc = Size(size.width - stroke, size.height - stroke)
+            drawArc(
+                color = colors.border,
+                startAngle = -90f, sweepAngle = 360f, useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+                size = arc, style = Stroke(stroke),
+            )
+            drawArc(
+                color = if (state.iBreached) colors.breach else colors.accent,
+                startAngle = -90f, sweepAngle = 360f * progress, useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+                size = arc, style = Stroke(stroke),
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                formatDuration(state.remainingSeconds.toInt()),
+                style = MaterialTheme.typography.displayMedium,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                if (state.calibrating) "ARMING…" else if (state.iBreached) "BREACHED" else "HOLDING",
+                style = MonoLabelSmall,
+                color = if (state.iBreached) colors.breach else colors.textMuted,
+            )
+        }
+    }
+
+    state.sensorWarning?.let {
+        Spacer(Modifier.height(12.dp))
+        ErrorBanner(it)
+    }
+    if (state.iBreached) {
+        Spacer(Modifier.height(12.dp))
+        ErrorBanner("Your stack broke. You're out for this session, but it's still running for the others.")
+    }
+
+    Spacer(Modifier.height(24.dp))
+    Roster(state)
+    Spacer(Modifier.height(24.dp))
+
+    if (state.isHost) {
+        EmberButton(text = "End Now", onClick = onEnd)
+        Spacer(Modifier.height(12.dp))
+        GhostButton(text = "Abort", onClick = onAbort)
+    }
+}
+
+@Composable
+private fun Ended(state: RoomUiState, onExit: () -> Unit) {
+    val colors = Stackd.colors
+    val result = state.result
+    SectionLabel(if (state.room?.statusEnum?.wire == "aborted") "ABORTED" else "SESSION COMPLETE")
+    Spacer(Modifier.height(24.dp))
+
+    if (result != null) {
+        Text(
+            result.score.toString(),
+            style = MaterialTheme.typography.displayLarge,
+            color = Color(result.tier.hex),
+            fontWeight = FontWeight.ExtraBold,
+        )
+        Text("/100 · ${result.tier.label.uppercase()}", style = MonoLabelSmall, color = Color(result.tier.hex))
+        Spacer(Modifier.height(20.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            Stat("XP EARNED", "+${result.xp}")
+            Stat("FOCUS", formatDuration(result.focusSecondsInt))
+            Stat("PENALTY", result.penalty.toString())
+        }
+        if (state.resultQueuedOffline) {
+            Spacer(Modifier.height(16.dp))
+            NoticeBanner("Saved offline — it'll sync when you're back online.")
+        }
+    } else {
+        Text("Tallying your session…", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+    }
+
+    Spacer(Modifier.height(28.dp))
+    EmberButton(text = "Back to Dashboard", onClick = onExit)
+}
+
+@Composable
+private fun Stat(label: String, value: String) {
+    val colors = Stackd.colors
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MonoLabelSmall, color = colors.textMuted)
+        Spacer(Modifier.height(4.dp))
+        Text(value, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun Roster(state: RoomUiState) {
+    val colors = Stackd.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(16.dp),
+    ) {
+        SectionLabel("THE STACK", color = colors.textMuted)
+        Spacer(Modifier.height(12.dp))
+        state.participants.forEach { p ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    p.displayName + if (p.userId == state.meId) " (you)" else "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (p.breached) colors.textMuted else colors.textPrimary,
+                )
+                Text(
+                    if (p.breached) "BREACHED" else "${p.integrity}%",
+                    style = MonoLabelSmall,
+                    color = if (p.breached) colors.breach else colors.live,
+                )
+            }
+        }
+    }
+}
+
+/** Fires a haptic pulse, matching the web's `navigator.vibrate`. */
+private fun vibrate(context: Context, ms: Long) {
+    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    } ?: return
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+    } else {
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(ms)
+    }
+}

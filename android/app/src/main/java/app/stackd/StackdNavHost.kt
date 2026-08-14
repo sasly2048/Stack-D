@@ -11,6 +11,7 @@ import androidx.navigation.navArgument
 import app.stackd.core.ui.PlaceholderScreen
 import app.stackd.feature.auth.AuthRoute
 import app.stackd.feature.dashboard.DashboardRoute
+import app.stackd.feature.room.RoomRoute
 import app.stackd.feature.start.StartRoute
 
 @Composable
@@ -64,7 +65,15 @@ fun StackdNavHost(
             arguments = listOf(navArgument(Dest.Room.ARG_CODE) { type = NavType.StringType }),
         ) { entry ->
             val code = entry.arguments?.getString(Dest.Room.ARG_CODE).orEmpty()
-            PlaceholderScreen(title = "Room $code")
+            RoomRoute(
+                code = code,
+                onExit = {
+                    navController.navigate(Dest.Dashboard.route) {
+                        popUpTo(Dest.Dashboard.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
 
         // Identity & social

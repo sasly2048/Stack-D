@@ -30,6 +30,12 @@ data class FinalizePayload(
     val durationSeconds: Int,
     val breachesCount: Int,
     val tier: String,
+    /**
+     * The ruleset that produced this score, forwarded to
+     * `finalize_focus_session` so a result queued under v2 is still stored as v2
+     * when it finally drains — even if the app has since shipped a v3.
+     */
+    val scoringVersion: Int,
     val owner: String,
     val queuedAt: Long,
 )

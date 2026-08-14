@@ -18,6 +18,19 @@ object BreachRules {
     const val VIBRATE_SEVERE_MS = 200L
     const val VIBRATE_MINOR_MS = 60L
 
+    /**
+     * Collect orientation for this long before deciding what "flat" is — long
+     * enough for a hand to leave the phone, short enough not to stall the start.
+     * Ported from the web's `CALIBRATION_MS`; the pair with
+     * [CALIBRATION_MIN_SAMPLES] guards a device that emits orientation slowly.
+     */
+    const val CALIBRATION_MS = 800L
+    const val CALIBRATION_MIN_SAMPLES = 5
+
+    /** Window over which shake peaks are counted, and how many are needed. */
+    const val SHAKE_WINDOW_MS = 600L
+    const val SHAKE_MIN_PEAKS = 3
+
     fun tiltThreshold(mode: EnforcementMode): Float =
         if (mode == EnforcementMode.GENTLE) 60f else 30f
 
@@ -26,8 +39,52 @@ object BreachRules {
 
     fun magnitude(x: Float, y: Float, z: Float): Float = sqrt(x * x + y * y + z * z)
 
-    fun isShake(mode: EnforcementMode, x: Float, y: Float, z: Float): Boolean =
-        magnitude(x, y, z) > shakeThreshold(mode)
+    /**
+     * Whether enough evidence has accrued to fix the baseline. Both conditions
+     * matter: elapsed time lets the phone settle, the sample count stops a
+     * slow-emitting device from arming on two readings.
+     */
+    fun isCalibrationComplete(sampleCount: Int, elapsedMs: Long): Boolean =
+        elapsedMs >= CALIBRATION_MS && sampleCount >= CALIBRATION_MIN_SAMPLES
+
+    /**
+     * The resting orientation, taken as the *median* of calibration samples —
+     * not the first sample and not the mean. The last readings before a phone
+     * comes to rest are the noisiest; one wild value drags a mean but barely
+     * moves a median. Using the first sample (the old bug) let a phone caught
+     * mid-placement define a tilted pose as level, so every later reading was
+     * measured against a wrong zero.
+     *
+     * @return baseline (beta, gamma), or null if there were no samples.
+     */
+    fun computeBaseline(betas: List<Float>, gammas: List<Float>): Pair<Float, Float>? {
+        if (betas.isEmpty() || gammas.isEmpty()) return null
+        val b = betas.sorted()
+        val g = gammas.sorted()
+        return b[b.size / 2] to g[g.size / 2]
+    }
+
+    /**
+     * Whether sustained agitation is present in the window. A single sample over
+     * threshold is a table bump, a dropped book, a passing truck; real shaking
+     * produces repeated peaks. Firing severe on one sample (the old bug) cost
+     * honest users sessions to ambient vibration.
+     *
+     * @param window magnitudes with timestamps, any age — this filters by window.
+     */
+    fun isShakeSustained(
+        window: List<TimedMagnitude>,
+        threshold: Float,
+        now: Long,
+    ): Boolean =
+        window.count { now - it.at <= SHAKE_WINDOW_MS && it.mag > threshold } >= SHAKE_MIN_PEAKS
+
+    /** Drops samples aged out of the shake window, keeping it bounded. */
+    fun pruneWindow(window: List<TimedMagnitude>, now: Long): List<TimedMagnitude> =
+        window.filter { now - it.at <= SHAKE_WINDOW_MS }
+
+    /** One accelerometer magnitude sample with its capture time. */
+    data class TimedMagnitude(val mag: Float, val at: Long)
 
     /** What a single orientation reading implies, given how long any tilt has held. */
     sealed interface Verdict {

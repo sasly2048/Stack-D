@@ -21,6 +21,9 @@ class AppContainer(context: Context) {
 
     private val appContext: Context = context.applicationContext
 
+    /** For WorkManager enqueues, which need an application Context. */
+    val appContextForWork: Context get() = appContext
+
     val client: SupabaseClient get() = SupabaseModule.client
 
     val settings: SettingsStore = SettingsStore(appContext)
