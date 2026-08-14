@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/logo";
 import { useLabs } from "@/hooks/use-labs";
 import { routeVisible } from "@/lib/feature-flags";
-import { useNavTier, tierUnlocked, NAV_MIN_TIER, type NavTier } from "@/hooks/use-nav-tier";
+import { useNavTier, type NavTier } from "@/hooks/use-nav-tier";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
 
 type NavItem = { to: string; label: string; visibility: string };
@@ -145,7 +145,7 @@ export function Nav() {
                 onClick={signOut}
                 disabled={signingOut}
                 aria-busy={signingOut}
-                className="hidden lg:inline cursor-pointer rounded transition-all duration-200 ease-[var(--ease-ritual)] hover:text-silver active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
+                className={`hidden lg:inline cursor-pointer ${NAV_GLOW} active:scale-[0.99]`.concat(" ")+" disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
               >
                 {signingOut ? "Exiting…" : "Exit"}
               </button>
@@ -155,7 +155,7 @@ export function Nav() {
             <>
               <Link
                 to="/philosophy"
-                className="relative hover:text-silver transition-colors hidden sm:inline-flex items-center gap-2"
+                className={`relative hidden sm:inline-flex items-center gap-2 ${NAV_GLOW}`}
                 activeProps={{ className: "!text-ember" }}
               >
                 {({ isActive }) => (
@@ -171,7 +171,7 @@ export function Nav() {
               </Link>
               <Link
                 to="/philosophy"
-                className="hover:text-silver transition-colors sm:hidden"
+                className={`sm:hidden ${NAV_GLOW}`}
                 activeProps={{ className: "!text-ember" }}
               >
                 Philosophy
