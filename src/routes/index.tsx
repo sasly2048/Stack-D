@@ -91,7 +91,7 @@ const SIGNALS = [
   { k: "Lift", d: "The phone leaves the stack. The room knows before you sit back down." },
   { k: "Wake", d: "Screen-on events break the hold — no quiet exits, no private cheats." },
 ];
-/*
+
 const VOICES = [
   {
     q: "We stacked at dinner. Nobody touched their phone for ninety minutes. I forgot what that felt like.",
@@ -125,7 +125,6 @@ const VOICES = [
   },
   { q: "I stopped calling it a detox. It's just how we hang out now.", n: "Rowan — Melbourne" },
 ];
-*/
 
 // Error codes + user-facing copy live in `@/lib/room-code` so the server
 // function and this UI can never drift apart (and so both are unit-testable).
