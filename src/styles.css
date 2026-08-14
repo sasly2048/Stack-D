@@ -114,6 +114,11 @@
   --input: rgba(255, 255, 255, 0.08);
   --ring: rgba(201, 135, 74, 0.5);
 
+  /* ember glow — text + icon hover accents */
+  --text-glow-ember: rgba(240, 169, 104, 0.45);
+  --text-glow-ember-strong: rgba(240, 169, 104, 0.6);
+  --icon-glow-ember: rgba(240, 169, 104, 0.55);
+
   /* ============================================================
      Join button — centralized tokens.
      Every visible Join state reads from these variables. Tweak
