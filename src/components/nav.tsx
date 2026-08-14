@@ -145,7 +145,7 @@ export function Nav() {
                 onClick={signOut}
                 disabled={signingOut}
                 aria-busy={signingOut}
-                className={`hidden lg:inline cursor-pointer ${NAV_GLOW} active:scale-[0.99]`.concat(" ")+" disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian"
+                className={`hidden lg:inline cursor-pointer ${NAV_GLOW} active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian`}
               >
                 {signingOut ? "Exiting…" : "Exit"}
               </button>
