@@ -56,12 +56,13 @@ export function MobileNavMenu({
               key={item.to}
               to={item.to}
               onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-3 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:bg-white/5 hover:text-silver focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+              className="rounded-lg px-3 py-3 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:-translate-y-px hover:bg-white/5 hover:text-silver hover:shadow-[0_0_16px_-6px_var(--color-ember,#F0A968)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
               activeProps={{ className: "bg-white/5 text-ember", "aria-current": "page" }}
             >
               {item.label}
             </Link>
           ))}
+
 
           <button
             type="button"
