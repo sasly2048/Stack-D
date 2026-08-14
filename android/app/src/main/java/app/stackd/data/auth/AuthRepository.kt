@@ -97,6 +97,13 @@ class AuthRepository(
     /** Null until a session exists. */
     val currentUserId: String? get() = client.auth.currentUserOrNull()?.id
 
+    /**
+     * Null when no session exists — and also null when the provider returned no
+     * address at all, which the confirm-identity step handles by falling back to
+     * a derived challenge instead of showing an empty card.
+     */
+    val currentEmail: String? get() = client.auth.currentUserOrNull()?.email?.takeIf { it.isNotBlank() }
+
     val isSignedIn: Flow<Boolean>
         get() = client.auth.sessionStatus.map { it is SessionStatus.Authenticated }
 

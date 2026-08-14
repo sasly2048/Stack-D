@@ -51,8 +51,67 @@ class SettingsStore(private val context: Context) {
         return generated
     }
 
-    private companion object {
-        val KeyDevTools = booleanPreferencesKey("dev_tools_enabled")
-        val KeyFingerprint = stringPreferencesKey("device_fingerprint")
+    /**
+     * Enforcement profile, persisted across sessions like the web's
+     * `localStorage["stackd:mode"]`. Defaults to `absolute` — the stricter of
+     * the two — so a first run never silently enforces less than the user
+     * assumes it does.
+     */
+    val enforcementMode: Flow<String> =
+        context.dataStore.data.map { it[KeyMode] ?: MODE_ABSOLUTE }
+
+    suspend fun setEnforcementMode(mode: String) {
+        context.dataStore.edit { it[KeyMode] = if (mode == MODE_GENTLE) MODE_GENTLE else MODE_ABSOLUTE }
+    }
+
+    /**
+     * The duration of the last session actually started — mirrors the web's
+     * `getLastSessionMinutes`. Written only once a room exists: a duration
+     * picked but never started is an abandoned draft, not a preference.
+     */
+    val lastSessionMinutes: Flow<Int?> =
+        context.dataStore.data.map { it[KeyLastMinutes] }
+
+    suspend fun setLastSessionMinutes(minutes: Int) {
+        context.dataStore.edit { it[KeyLastMinutes] = minutes }
+    }
+
+    /**
+     * Whether the user has ever finished a session — mirrors the web's
+     * `has-completed-session` flag. Gates first-run coaching (the "what is a
+     * room" tip): someone who has held a room before doesn't need it. Set once
+     * at the first finalize and never cleared.
+     */
+    val hasCompletedSession: Flow<Boolean> =
+        context.dataStore.data.map { it[KeyHasCompleted] ?: false }
+
+    suspend fun markCompletedSession() {
+        context.dataStore.edit { it[KeyHasCompleted] = true }
+    }
+
+    /**
+     * Dismissed once, stays dismissed — the web keys tips by id in a set, but
+     * Android has exactly one dismissible tip (the Start intro), so a single
+     * flag is the whole feature. Add a keyed set only if a second tip appears.
+     */
+    val startIntroDismissed: Flow<Boolean> =
+        context.dataStore.data.map { it[KeyStartIntro] ?: false }
+
+    suspend fun dismissStartIntro() {
+        context.dataStore.edit { it[KeyStartIntro] = true }
+    }
+
+    companion object {
+        const val MODE_GENTLE = "gentle"
+        const val MODE_ABSOLUTE = "absolute"
+
+        private val KeyDevTools = booleanPreferencesKey("dev_tools_enabled")
+        private val KeyFingerprint = stringPreferencesKey("device_fingerprint")
+        private val KeyMode = stringPreferencesKey("enforcement_mode")
+        private val KeyLastMinutes = androidx.datastore.preferences.core.intPreferencesKey(
+            "last_session_minutes",
+        )
+        private val KeyHasCompleted = booleanPreferencesKey("has_completed_session")
+        private val KeyStartIntro = booleanPreferencesKey("dismissed_start_intro")
     }
 }

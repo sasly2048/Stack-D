@@ -9,6 +9,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.stackd.core.ui.PlaceholderScreen
+import app.stackd.feature.auth.AuthRoute
+import app.stackd.feature.dashboard.DashboardRoute
+import app.stackd.feature.start.StartRoute
 
 @Composable
 fun StackdNavHost(
@@ -23,12 +26,39 @@ fun StackdNavHost(
     ) {
         // Signed out
         placeholder(Dest.Landing, "Landing")
-        placeholder(Dest.Auth, "Auth")
+        composable(Dest.Auth.route) {
+            AuthRoute(
+                onAuthenticated = {
+                    navController.navigate(Dest.Dashboard.route) {
+                        // Signed-out screens leave the back stack — Back from the
+                        // dashboard must not return to the auth form.
+                        popUpTo(Dest.Landing.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
         placeholder(Dest.Philosophy, "Philosophy")
 
         // Core session loop
-        placeholder(Dest.Dashboard, "Dashboard")
-        placeholder(Dest.Start, "Start Session")
+        composable(Dest.Dashboard.route) {
+            DashboardRoute(
+                onStart = { navController.navigate(Dest.Start.route) },
+                onOpenRoom = { code -> navController.navigate(Dest.Room.of(code)) },
+            )
+        }
+        composable(Dest.Start.route) {
+            StartRoute(
+                onRoomCreated = { code ->
+                    navController.navigate(Dest.Room.of(code)) {
+                        // The Start screen is a one-shot configurator; drop it
+                        // from the back stack so Back from the room returns to
+                        // the dashboard, not to a stale form.
+                        popUpTo(Dest.Start.route) { inclusive = true }
+                    }
+                },
+            )
+        }
         composable(
             route = Dest.Room.route,
             arguments = listOf(navArgument(Dest.Room.ARG_CODE) { type = NavType.StringType }),
