@@ -100,9 +100,6 @@ export function Nav() {
             <>
               {AUTHED_ITEMS.map((item) => {
                 if (!routeVisible(item.to, labs)) return null;
-                const needed = NAV_MIN_TIER[item.to] ?? "starter";
-                const unlocked = tierUnlocked(tier, needed, power);
-                if (!unlocked) return null;
                 return (
                   <Link
                     key={item.to}
@@ -110,7 +107,7 @@ export function Nav() {
                     // aria-current is what actually tells a screen reader which
                     // page you are on; the ember colour alone conveys it to
                     // sighted users only.
-                    className={`relative rounded transition-colors hover:text-silver focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian ${item.visibility}`}
+                    className={`relative ${NAV_GLOW} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian ${item.visibility}`}
                     activeProps={{
                       className: "text-ember",
                       "aria-current": "page",
@@ -120,6 +117,7 @@ export function Nav() {
                   </Link>
                 );
               })}
+
               <span
                 title={`${TIER_LABEL[tier]} tier${power ? " · Power" : ""}`}
                 className="hidden xl:inline font-mono text-[9px] tracking-[0.3em] text-silver-dim"
