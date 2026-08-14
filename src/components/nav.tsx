@@ -11,26 +11,34 @@ import { MobileNavMenu } from "@/components/mobile-nav-menu";
 
 type NavItem = { to: string; label: string; visibility: string };
 
+// Tablet and below show only "New Session" + the drawer trigger, so every link
+// here is desktop-only (`lg`). The drawer is the single source of truth for
+// tablet/phone navigation.
 const AUTHED_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Analytics", visibility: "hidden sm:inline" },
-  { to: "/groups", label: "Circles", visibility: "hidden sm:inline" },
-  { to: "/seasons", label: "Seasons", visibility: "hidden md:inline" },
-  { to: "/leaderboard", label: "Ranks", visibility: "hidden sm:inline" },
-  { to: "/challenges", label: "Rites", visibility: "hidden md:inline" },
-  { to: "/insights", label: "Insights", visibility: "hidden md:inline" },
-  { to: "/timeline", label: "Timeline", visibility: "hidden md:inline" },
-  { to: "/feed", label: "Feed", visibility: "hidden md:inline" },
-  { to: "/friends", label: "Friends", visibility: "hidden md:inline" },
-  { to: "/achievements", label: "Marks", visibility: "hidden md:inline" },
-  { to: "/wrapped", label: "Wrapped", visibility: "hidden md:inline" },
-  { to: "/vault", label: "Vault", visibility: "hidden md:inline" },
-  { to: "/dna", label: "DNA", visibility: "hidden lg:inline" },
-  { to: "/replay", label: "Replay", visibility: "hidden lg:inline" },
-  { to: "/partners", label: "Partners", visibility: "hidden lg:inline" },
-  { to: "/capsule", label: "Capsule", visibility: "hidden lg:inline" },
-  { to: "/profile", label: "Profile", visibility: "hidden sm:inline" },
-  { to: "/companion", label: "Atlas", visibility: "hidden lg:inline" },
+  { to: "/dashboard", label: "Analytics", visibility: "hidden lg:inline" },
+  { to: "/groups", label: "Circles", visibility: "hidden lg:inline" },
+  { to: "/seasons", label: "Seasons", visibility: "hidden xl:inline" },
+  { to: "/leaderboard", label: "Ranks", visibility: "hidden lg:inline" },
+  { to: "/challenges", label: "Rites", visibility: "hidden xl:inline" },
+  { to: "/insights", label: "Insights", visibility: "hidden xl:inline" },
+  { to: "/timeline", label: "Timeline", visibility: "hidden 2xl:inline" },
+  { to: "/feed", label: "Feed", visibility: "hidden 2xl:inline" },
+  { to: "/friends", label: "Friends", visibility: "hidden xl:inline" },
+  { to: "/achievements", label: "Marks", visibility: "hidden 2xl:inline" },
+  { to: "/wrapped", label: "Wrapped", visibility: "hidden 2xl:inline" },
+  { to: "/vault", label: "Vault", visibility: "hidden 2xl:inline" },
+  { to: "/dna", label: "DNA", visibility: "hidden 2xl:inline" },
+  { to: "/replay", label: "Replay", visibility: "hidden 2xl:inline" },
+  { to: "/partners", label: "Partners", visibility: "hidden 2xl:inline" },
+  { to: "/capsule", label: "Capsule", visibility: "hidden 2xl:inline" },
+  { to: "/profile", label: "Profile", visibility: "hidden lg:inline" },
+  { to: "/companion", label: "Atlas", visibility: "hidden 2xl:inline" },
 ];
+
+/** Shared hover treatment: soft ember glow + 1px lift, no layout shift. */
+const NAV_GLOW =
+  "rounded px-2 py-1 transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:bg-white/5 hover:shadow-[0_0_14px_-4px_var(--color-ember,#F0A968)] hover:-translate-y-px";
+
 
 const TIER_LABEL: Record<NavTier, string> = {
   starter: "Starter",
