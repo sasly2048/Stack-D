@@ -35,9 +35,9 @@ const AUTHED_ITEMS: NavItem[] = [
   { to: "/companion", label: "Atlas", visibility: "hidden 2xl:inline" },
 ];
 
-/** Shared hover treatment: soft ember glow + 1px lift, no layout shift. */
+/** Shared hover treatment: text + icon ember glow, no background box/border. */
 const NAV_GLOW =
-  "rounded px-2 py-1 transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:bg-white/5 hover:shadow-[0_0_14px_-4px_var(--color-ember,#F0A968)] hover:-translate-y-px";
+  "px-2 py-1 transition-[color,text-shadow] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[text-shadow:0_0_12px_var(--text-glow-ember)]";
 
 
 const TIER_LABEL: Record<NavTier, string> = {
@@ -109,7 +109,7 @@ export function Nav() {
                     // sighted users only.
                     className={`relative ${NAV_GLOW} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian ${item.visibility}`}
                     activeProps={{
-                      className: "text-ember",
+                      className: "text-ember hover:text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
                       "aria-current": "page",
                     }}
                   >
@@ -145,7 +145,7 @@ export function Nav() {
                 onClick={signOut}
                 disabled={signingOut}
                 aria-busy={signingOut}
-                className={`hidden lg:inline cursor-pointer ${NAV_GLOW} active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian`}
+                className={`hidden lg:inline cursor-pointer ${NAV_GLOW} disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian`}
               >
                 {signingOut ? "Exiting…" : "Exit"}
               </button>
@@ -156,13 +156,13 @@ export function Nav() {
               <Link
                 to="/philosophy"
                 className={`relative hidden sm:inline-flex items-center gap-2 ${NAV_GLOW}`}
-                activeProps={{ className: "!text-ember" }}
+                activeProps={{ className: "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]" }}
               >
                 {({ isActive }) => (
                   <>
                     <span
-                      className={`size-1 rounded-full transition-all ${
-                        isActive ? "bg-ember scale-100" : "bg-transparent scale-0"
+                      className={`size-1 rounded-full transition-[background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] ${
+                        isActive ? "bg-ember [box-shadow:0_0_8px_var(--icon-glow-ember)] scale-100" : "bg-transparent scale-0"
                       }`}
                     />
                     Philosophy
@@ -172,7 +172,7 @@ export function Nav() {
               <Link
                 to="/philosophy"
                 className={`sm:hidden ${NAV_GLOW}`}
-                activeProps={{ className: "!text-ember" }}
+                activeProps={{ className: "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]" }}
               >
                 Philosophy
               </Link>

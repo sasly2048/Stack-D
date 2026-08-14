@@ -32,7 +32,7 @@ export function MobileNavMenu({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         aria-label="Open navigation menu"
-        className="grid size-9 shrink-0 place-items-center rounded-full border border-white/10 text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:-translate-y-px hover:bg-white/5 hover:text-silver hover:shadow-[0_0_14px_-4px_var(--color-ember,#F0A968)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian lg:hidden"
+        className="grid size-9 shrink-0 place-items-center text-muted-foreground transition-[color,filter] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[filter:drop-shadow(0_0_10px_var(--icon-glow-ember))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian lg:hidden"
       >
         <Menu className="size-4" aria-hidden="true" />
       </SheetTrigger>
@@ -56,8 +56,8 @@ export function MobileNavMenu({
               key={item.to}
               to={item.to}
               onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-3 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:-translate-y-px hover:bg-white/5 hover:text-silver hover:shadow-[0_0_16px_-6px_var(--color-ember,#F0A968)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
-              activeProps={{ className: "bg-white/5 text-ember", "aria-current": "page" }}
+              className="px-3 py-3 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,text-shadow] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[text-shadow:0_0_14px_var(--text-glow-ember)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+              activeProps={{ className: "text-ember hover:text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]", "aria-current": "page" }}
             >
               {item.label}
             </Link>
@@ -71,7 +71,7 @@ export function MobileNavMenu({
               onSignOut();
             }}
             disabled={signingOut}
-            className="mt-4 cursor-pointer rounded-lg border border-white/10 px-3 py-3 text-left font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] hover:-translate-y-px hover:bg-white/5 hover:text-silver hover:shadow-[0_0_16px_-6px_var(--color-ember,#F0A968)] disabled:opacity-50"
+            className="mt-4 cursor-pointer px-3 py-3 text-left font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,text-shadow] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[text-shadow:0_0_14px_var(--text-glow-ember)] disabled:opacity-50"
           >
             {signingOut ? "Exiting…" : "Exit"}
           </button>
