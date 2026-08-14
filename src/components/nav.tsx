@@ -60,13 +60,14 @@ export function Nav() {
     setModKeyLabel(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl ");
   }, []);
 
-  // Every link the user is allowed to see, regardless of responsive hiding —
-  // the drawer is the only way to reach most of these on phone/tablet.
-  const menuLinks = AUTHED_ITEMS.filter(
-    (item) =>
-      routeVisible(item.to, labs) &&
-      tierUnlocked(tier, NAV_MIN_TIER[item.to] ?? "starter", power),
-  ).map((item) => ({ to: item.to, label: item.label }));
+  // Every signed-in user gets the identical menu. Tier is a progression signal,
+  // not a permission, so it no longer hides destinations — access is enforced by
+  // route guards and RLS, and hiding links only made the app feel broken.
+  const menuLinks = AUTHED_ITEMS.filter((item) => routeVisible(item.to, labs)).map((item) => ({
+    to: item.to,
+    label: item.label,
+  }));
+
 
   const signOut = async () => {
     // Guarded because sign-out is a network call: a second click while the
