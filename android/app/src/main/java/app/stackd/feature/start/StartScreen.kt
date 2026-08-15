@@ -91,13 +91,13 @@ fun StartScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
-    Column(
+    androidx.compose.foundation.layout.Box(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 28.dp),
+            .verticalScroll(rememberScrollState()),
     ) {
+      app.stackd.core.ui.ResponsiveColumn {
         Text("NEW / CONFIGURE", style = MonoLabel, color = colors.textMuted)
         Spacer(Modifier.height(8.dp))
         Text(
@@ -256,6 +256,7 @@ fun StartScreen(
             color = colors.textMuted,
             modifier = Modifier.fillMaxWidth(),
         )
+      }
     }
 }
 

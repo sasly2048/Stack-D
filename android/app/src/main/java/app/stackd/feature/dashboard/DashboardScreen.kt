@@ -80,13 +80,18 @@ fun DashboardScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
-    Column(
+    // Scroll on the full-width outer box; content capped + centered inside so it
+    // doesn't sprawl on tablets/foldables/landscape. Analytics uses the wider
+    // measure since its tiles legitimately want more room.
+    androidx.compose.foundation.layout.Box(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 28.dp),
+            .verticalScroll(rememberScrollState()),
     ) {
+      app.stackd.core.ui.ResponsiveColumn(
+        maxContentWidth = app.stackd.core.ui.WIDE_MAX_CONTENT_WIDTH,
+      ) {
         Text(
             "ANALYTICS / ${state.name.uppercase()}",
             style = MonoLabel,
@@ -142,6 +147,7 @@ fun DashboardScreen(
                 }
             }
         }
+      }
     }
 }
 

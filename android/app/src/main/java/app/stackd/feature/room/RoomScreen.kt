@@ -133,14 +133,15 @@ fun RoomScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
-    Column(
+    androidx.compose.foundation.layout.Box(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .verticalScroll(rememberScrollState()),
     ) {
+      app.stackd.core.ui.ResponsiveColumn(
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
         Text("ROOM / ${state.code}", style = MonoLabel, color = colors.textMuted)
         Spacer(Modifier.height(24.dp))
 
@@ -152,6 +153,7 @@ fun RoomScreen(
             RoomPhase.ACTIVE -> Active(state, onEnd, onAbort)
             RoomPhase.ENDED -> Ended(state, onExit)
         }
+      }
     }
 }
 
