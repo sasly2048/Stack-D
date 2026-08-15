@@ -128,6 +128,7 @@ class AuthRepository(
      * work from here on exactly as if we had signed in directly.
      */
     suspend fun signIn(email: String, password: String): AuthOutcome {
+        android.util.Log.i("StackdAuth", "signIn start → $webBase$SIGNIN_ROUTE")
         val verdict = runCatching {
             val response = http.post("$webBase$SIGNIN_ROUTE") {
                 contentType(ContentType.Application.Json)
@@ -139,12 +140,16 @@ class AuthRepository(
                     }.toString(),
                 )
             }
-            json.decodeFromString<SignInVerdict>(response.bodyAsText())
-        }.getOrElse {
+            val body = response.bodyAsText()
+            android.util.Log.i("StackdAuth", "signIn HTTP ${response.status.value}, body ${body.length} chars")
+            json.decodeFromString<SignInVerdict>(body)
+        }.getOrElse { err ->
             // Fails CLOSED, unlike the advisory guard: this call *is* the
-            // sign-in, so an unreachable function means no session, not a free
-            // pass.
-            return AuthOutcome.Failed("Couldn't reach the server. Check your connection and retry.")
+            // sign-in, so an unreachable route means no session, not a free pass.
+            android.util.Log.e("StackdAuth", "signin POST to $webBase$SIGNIN_ROUTE failed", err)
+            return AuthOutcome.Failed(
+                "Couldn't reach the server (${err.javaClass.simpleName}). Check your connection and retry.",
+            )
         }
 
         if (!verdict.ok || verdict.accessToken == null || verdict.refreshToken == null) {
@@ -154,6 +159,7 @@ class AuthRepository(
             )
         }
 
+        android.util.Log.i("StackdAuth", "verdict ok, importing session")
         return runCatching {
             client.auth.importSession(
                 UserSession(
@@ -165,8 +171,14 @@ class AuthRepository(
                 ),
             )
         }.fold(
-            onSuccess = { AuthOutcome.SignedIn },
-            onFailure = { AuthOutcome.Failed("Couldn't start your session. Please retry.") },
+            onSuccess = {
+                android.util.Log.i("StackdAuth", "importSession OK → SignedIn")
+                AuthOutcome.SignedIn
+            },
+            onFailure = {
+                android.util.Log.e("StackdAuth", "importSession failed", it)
+                AuthOutcome.Failed("Couldn't start your session. Please retry.")
+            },
         )
     }
 
@@ -264,8 +276,19 @@ class AuthRepository(
 
         val json = Json { ignoreUnknownKeys = true }
 
-        /** Plain HTTP client for the two public routes; the SDK client stays for auth/db. */
-        val http = HttpClient(OkHttp)
+        /**
+         * Plain HTTP client for the two public routes; the SDK client stays for
+         * auth/db. A hard call timeout matters: without it a stalled connection
+         * hangs the sign-in button on "Signing in…" forever with no error — the
+         * timeout turns that into a clean, visible failure the user can retry.
+         */
+        val http = HttpClient(OkHttp) {
+            install(io.ktor.client.plugins.HttpTimeout) {
+                requestTimeoutMillis = 20_000
+                connectTimeoutMillis = 15_000
+                socketTimeoutMillis = 20_000
+            }
+        }
     }
 
     /** Web base with any trailing slash trimmed, so route concatenation is clean. */

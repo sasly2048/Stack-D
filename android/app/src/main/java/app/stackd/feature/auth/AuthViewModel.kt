@@ -123,7 +123,18 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
         when (outcome) {
             AuthOutcome.SignedIn -> {
                 _state.update { it.copy(pending = false) }
-                container.auth.currentUserId?.let { enterConfirmStep(it) }
+                // A SignedIn outcome means a session was installed — but
+                // importSession is async and currentUserOrNull() can still read
+                // null for a beat right after, so gating the confirm step on the
+                // id being immediately present left the user stranded on the form
+                // (signed in, screen unchanged). The confirm step's email path
+                // doesn't need the id, so enter it regardless; the id is filled
+                // in when it's available. Empty id → the email acknowledgement,
+                // which is the normal path when the provider returned an address.
+                enterConfirmStep(
+                    container.auth.currentUserId ?: "",
+                    fallbackEmail = _state.value.email,
+                )
             }
 
             AuthOutcome.ConfirmationEmailSent -> _state.update {
@@ -142,8 +153,12 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    private fun enterConfirmStep(userId: String) {
+    private fun enterConfirmStep(userId: String, fallbackEmail: String? = null) {
+        // currentEmail can read null for a beat right after an async session
+        // install; fall back to the address the user just signed in with so the
+        // confirm card shows the email path, not the "no email" challenge path.
         val email = container.auth.currentEmail
+            ?: fallbackEmail?.trim()?.takeIf { it.isNotEmpty() }
         _state.update {
             it.copy(
                 confirmStep = true,
