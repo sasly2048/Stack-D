@@ -68,6 +68,9 @@ export function PinnedHorizontal({
       // setting overflow-x there produced an element that just grew, and the
       // fallback never actually scrolled.
       pin.style.overflowX = "auto";
+      pin.style.overflowX = "visible";
+      pin.style.touchAction = "pan-x pan-y";
+      pin.style.overscrollBehaviorX = "contain";
       pin.style.height = "auto";
       return () => {
         pin.style.overflowX = "";
