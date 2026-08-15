@@ -18,6 +18,12 @@ val localProps = Properties().apply {
 val supabaseUrl: String = localProps.getProperty("SUPABASE_URL") ?: ""
 val supabaseAnonKey: String = localProps.getProperty("SUPABASE_PUBLISHABLE_KEY") ?: ""
 
+// The deployed web app's base URL. The auth-guard throttle + server-side
+// credential check live there as TanStack public API routes
+// (/api/public/auth-guard[/signin]) rather than as a Supabase Edge Function,
+// because this stack has no edge functions — app server logic is server routes.
+val webBaseUrl: String = localProps.getProperty("WEB_BASE_URL") ?: ""
+
 android {
     namespace = "app.stackd"
     compileSdk = 35
@@ -33,6 +39,7 @@ android {
 
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "WEB_BASE_URL", "\"$webBaseUrl\"")
     }
 
     buildTypes {

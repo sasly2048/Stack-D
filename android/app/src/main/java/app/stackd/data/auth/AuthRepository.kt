@@ -1,5 +1,6 @@
 package app.stackd.data.auth
 
+import app.stackd.BuildConfig
 import app.stackd.core.settings.SettingsStore
 import app.stackd.core.supabase.SupabaseModule
 import io.github.jan.supabase.auth.auth
@@ -8,9 +9,13 @@ import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserSession
-import io.github.jan.supabase.functions.functions
-import io.ktor.client.call.body
-import io.ktor.client.statement.HttpResponse
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
@@ -124,15 +129,17 @@ class AuthRepository(
      */
     suspend fun signIn(email: String, password: String): AuthOutcome {
         val verdict = runCatching {
-            val response: HttpResponse = client.functions.invoke(
-                function = SIGNIN_FUNCTION,
-                body = buildJsonObject {
-                    put("email", email)
-                    put("password", password)
-                    put("fp", settings.deviceFingerprint())
-                },
-            )
-            json.decodeFromString<SignInVerdict>(response.body())
+            val response = http.post("$webBase$SIGNIN_ROUTE") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("email", email)
+                        put("password", password)
+                        put("fp", settings.deviceFingerprint())
+                    }.toString(),
+                )
+            }
+            json.decodeFromString<SignInVerdict>(response.bodyAsText())
         }.getOrElse {
             // Fails CLOSED, unlike the advisory guard: this call *is* the
             // sign-in, so an unreachable function means no session, not a free
@@ -230,24 +237,37 @@ class AuthRepository(
      */
     private suspend fun guard(provider: AuthProvider, email: String?): GuardVerdict =
         runCatching {
-            val response: HttpResponse = client.functions.invoke(
-                function = GUARD_FUNCTION,
-                body = buildJsonObject {
-                    put("provider", provider.wire)
-                    email?.let { put("email", it) }
-                    put("fp", settings.deviceFingerprint())
-                },
-            )
-            json.decodeFromString<GuardVerdict>(response.body())
+            val response = http.post("$webBase$GUARD_ROUTE") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("provider", provider.wire)
+                        email?.let { put("email", it) }
+                        put("fp", settings.deviceFingerprint())
+                    }.toString(),
+                )
+            }
+            json.decodeFromString<GuardVerdict>(response.bodyAsText())
         }.getOrElse { GuardVerdict(ok = true) }
 
     private companion object {
-        const val GUARD_FUNCTION = "auth-guard"
-        const val SIGNIN_FUNCTION = "auth-guard/signin"
+        /**
+         * The auth-guard lives as TanStack public API routes on the web app, not
+         * as a Supabase Edge Function — this stack has no edge functions. The
+         * base URL is configured per build in local.properties (WEB_BASE_URL).
+         */
+        const val GUARD_ROUTE = "/api/public/auth-guard"
+        const val SIGNIN_ROUTE = "/api/public/auth-guard/signin"
 
         /** Supabase's default access-token lifetime; only used if the server omits it. */
         const val DEFAULT_EXPIRES_IN = 3600L
 
         val json = Json { ignoreUnknownKeys = true }
+
+        /** Plain HTTP client for the two public routes; the SDK client stays for auth/db. */
+        val http = HttpClient(OkHttp)
     }
+
+    /** Web base with any trailing slash trimmed, so route concatenation is clean. */
+    private val webBase: String get() = BuildConfig.WEB_BASE_URL.trimEnd('/')
 }
