@@ -48,7 +48,9 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as AuthenticatedProfileIdRouteImport } from './routes/_authenticated/profile.$id'
 import { Route as AuthenticatedRoomCodeRouteImport } from './routes/_authenticated/room.$code'
 import { Route as AuthenticatedTrustModerationRouteImport } from './routes/_authenticated/trust.moderation'
+import { Route as ApiPublicAuthGuardRouteImport } from './routes/api/public/auth-guard'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as ApiPublicAuthGuardSigninRouteImport } from './routes/api/public/auth-guard.signin'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const IndexRoute = IndexRouteImport.update({
@@ -252,11 +254,22 @@ const AuthenticatedTrustModerationRoute =
     path: '/moderation',
     getParentRoute: () => AuthenticatedTrustRoute,
   } as any)
+const ApiPublicAuthGuardRoute = ApiPublicAuthGuardRouteImport.update({
+  id: '/api/public/auth-guard',
+  path: '/api/public/auth-guard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   id: '/api/public/health',
   path: '/api/public/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAuthGuardSigninRoute =
+  ApiPublicAuthGuardSigninRouteImport.update({
+    id: '/signin',
+    path: '/signin',
+    getParentRoute: () => ApiPublicAuthGuardRoute,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -303,7 +316,9 @@ export interface FileRoutesByFullPath {
   '/profile/$id': typeof AuthenticatedProfileIdRoute
   '/room/$code': typeof AuthenticatedRoomCodeRoute
   '/trust/moderation': typeof AuthenticatedTrustModerationRoute
+  '/api/public/auth-guard': typeof ApiPublicAuthGuardRouteWithChildren
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
@@ -345,7 +360,9 @@ export interface FileRoutesByTo {
   '/profile/$id': typeof AuthenticatedProfileIdRoute
   '/room/$code': typeof AuthenticatedRoomCodeRoute
   '/trust/moderation': typeof AuthenticatedTrustModerationRoute
+  '/api/public/auth-guard': typeof ApiPublicAuthGuardRouteWithChildren
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
@@ -389,7 +406,9 @@ export interface FileRoutesById {
   '/_authenticated/profile/$id': typeof AuthenticatedProfileIdRoute
   '/_authenticated/room/$code': typeof AuthenticatedRoomCodeRoute
   '/_authenticated/trust/moderation': typeof AuthenticatedTrustModerationRoute
+  '/api/public/auth-guard': typeof ApiPublicAuthGuardRouteWithChildren
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
@@ -433,7 +452,9 @@ export interface FileRouteTypes {
     | '/profile/$id'
     | '/room/$code'
     | '/trust/moderation'
+    | '/api/public/auth-guard'
     | '/api/public/health'
+    | '/api/public/auth-guard/signin'
     | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -475,7 +496,9 @@ export interface FileRouteTypes {
     | '/profile/$id'
     | '/room/$code'
     | '/trust/moderation'
+    | '/api/public/auth-guard'
     | '/api/public/health'
+    | '/api/public/auth-guard/signin'
     | '/lovable/email/queue/process'
   id:
     | '__root__'
@@ -518,7 +541,9 @@ export interface FileRouteTypes {
     | '/_authenticated/profile/$id'
     | '/_authenticated/room/$code'
     | '/_authenticated/trust/moderation'
+    | '/api/public/auth-guard'
     | '/api/public/health'
+    | '/api/public/auth-guard/signin'
     | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
@@ -536,6 +561,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicAuthGuardRoute: typeof ApiPublicAuthGuardRouteWithChildren
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
@@ -815,12 +841,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrustModerationRouteImport
       parentRoute: typeof AuthenticatedTrustRoute
     }
+    '/api/public/auth-guard': {
+      id: '/api/public/auth-guard'
+      path: '/api/public/auth-guard'
+      fullPath: '/api/public/auth-guard'
+      preLoaderRoute: typeof ApiPublicAuthGuardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/health': {
       id: '/api/public/health'
       path: '/api/public/health'
       fullPath: '/api/public/health'
       preLoaderRoute: typeof ApiPublicHealthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/auth-guard/signin': {
+      id: '/api/public/auth-guard/signin'
+      path: '/signin'
+      fullPath: '/api/public/auth-guard/signin'
+      preLoaderRoute: typeof ApiPublicAuthGuardSigninRouteImport
+      parentRoute: typeof ApiPublicAuthGuardRoute
     }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
@@ -911,6 +951,17 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiPublicAuthGuardRouteChildren {
+  ApiPublicAuthGuardSigninRoute: typeof ApiPublicAuthGuardSigninRoute
+}
+
+const ApiPublicAuthGuardRouteChildren: ApiPublicAuthGuardRouteChildren = {
+  ApiPublicAuthGuardSigninRoute: ApiPublicAuthGuardSigninRoute,
+}
+
+const ApiPublicAuthGuardRouteWithChildren =
+  ApiPublicAuthGuardRoute._addFileChildren(ApiPublicAuthGuardRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -926,6 +977,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicAuthGuardRoute: ApiPublicAuthGuardRouteWithChildren,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
