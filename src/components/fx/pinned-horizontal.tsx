@@ -63,20 +63,26 @@ export function PinnedHorizontal({
     const narrow = window.innerWidth < PIN_MIN_WIDTH;
 
     if (reduced || narrow) {
-      // The overflow has to live on the pin box, not the track. The track is a
-      // flex row sized by its own children, so it has no width to overflow —
-      // setting overflow-x there produced an element that just grew, and the
-      // fallback never actually scrolled.
+      // Native swipe fallback. The overflow lives on the pin box (the track is
+      // a flex row sized by its children, so it has nothing to overflow), and
+      // touch-action keeps vertical page scroll gestures working over the
+      // cards. Height must be auto so the section doesn't clip its content.
       pin.style.overflowX = "auto";
-      pin.style.overflowX = "visible";
+      pin.style.overflowY = "visible";
       pin.style.touchAction = "pan-x pan-y";
       pin.style.overscrollBehaviorX = "contain";
       pin.style.height = "auto";
+      wrap.style.height = "auto";
       return () => {
         pin.style.overflowX = "";
+        pin.style.overflowY = "";
+        pin.style.touchAction = "";
+        pin.style.overscrollBehaviorX = "";
         pin.style.height = "";
+        wrap.style.height = "";
       };
     }
+
 
     const ctx = gsap.context(() => {
       const setSize = () => {
