@@ -159,24 +159,24 @@ function TimelinePage() {
               if (hasMore) loadMore();
             }}
             itemContent={(_, s) => (
-              <div className="relative border-l border-white/10 pl-6 pb-8 sm:pl-8">
+              <div className="relative border-l border-white/10 pl-7 pb-10 sm:pl-10 sm:pb-12">
                 <span
-                  className={`absolute -left-[5px] top-2 size-2 rounded-full ${s.tier === "flow" ? "bg-ember" : s.tier === "compromised" ? "bg-breach" : "bg-white/30"}`}
+                  className={`absolute -left-[5px] top-3 size-2 rounded-full ${s.tier === "flow" ? "bg-ember" : s.tier === "compromised" ? "bg-breach" : "bg-white/30"}`}
                 />
                 <div
-                  className={`border rounded-lg p-5 sm:p-6 space-y-4 bg-white/[0.02] ${TIER_COLOR[s.tier] ?? "border-white/10"}`}
+                  className={`border rounded-xl p-5 sm:p-7 space-y-5 sm:space-y-6 bg-white/[0.02] ${TIER_COLOR[s.tier] ?? "border-white/10"}`}
                 >
-                  <div className="flex items-baseline justify-between gap-4 pb-1">
-                    <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-2 pb-4 border-b border-white/[0.06]">
+                    <div className="min-w-0 truncate font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
                       {fmtDate(s.created_at)}
                     </div>
                     <div
-                      className={`font-mono text-[10px] tracking-widest uppercase ${TIER_COLOR[s.tier]?.split(" ")[0] ?? ""}`}
+                      className={`shrink-0 font-mono text-[10px] tracking-widest uppercase ${TIER_COLOR[s.tier]?.split(" ")[0] ?? ""}`}
                     >
                       {s.tier}
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm leading-relaxed">
+                  <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3 text-sm leading-relaxed">
                     <span className="text-silver font-mono">
                       {s.score}
                       <span className="text-muted-foreground">/100</span>
@@ -192,24 +192,29 @@ function TimelinePage() {
                     )}
                   </div>
                   {s.notes && (
-                    <p className="text-xs leading-relaxed text-silver-dim italic">&ldquo;{s.notes}&rdquo;</p>
+                    <p className="text-xs leading-6 text-silver-dim italic">
+                      &ldquo;{s.notes}&rdquo;
+                    </p>
                   )}
                   {s.tags && s.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex flex-wrap gap-2">
                       {s.tags.map((t) => (
                         <span
                           key={t}
-                          className="text-[10px] font-mono px-2 py-1 rounded bg-white/5 border border-white/10 text-silver-dim"
+                          className="text-[10px] font-mono px-2.5 py-1 rounded bg-white/5 border border-white/10 text-silver-dim"
                         >
                           #{t}
                         </span>
                       ))}
                     </div>
                   )}
-                  <SessionReactionBar sessionId={s.id} reactions={s.reactions} />
+                  <div className="pt-3 border-t border-white/[0.06]">
+                    <SessionReactionBar sessionId={s.id} reactions={s.reactions} />
+                  </div>
                 </div>
               </div>
             )}
+
           />
         )}
 
