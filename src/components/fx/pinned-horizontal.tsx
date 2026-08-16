@@ -123,7 +123,11 @@ export function PinnedHorizontal({
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>
-      <div ref={pinRef} className="h-screen w-full overflow-hidden flex items-center">
+      <div
+        ref={pinRef}
+        className="w-full flex items-center overflow-x-auto md:overflow-x-hidden md:h-screen md:overflow-hidden"
+      >
+
         <div ref={trackRef} className={`flex will-change-transform ${trackClassName}`}>
           {children}
         </div>
