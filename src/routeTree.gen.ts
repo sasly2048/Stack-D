@@ -49,6 +49,7 @@ import { Route as AuthenticatedProfileIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedRoomCodeRouteImport } from './routes/_authenticated/room.$code'
 import { Route as AuthenticatedTrustModerationRouteImport } from './routes/_authenticated/trust.moderation'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const IndexRoute = IndexRouteImport.update({
@@ -257,6 +258,12 @@ const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   path: '/api/public/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRazorpayWebhookRoute =
+  ApiPublicRazorpayWebhookRouteImport.update({
+    id: '/api/public/razorpay-webhook',
+    path: '/api/public/razorpay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -304,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/room/$code': typeof AuthenticatedRoomCodeRoute
   '/trust/moderation': typeof AuthenticatedTrustModerationRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
@@ -346,6 +354,7 @@ export interface FileRoutesByTo {
   '/room/$code': typeof AuthenticatedRoomCodeRoute
   '/trust/moderation': typeof AuthenticatedTrustModerationRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
@@ -390,6 +399,7 @@ export interface FileRoutesById {
   '/_authenticated/room/$code': typeof AuthenticatedRoomCodeRoute
   '/_authenticated/trust/moderation': typeof AuthenticatedTrustModerationRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
@@ -434,6 +444,7 @@ export interface FileRouteTypes {
     | '/room/$code'
     | '/trust/moderation'
     | '/api/public/health'
+    | '/api/public/razorpay-webhook'
     | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/room/$code'
     | '/trust/moderation'
     | '/api/public/health'
+    | '/api/public/razorpay-webhook'
     | '/lovable/email/queue/process'
   id:
     | '__root__'
@@ -519,6 +531,7 @@ export interface FileRouteTypes {
     | '/_authenticated/room/$code'
     | '/_authenticated/trust/moderation'
     | '/api/public/health'
+    | '/api/public/razorpay-webhook'
     | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
@@ -537,6 +550,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
@@ -822,6 +836,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/razorpay-webhook': {
+      id: '/api/public/razorpay-webhook'
+      path: '/api/public/razorpay-webhook'
+      fullPath: '/api/public/razorpay-webhook'
+      preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -927,6 +948,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport

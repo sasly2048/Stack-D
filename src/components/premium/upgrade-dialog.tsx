@@ -10,6 +10,8 @@ import {
   type LifetimePromoStatus,
   type Plan,
 } from "@/lib/subscription.functions";
+import { createSubscription } from "@/lib/razorpay.functions";
+import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
 import { annualSavingsPct } from "@/lib/entitlement-rules";
 import { PREMIUM_FEATURES, TIER_TAGLINE } from "@/lib/premium-catalog";
 import { invalidateEntitlement } from "@/lib/use-entitlement";
@@ -33,9 +35,31 @@ export function UpgradeDialog({
 }) {
   const loadPlans = useServerFn(getPlans);
   const loadPromo = useServerFn(getLifetimePromoStatus);
+  const startCheckout = useServerFn(createSubscription);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [promo, setPromo] = useState<LifetimePromoStatus | null>(null);
   const [interval, setInterval] = useState<Interval>("annual");
+  const [checkingOut, setCheckingOut] = useState<string | null>(null);
+
+  const onCheckout = async (plan: Plan) => {
+    if (checkingOut) return;
+    setCheckingOut(plan.id);
+    try {
+      const { subscriptionId, keyId } = await startCheckout({ data: { planId: plan.id } });
+      await openRazorpayCheckout({
+        keyId,
+        subscriptionId,
+        description: `${plan.displayName} · Stack'd`,
+        // Success is confirmed by the webhook; refetch entitlement on close so
+        // the UI catches up once the charge lands.
+        onDismiss: () => invalidateEntitlement(),
+      });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Checkout failed");
+    } finally {
+      setCheckingOut(null);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -100,6 +124,8 @@ export function UpgradeDialog({
             monthly={byTier.proMonthly}
             annual={byTier.proAnnual}
             interval={interval}
+            onCheckout={onCheckout}
+            checkingOut={checkingOut}
           />
           <TierColumn
             name="Elite"
@@ -109,6 +135,8 @@ export function UpgradeDialog({
             monthly={byTier.eliteMonthly}
             annual={byTier.eliteAnnual}
             interval={interval}
+            onCheckout={onCheckout}
+            checkingOut={checkingOut}
           />
         </div>
 
@@ -151,6 +179,8 @@ function TierColumn({
   annual,
   interval,
   best,
+  onCheckout,
+  checkingOut,
 }: {
   name: string;
   tagline: string;
@@ -159,6 +189,8 @@ function TierColumn({
   annual?: Plan;
   interval: Interval;
   best?: boolean;
+  onCheckout: (plan: Plan) => void;
+  checkingOut: string | null;
 }) {
   const savings = monthly && annual ? annualSavingsPct(monthly.priceInr, annual.priceInr) : 0;
   const perMonth =
@@ -193,13 +225,11 @@ function TierColumn({
       )}
 
       <button
-        // Checkout wiring lands with the Razorpay follow-up; disabled for now
-        // so nothing looks broken and no charge path exists yet.
-        disabled
-        className="mt-4 w-full rounded-full border border-ember/50 text-ember font-mono text-[11px] uppercase tracking-widest py-2 disabled:opacity-40"
-        title="Payments arrive soon"
+        onClick={() => plan && onCheckout(plan)}
+        disabled={!plan?.id || checkingOut !== null}
+        className="mt-4 w-full rounded-full border border-ember/50 text-ember font-mono text-[11px] uppercase tracking-widest py-2 disabled:opacity-40 hover:bg-ember/10 transition"
       >
-        Coming soon
+        {checkingOut === plan?.id ? "Opening…" : `Choose ${name}`}
       </button>
     </div>
   );
