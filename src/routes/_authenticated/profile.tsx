@@ -13,6 +13,7 @@ import { INTERACTIVE } from "@/components/ui/interactive";
 import { useAuth } from "@/hooks/use-auth";
 import { getProfile, updateMyProfile, type PublicProfile } from "@/lib/profile.functions";
 import { LowPowerToggle } from "@/components/low-power-toggle";
+import { LifetimeBadge, LifetimeCoupon } from "@/components/premium/lifetime-coupon";
 import { formatHandle } from "@/lib/handle";
 import { useXpSync } from "@/lib/xp-sync";
 
@@ -20,9 +21,17 @@ export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
     meta: [
       { title: "Your profile — Stack'd" },
-      { name: "description", content: "Your Stack'd record: lifetime XP, streaks, unlocks and the ties you keep with your focus circle." },
+      {
+        name: "description",
+        content:
+          "Your Stack'd record: lifetime XP, streaks, unlocks and the ties you keep with your focus circle.",
+      },
       { property: "og:title", content: "Your profile — Stack'd" },
-      { property: "og:description", content: "Your Stack'd record: lifetime XP, streaks, unlocks and the ties you keep with your focus circle." },
+      {
+        property: "og:description",
+        content:
+          "Your Stack'd record: lifetime XP, streaks, unlocks and the ties you keep with your focus circle.",
+      },
     ],
   }),
   component: MyProfile,
@@ -155,6 +164,7 @@ function MyProfile() {
                   {currentTier}
                 </BadgeHint>
               )}
+              <LifetimeBadge />
             </h1>
             {p.productivity_dna && (
               <p className="mt-1 font-mono text-[11px] tracking-[0.25em] uppercase text-ember">
@@ -164,7 +174,6 @@ function MyProfile() {
             <p className="text-silver-dim text-sm font-mono mt-1">
               {p.username ? `@${p.username}` : formatHandle(p.id, p.display_name)}
             </p>
-
           </div>
         </header>
 
@@ -178,6 +187,8 @@ function MyProfile() {
         <MilestoneShelf />
 
         <UsernameForm current={p.username} />
+
+        <LifetimeCoupon />
 
         <form onSubmit={submit} className="space-y-4">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Edit</h2>
