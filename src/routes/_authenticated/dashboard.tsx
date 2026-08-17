@@ -15,6 +15,7 @@ import {
 import { DynamicGreeting } from "@/components/home/dynamic-greeting";
 import { CsvExportButton } from "@/components/csv-export-button";
 import { DailyRewardCard } from "@/components/rewards/daily-reward-card";
+import { UpgradeCard } from "@/components/premium/upgrade-card";
 import { useXpSync } from "@/lib/xp-sync";
 import { AtlasWhisper } from "@/components/atlas-whisper";
 import { PrestigeCeremony } from "@/components/profile/prestige-ceremony";
@@ -259,6 +260,10 @@ function Dashboard() {
           </div>
         </div>
 
+        <div className="mb-4">
+          <UpgradeCard />
+        </div>
+
         <div className="grid md:grid-cols-2 gap-4 mb-8">
           <DailyRewardCard />
           <PrestigeCeremony />
@@ -302,74 +307,74 @@ function Dashboard() {
                 </div>
               ) : (
                 <>
-              <div className="md:col-span-4 lg:col-span-4 p-10 bg-white/5 border border-white/10 rounded-2xl flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 ease-[var(--ease-ritual)]">
-                <div>
-                  <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-12">
-                    LIFETIME_PRESENCE
-                  </h3>
-                  <div className="text-7xl md:text-8xl font-extrabold tracking-tighter">
-                    {formatHours(totalSeconds).replace(/[a-z]/g, "")}
-                    <span className="text-2xl font-mono text-muted-foreground ml-4 tracking-normal font-normal uppercase">
-                      Hours
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-12 flex items-end justify-between gap-6">
-                  <div>
-                    <div className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-2">
-                      LIFETIME_XP
+                  <div className="md:col-span-4 lg:col-span-4 p-10 bg-white/5 border border-white/10 rounded-2xl flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 ease-[var(--ease-ritual)]">
+                    <div>
+                      <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-12">
+                        LIFETIME_PRESENCE
+                      </h3>
+                      <div className="text-7xl md:text-8xl font-extrabold tracking-tighter">
+                        {formatHours(totalSeconds).replace(/[a-z]/g, "")}
+                        <span className="text-2xl font-mono text-muted-foreground ml-4 tracking-normal font-normal uppercase">
+                          Hours
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-3xl font-bold font-mono">
-                      {me?.lifetime_xp.toLocaleString() ?? 0}
+                    <div className="mt-12 flex items-end justify-between gap-6">
+                      <div>
+                        <div className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-2">
+                          LIFETIME_XP
+                        </div>
+                        <div className="text-3xl font-bold font-mono">
+                          {me?.lifetime_xp.toLocaleString() ?? 0}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-1 max-w-md">
+                        {[0.1, 0.25, 0.45, 0.7, 1].map((step, i) => (
+                          <div
+                            key={i}
+                            className="h-12 flex-1 rounded-sm"
+                            style={{
+                              background: `rgba(226,226,226,${history.length >= (i + 1) * 2 ? step : 0.05})`,
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-1 max-w-md">
-                    {[0.1, 0.25, 0.45, 0.7, 1].map((step, i) => (
-                      <div
-                        key={i}
-                        className="h-12 flex-1 rounded-sm"
-                        style={{
-                          background: `rgba(226,226,226,${history.length >= (i + 1) * 2 ? step : 0.05})`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
 
-              <div className="md:col-span-2 lg:col-span-2 space-y-6">
-                <div className="p-8 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 ease-[var(--ease-ritual)]">
-                  <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-4">
-                    CURRENT_STREAK
-                  </h3>
-                  <div className="text-4xl font-bold">
-                    {me?.streak ?? 0}{" "}
-                    <span className="text-base font-mono text-muted-foreground">
-                      {me?.streak === 1 ? "Session" : "Sessions"}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-8 border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200 ease-[var(--ease-ritual)]">
-                  <div>
-                    <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-1">
-                      AVG_SCORE
-                    </h3>
-                    <div className="text-2xl font-bold">
-                      {avgScore}
-                      <span className="text-sm text-muted-foreground">/100</span>
+                  <div className="md:col-span-2 lg:col-span-2 space-y-6">
+                    <div className="p-8 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 ease-[var(--ease-ritual)]">
+                      <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-4">
+                        CURRENT_STREAK
+                      </h3>
+                      <div className="text-4xl font-bold">
+                        {me?.streak ?? 0}{" "}
+                        <span className="text-base font-mono text-muted-foreground">
+                          {me?.streak === 1 ? "Session" : "Sessions"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-8 border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200 ease-[var(--ease-ritual)]">
+                      <div>
+                        <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-1">
+                          AVG_SCORE
+                        </h3>
+                        <div className="text-2xl font-bold">
+                          {avgScore}
+                          <span className="text-sm text-muted-foreground">/100</span>
+                        </div>
+                      </div>
+                      <div
+                        className="size-12 rounded-full border-4 flex items-center justify-center font-mono text-[10px]"
+                        style={{
+                          borderColor: tierForScore(avgScore).hex,
+                          color: tierForScore(avgScore).hex,
+                        }}
+                      >
+                        {avgScore >= 95 ? "A+" : avgScore >= 80 ? "A" : avgScore >= 60 ? "B" : "C"}
+                      </div>
                     </div>
                   </div>
-                  <div
-                    className="size-12 rounded-full border-4 flex items-center justify-center font-mono text-[10px]"
-                    style={{
-                      borderColor: tierForScore(avgScore).hex,
-                      color: tierForScore(avgScore).hex,
-                    }}
-                  >
-                    {avgScore >= 95 ? "A+" : avgScore >= 80 ? "A" : avgScore >= 60 ? "B" : "C"}
-                  </div>
-                </div>
-              </div>
                 </>
               )}
 

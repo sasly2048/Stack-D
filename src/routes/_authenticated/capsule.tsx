@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Nav } from "@/components/nav";
 import { listCapsules, writeCapsule, openCapsule, type Capsule } from "@/lib/capsules.functions";
 import { EmptyState } from "@/components/empty-state";
+import { PremiumGate } from "@/components/premium/premium-gate";
 import { QueryBoundary, SkeletonList } from "@/components/query-states";
 
 export const Route = createFileRoute("/_authenticated/capsule")({
@@ -89,107 +90,111 @@ function CapsulePage() {
           </p>
         </header>
 
-        <section className="border border-white/10 rounded-md p-6 bg-black/30">
-          <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
-            Compose
-          </p>
-          <textarea
-            value={msg}
-            onChange={(e) => setMsg(e.target.value)}
-            rows={6}
-            maxLength={4000}
-            placeholder="Dear future me,"
-            className="mt-3 w-full bg-black/50 border border-white/10 rounded p-3 text-silver text-sm resize-none focus:outline-none focus:border-ember/40"
-          />
-          <div className="mt-4 flex items-center gap-4">
-            <label className="text-xs text-silver-dim">Opens in</label>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-              className="w-20 bg-black/50 border border-white/10 rounded px-3 py-1 text-sm text-silver"
-            />
-            <span className="text-xs text-silver-dim">days</span>
-            <button
-              onClick={send}
-              disabled={writeMutation.isPending || !msg.trim()}
-              className="ml-auto px-5 py-2 rounded-full border border-ember text-ember font-mono text-xs uppercase tracking-widest disabled:opacity-40 hover:bg-ember/10"
-            >
-              {writeMutation.isPending ? "Sealing…" : "Seal capsule"}
-            </button>
-          </div>
-        </section>
-
-        {openable.length > 0 && (
-          <section>
-            <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">
-              Ready to Open
+        <PremiumGate feature="vault" label="Time Capsule">
+          <section className="border border-white/10 rounded-md p-6 bg-black/30">
+            <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
+              Compose
             </p>
-            <div className="mt-4 space-y-3">
-              {openable.map((c) => (
-                <div key={c.id} className="border border-ember/40 rounded-md p-5 bg-ember/[0.04]">
-                  {c.opened_at ? (
-                    <>
-                      <p className="text-sm text-silver whitespace-pre-wrap">{c.message}</p>
-                      <p className="mt-3 text-[10px] font-mono uppercase tracking-widest text-silver-dim">
-                        Written {new Date(c.created_at).toLocaleDateString()} · Opened{" "}
-                        {new Date(c.opened_at).toLocaleDateString()}
-                      </p>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => openMutation.mutate(c.id)}
-                      disabled={openMutation.isPending && openMutation.variables === c.id}
-                      className="w-full py-3 border border-dashed border-ember/60 rounded font-serif text-lg text-ember hover:bg-ember/5 disabled:opacity-40"
-                    >
-                      {openMutation.isPending && openMutation.variables === c.id
-                        ? "Opening…"
-                        : `Open — sealed ${new Date(c.created_at).toLocaleDateString()}`}
-                    </button>
-                  )}
-                </div>
-              ))}
+            <textarea
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+              rows={6}
+              maxLength={4000}
+              placeholder="Dear future me,"
+              className="mt-3 w-full bg-black/50 border border-white/10 rounded p-3 text-silver text-sm resize-none focus:outline-none focus:border-ember/40"
+            />
+            <div className="mt-4 flex items-center gap-4">
+              <label className="text-xs text-silver-dim">Opens in</label>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={days}
+                onChange={(e) => setDays(e.target.value)}
+                className="w-20 bg-black/50 border border-white/10 rounded px-3 py-1 text-sm text-silver"
+              />
+              <span className="text-xs text-silver-dim">days</span>
+              <button
+                onClick={send}
+                disabled={writeMutation.isPending || !msg.trim()}
+                className="ml-auto px-5 py-2 rounded-full border border-ember text-ember font-mono text-xs uppercase tracking-widest disabled:opacity-40 hover:bg-ember/10"
+              >
+                {writeMutation.isPending ? "Sealing…" : "Seal capsule"}
+              </button>
             </div>
           </section>
-        )}
 
-        <section>
-          <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Sealed</p>
-          {/* Loading is checked before emptiness. "No sealed capsules" used to
+          {openable.length > 0 && (
+            <section>
+              <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">
+                Ready to Open
+              </p>
+              <div className="mt-4 space-y-3">
+                {openable.map((c) => (
+                  <div key={c.id} className="border border-ember/40 rounded-md p-5 bg-ember/[0.04]">
+                    {c.opened_at ? (
+                      <>
+                        <p className="text-sm text-silver whitespace-pre-wrap">{c.message}</p>
+                        <p className="mt-3 text-[10px] font-mono uppercase tracking-widest text-silver-dim">
+                          Written {new Date(c.created_at).toLocaleDateString()} · Opened{" "}
+                          {new Date(c.opened_at).toLocaleDateString()}
+                        </p>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => openMutation.mutate(c.id)}
+                        disabled={openMutation.isPending && openMutation.variables === c.id}
+                        className="w-full py-3 border border-dashed border-ember/60 rounded font-serif text-lg text-ember hover:bg-ember/5 disabled:opacity-40"
+                      >
+                        {openMutation.isPending && openMutation.variables === c.id
+                          ? "Opening…"
+                          : `Open — sealed ${new Date(c.created_at).toLocaleDateString()}`}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section>
+            <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
+              Sealed
+            </p>
+            {/* Loading is checked before emptiness. "No sealed capsules" used to
               appear during the first load, telling someone with a vault full of
               letters that it was empty. */}
-          <QueryBoundary
-            isPending={capsulesQuery.isPending}
-            isError={capsulesQuery.isError}
-            error={capsulesQuery.error}
-            onRetry={() => capsulesQuery.refetch()}
-            errorTitle="Couldn't load your capsules."
-            loadingLabel="Loading your capsules"
-            skeleton={<SkeletonList rows={2} className="mt-4" />}
-            isEmpty={sealed.length === 0}
-            empty={
-              <EmptyState title="No sealed capsules" description="Your future self is waiting." />
-            }
-          >
-            <ul className="mt-4 space-y-2">
-              {sealed.map((c) => (
-                <li
-                  key={c.id}
-                  className="border border-white/10 rounded p-4 flex justify-between text-sm"
-                >
-                  <span className="text-silver-dim">
-                    Sealed {new Date(c.created_at).toLocaleDateString()}
-                  </span>
-                  <span className="font-mono text-xs text-ember">
-                    Opens {new Date(c.open_at).toLocaleDateString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </QueryBoundary>
-        </section>
+            <QueryBoundary
+              isPending={capsulesQuery.isPending}
+              isError={capsulesQuery.isError}
+              error={capsulesQuery.error}
+              onRetry={() => capsulesQuery.refetch()}
+              errorTitle="Couldn't load your capsules."
+              loadingLabel="Loading your capsules"
+              skeleton={<SkeletonList rows={2} className="mt-4" />}
+              isEmpty={sealed.length === 0}
+              empty={
+                <EmptyState title="No sealed capsules" description="Your future self is waiting." />
+              }
+            >
+              <ul className="mt-4 space-y-2">
+                {sealed.map((c) => (
+                  <li
+                    key={c.id}
+                    className="border border-white/10 rounded p-4 flex justify-between text-sm"
+                  >
+                    <span className="text-silver-dim">
+                      Sealed {new Date(c.created_at).toLocaleDateString()}
+                    </span>
+                    <span className="font-mono text-xs text-ember">
+                      Opens {new Date(c.open_at).toLocaleDateString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </QueryBoundary>
+          </section>
+        </PremiumGate>
       </main>
     </div>
   );
