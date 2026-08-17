@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireTier } from "@/lib/require-tier";
 
 export interface ForecastPayload {
   avgDailyMinutes: number;
@@ -15,6 +16,7 @@ const MILESTONES = [10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000
 export const getForecast = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ForecastPayload> => {
+    await requireTier(context.supabase, "elite");
     const since = new Date(Date.now() - 30 * 86400_000).toISOString();
     const [{ data: hist }, { data: prof }] = await Promise.all([
       context.supabase

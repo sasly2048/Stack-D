@@ -3,19 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
 
-import {
-  getLifetimePromoStatus,
-  getPlans,
-  redeemLifetime,
-  type LifetimePromoStatus,
-  type Plan,
-} from "@/lib/subscription.functions";
+import { getPlans, type Plan } from "@/lib/subscription.functions";
 import { createSubscription } from "@/lib/razorpay.functions";
 import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
 import { annualSavingsPct } from "@/lib/entitlement-rules";
 import { PREMIUM_FEATURES, TIER_TAGLINE } from "@/lib/premium-catalog";
 import { invalidateEntitlement } from "@/lib/use-entitlement";
-import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
@@ -34,10 +27,8 @@ export function UpgradeDialog({
   reason?: string;
 }) {
   const loadPlans = useServerFn(getPlans);
-  const loadPromo = useServerFn(getLifetimePromoStatus);
   const startCheckout = useServerFn(createSubscription);
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [promo, setPromo] = useState<LifetimePromoStatus | null>(null);
   const [interval, setInterval] = useState<Interval>("annual");
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
 
@@ -66,10 +57,7 @@ export function UpgradeDialog({
     loadPlans()
       .then(setPlans)
       .catch(() => undefined);
-    loadPromo()
-      .then(setPromo)
-      .catch(() => undefined);
-  }, [open, loadPlans, loadPromo]);
+  }, [open, loadPlans]);
 
   const byTier = useMemo(() => {
     const pick = (tier: string, iv: Interval) =>
@@ -158,11 +146,6 @@ export function UpgradeDialog({
           </ul>
         </div>
 
-        {/* Lifetime promo — only when active */}
-        {promo?.active && (
-          <LifetimeSection promo={promo} onRedeemed={() => loadPromo().then(setPromo)} />
-        )}
-
         <p className="px-6 pb-6 text-center text-[11px] text-silver-dim">
           Cancel anytime. No auto-renewal surprises — we tell you before every charge.
         </p>
@@ -231,86 +214,6 @@ function TierColumn({
       >
         {checkingOut === plan?.id ? "Opening…" : `Choose ${name}`}
       </button>
-    </div>
-  );
-}
-
-function LifetimeSection({
-  promo,
-  onRedeemed,
-}: {
-  promo: LifetimePromoStatus;
-  onRedeemed: () => void;
-}) {
-  const redeem = useServerFn(redeemLifetime);
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const claimedPct = Math.min(
-    100,
-    Math.round(((promo.seatsTotal - promo.seatsRemaining) / promo.seatsTotal) * 100),
-  );
-
-  const onRedeem = async () => {
-    if (!code.trim() || busy) return;
-    setBusy(true);
-    try {
-      const { result, message } = await redeem({ data: { code } });
-      if (result === "ok") {
-        haptic("success");
-        toast.success(message);
-        invalidateEntitlement();
-        onRedeemed();
-        setCode("");
-      } else {
-        toast.error(message);
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Redemption failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="mx-6 mb-5 rounded-lg border border-ember/30 bg-ember/[0.04] p-4">
-      <div className="flex items-center justify-between">
-        <p className={eyebrow}>Lifetime · limited</p>
-        <p className="font-mono text-[11px] text-silver-dim">
-          <span className="text-ember">{promo.seatsRemaining}</span> of {promo.seatsTotal} seats
-          left
-        </p>
-      </div>
-      <p className="mt-2 text-sm text-silver">
-        Elite access, once — no renewals, ever. Have a code?
-      </p>
-
-      {/* Seat counter — the signature scarcity bar */}
-      <div className="mt-3 h-1 rounded-full bg-white/[0.06] overflow-hidden">
-        <div className="h-full bg-ember/70" style={{ width: `${claimedPct}%` }} />
-      </div>
-
-      {promo.alreadyRedeemed ? (
-        <p className="mt-3 text-xs text-pulse font-mono uppercase tracking-widest">
-          ✓ Lifetime unlocked
-        </p>
-      ) : (
-        <div className="mt-3 flex gap-2">
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onRedeem()}
-            placeholder="Coupon code"
-            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-silver placeholder:text-silver-dim focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-          <button
-            onClick={onRedeem}
-            disabled={!code.trim() || busy}
-            className="rounded-full border border-ember/50 text-ember font-mono text-[11px] uppercase tracking-widest px-4 disabled:opacity-40 hover:bg-ember/10 transition"
-          >
-            {busy ? "…" : "Redeem"}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

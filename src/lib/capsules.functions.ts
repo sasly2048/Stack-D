@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireTier } from "@/lib/require-tier";
 
 export interface Capsule {
   id: string;
@@ -12,6 +13,7 @@ export interface Capsule {
 export const listCapsules = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ rows: Capsule[] }> => {
+    await requireTier(context.supabase, "elite");
     const { data } = await context.supabase
       .from("time_capsules")
       .select("id,message,open_at,opened_at,created_at")

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireTier } from "@/lib/require-tier";
 
 export interface DnaProfile {
   archetype: string;
@@ -15,6 +16,7 @@ export interface DnaProfile {
 export const getProductivityDna = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<DnaProfile> => {
+    await requireTier(context.supabase, "pro");
     const since = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
     const { data } = await context.supabase
       .from("focus_history")
