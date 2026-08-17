@@ -17,7 +17,10 @@
 -- Tier enum (ordered by declaration; we compare via tier_rank() below since
 -- enum ordinal comparison is brittle across future ALTER TYPE ... ADD VALUE)
 -- ---------------------------------------------------------------------------
-CREATE TYPE public.access_tier AS ENUM ('free', 'pro', 'elite');
+DO $$ BEGIN
+  CREATE TYPE public.access_tier AS ENUM ('free', 'pro', 'elite');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.tier_rank(_t public.access_tier)
 RETURNS INTEGER
@@ -35,7 +38,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- plans — the public pricing catalog. UI reads this; nothing is hardcoded.
 -- ---------------------------------------------------------------------------
-CREATE TABLE public.plans (
+CREATE TABLE IF NOT EXISTS public.plans (
   id           TEXT PRIMARY KEY,              -- 'pro_monthly', 'elite_annual', ...
   tier         public.access_tier NOT NULL,
   interval     TEXT NOT NULL CHECK (interval IN ('monthly', 'annual')),
@@ -51,6 +54,7 @@ GRANT SELECT ON public.plans TO anon, authenticated;
 GRANT ALL ON public.plans TO service_role;
 
 -- Pricing is public marketing data — anyone may read the active catalog.
+DROP POLICY IF EXISTS "Anyone can read active plans" ON public.plans;
 CREATE POLICY "Anyone can read active plans"
   ON public.plans FOR SELECT
   USING (is_active);
@@ -59,7 +63,8 @@ INSERT INTO public.plans (id, tier, interval, price_inr, display_name, sort_orde
   ('pro_monthly',   'pro',   'monthly', 129,  'Pro Monthly',   1),
   ('pro_annual',    'pro',   'annual',  899,  'Pro Annual',    2),
   ('elite_monthly', 'elite', 'monthly', 249,  'Elite Monthly', 3),
-  ('elite_annual',  'elite', 'annual',  1799, 'Elite Annual',  4);
+  ('elite_annual',  'elite', 'annual',  1799, 'Elite Annual',  4)
+ON CONFLICT (id) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- admin_emails — server-side admin allowlist. Keyed on auth.users.email, which
@@ -67,7 +72,7 @@ INSERT INTO public.plans (id, tier, interval, price_inr, display_name, sort_orde
 -- SECURITY DEFINER function that can read auth.users. This is the "admin must
 -- be server-side, not a frontend check" requirement.
 -- ---------------------------------------------------------------------------
-CREATE TABLE public.admin_emails (
+CREATE TABLE IF NOT EXISTS public.admin_emails (
   email      TEXT PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -79,14 +84,15 @@ GRANT ALL ON public.admin_emails TO service_role;
 
 INSERT INTO public.admin_emails (email) VALUES
   ('raghavendrasujith204800@gmail.com'),
-  ('msv817400@gmail.com');
+  ('msv817400@gmail.com')
+ON CONFLICT (email) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- subscriptions — one row per user, their current paid state. Absent row =
 -- free. Written by the (future) Razorpay webhook via service role and by
 -- redeem_lifetime(); never client-writable.
 -- ---------------------------------------------------------------------------
-CREATE TABLE public.subscriptions (
+CREATE TABLE IF NOT EXISTS public.subscriptions (
   user_id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   tier               public.access_tier NOT NULL DEFAULT 'free',
   source             TEXT NOT NULL DEFAULT 'none'
@@ -98,6 +104,7 @@ CREATE TABLE public.subscriptions (
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+DROP TRIGGER IF EXISTS trg_subscriptions_updated_at ON public.subscriptions;
 CREATE TRIGGER trg_subscriptions_updated_at
   BEFORE UPDATE ON public.subscriptions
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -109,6 +116,7 @@ GRANT ALL ON public.subscriptions TO service_role;
 -- A user may read their own subscription row (for display), but never write it
 -- — all writes go through service role / SECURITY DEFINER, so scoring and
 -- entitlement can never be client-forged.
+DROP POLICY IF EXISTS "Users read own subscription" ON public.subscriptions;
 CREATE POLICY "Users read own subscription"
   ON public.subscriptions FOR SELECT
   TO authenticated
@@ -121,7 +129,7 @@ CREATE POLICY "Users read own subscription"
 -- at 500 — once redeemed_count reaches it, redeem_lifetime() returns 'sold_out'
 -- for everyone, valid code or not. redeemed_count is the server-side counter.
 -- ---------------------------------------------------------------------------
-CREATE TABLE public.lifetime_promo (
+CREATE TABLE IF NOT EXISTS public.lifetime_promo (
   id              INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),  -- singleton
   coupon_code     TEXT,                          -- NULL = not yet set
   max_redemptions INTEGER NOT NULL DEFAULT 500 CHECK (max_redemptions > 0),
@@ -132,6 +140,7 @@ CREATE TABLE public.lifetime_promo (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+DROP TRIGGER IF EXISTS trg_lifetime_promo_updated_at ON public.lifetime_promo;
 CREATE TRIGGER trg_lifetime_promo_updated_at
   BEFORE UPDATE ON public.lifetime_promo
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -142,12 +151,13 @@ GRANT ALL ON public.lifetime_promo TO service_role;
 -- and "is the promo live / seats left" are exposed through lifetime_promo_status().
 
 INSERT INTO public.lifetime_promo (id, coupon_code, max_redemptions, is_active)
-  VALUES (1, NULL, 500, false);
+  VALUES (1, NULL, 500, false)
+ON CONFLICT (id) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- lifetime_redemptions — audit + duplicate guard. One row per user, ever.
 -- ---------------------------------------------------------------------------
-CREATE TABLE public.lifetime_redemptions (
+CREATE TABLE IF NOT EXISTS public.lifetime_redemptions (
   user_id     UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

@@ -21,7 +21,7 @@ ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS provider_ref TEXT;
 -- webhook_events — idempotency. Razorpay may deliver an event more than once;
 -- we insert the event id here first and skip if it already exists.
 -- ---------------------------------------------------------------------------
-CREATE TABLE public.webhook_events (
+CREATE TABLE IF NOT EXISTS public.webhook_events (
   id           TEXT PRIMARY KEY,            -- razorpay event id (x-razorpay-event-id)
   event_type   TEXT NOT NULL,
   processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
