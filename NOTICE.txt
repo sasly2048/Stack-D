@@ -1,0 +1,14 @@
+Copyright (c) 2026 Raghavendra G. All Rights Reserved.
+
+This software and its source code are proprietary and confidential.
+
+No license, express or implied, is granted to any person to use, copy,
+modify, merge, publish, distribute, sublicense, or sell copies of this
+software, in whole or in part, by any means.
+
+Access to this repository does not confer any right to use its contents.
+Unauthorized copying, distribution, or disclosure of this software, via any
+medium, is strictly prohibited.
+
+Third-party dependencies retain their own respective licenses; those licenses
+apply only to those dependencies and not to this software.
