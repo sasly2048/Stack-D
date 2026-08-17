@@ -117,13 +117,14 @@ CREATE POLICY "Users read own subscription"
 -- ---------------------------------------------------------------------------
 -- lifetime_promo — single-row config for the promotional lifetime offer.
 -- coupon_code is NULL until the operator sets it (product ask: keep it
--- configurable, decide the code later). max_redemptions is switchable between
--- 100 and 500 (or any value). redeemed_count is the server-side counter.
+-- configurable, decide the code later). max_redemptions caps total redemptions
+-- at 500 — once redeemed_count reaches it, redeem_lifetime() returns 'sold_out'
+-- for everyone, valid code or not. redeemed_count is the server-side counter.
 -- ---------------------------------------------------------------------------
 CREATE TABLE public.lifetime_promo (
   id              INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),  -- singleton
   coupon_code     TEXT,                          -- NULL = not yet set
-  max_redemptions INTEGER NOT NULL DEFAULT 100 CHECK (max_redemptions > 0),
+  max_redemptions INTEGER NOT NULL DEFAULT 500 CHECK (max_redemptions > 0),
   redeemed_count  INTEGER NOT NULL DEFAULT 0 CHECK (redeemed_count >= 0),
   is_active       BOOLEAN NOT NULL DEFAULT false,
   starts_at       TIMESTAMPTZ,
@@ -141,7 +142,7 @@ GRANT ALL ON public.lifetime_promo TO service_role;
 -- and "is the promo live / seats left" are exposed through lifetime_promo_status().
 
 INSERT INTO public.lifetime_promo (id, coupon_code, max_redemptions, is_active)
-  VALUES (1, NULL, 100, false);
+  VALUES (1, NULL, 500, false);
 
 -- ---------------------------------------------------------------------------
 -- lifetime_redemptions — audit + duplicate guard. One row per user, ever.
