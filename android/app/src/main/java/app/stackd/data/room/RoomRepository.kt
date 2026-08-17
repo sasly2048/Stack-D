@@ -8,6 +8,7 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -301,6 +302,124 @@ class RoomRepository(private val client: SupabaseClient) {
     }
 
     /* ---------------------------------------------------------------------- */
+    /*  Phase 2 room panels — events, milestones, join requests, workspace     */
+    /* ---------------------------------------------------------------------- */
+
+    /** The room's activity feed, newest first, capped like the web's rail. */
+    suspend fun listRoomEvents(roomId: String, limit: Long = EVENT_FEED_LIMIT): List<RoomEvent> =
+        client.postgrest.from("room_events")
+            .select {
+                filter { eq("room_id", roomId) }
+                order("created_at", Order.DESCENDING)
+                limit(limit)
+            }
+            .decodeList()
+
+    /**
+     * Records a room event via the definer RPC — it stamps the actor from the
+     * caller's identity, so a client can't forge who did what. Used for the
+     * ready/unready toggle and similar presence beats.
+     */
+    suspend fun recordRoomEvent(roomId: String, kind: String, payload: JsonObject? = null) {
+        client.postgrest.rpc(
+            function = "record_room_event",
+            parameters = buildJsonObject {
+                put("_room_id", roomId)
+                put("_kind", kind)
+                payload?.let { put("_payload", it) }
+            },
+        )
+    }
+
+    /** The room's milestone timeline, newest first. */
+    suspend fun listMilestones(roomId: String, limit: Long = EVENT_FEED_LIMIT): List<Milestone> =
+        client.postgrest.from("room_milestones")
+            .select {
+                filter { eq("room_id", roomId) }
+                order("reached_at", Order.DESCENDING)
+                limit(limit)
+            }
+            .decodeList()
+
+    /** Pending join requests — only a moderator's RLS lets these rows through. */
+    suspend fun listJoinRequests(roomId: String): List<JoinRequest> =
+        client.postgrest.from("room_join_requests")
+            .select {
+                filter {
+                    eq("room_id", roomId)
+                    eq("status", "pending")
+                }
+                order("created_at", Order.ASCENDING)
+            }
+            .decodeList()
+
+    /** Approve or deny a join request. Moderator-gated server-side. */
+    suspend fun respondToJoinRequest(requestId: String, approve: Boolean) {
+        client.postgrest.from("room_join_requests").update(
+            { set("status", if (approve) "approved" else "denied") },
+        ) {
+            filter { eq("id", requestId) }
+        }
+    }
+
+    /** This user's workspace items for the room/session, ordered as captured. */
+    suspend fun listWorkspace(roomId: String): List<WorkspaceItem> =
+        client.postgrest.from("workspace_items")
+            .select {
+                filter { eq("room_id", roomId) }
+                order("position", Order.ASCENDING)
+            }
+            .decodeList()
+
+    suspend fun addWorkspaceItem(
+        roomId: String,
+        kind: String,
+        content: String,
+        url: String? = null,
+    ): WorkspaceItem? =
+        client.postgrest.from("workspace_items").insert(
+            buildJsonObject {
+                put("room_id", roomId)
+                put("kind", kind)
+                put("content", content)
+                url?.takeIf { it.isNotBlank() }?.let { put("url", it) }
+            },
+        ) { select() }.decodeSingleOrNull()
+
+    suspend fun updateWorkspaceItem(id: String, done: Boolean) {
+        client.postgrest.from("workspace_items").update(
+            { set("done", done) },
+        ) {
+            filter { eq("id", id) }
+        }
+    }
+
+    suspend fun deleteWorkspaceItem(id: String) {
+        client.postgrest.from("workspace_items").delete {
+            filter { eq("id", id) }
+        }
+    }
+
+    /**
+     * Stamps this participant's `last_heartbeat`, driving the roster's
+     * disconnect detection. The web writes it every 15s while active; the
+     * presence dot goes stale after 45s without one.
+     */
+    suspend fun heartbeat(roomId: String, userId: String) {
+        client.postgrest.from("participants").update(
+            { set("last_heartbeat", nowIso()) },
+        ) {
+            filter {
+                eq("room_id", roomId)
+                eq("user_id", userId)
+            }
+        }
+    }
+
+    private fun nowIso(): String =
+        java.time.Instant.ofEpochMilli(System.currentTimeMillis()).toString()
+
+    /* ---------------------------------------------------------------------- */
     /*  Realtime                                                               */
     /* ---------------------------------------------------------------------- */
 
@@ -329,6 +448,18 @@ class RoomRepository(private val client: SupabaseClient) {
                 table = "breaks"
                 filter("room_id", io.github.jan.supabase.postgrest.query.filter.FilterOperator.EQ, roomId)
             },
+            events = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+                table = "room_events"
+                filter("room_id", io.github.jan.supabase.postgrest.query.filter.FilterOperator.EQ, roomId)
+            },
+            milestones = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+                table = "room_milestones"
+                filter("room_id", io.github.jan.supabase.postgrest.query.filter.FilterOperator.EQ, roomId)
+            },
+            joinRequests = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "room_join_requests"
+                filter("room_id", io.github.jan.supabase.postgrest.query.filter.FilterOperator.EQ, roomId)
+            },
         )
     }
 
@@ -337,10 +468,14 @@ class RoomRepository(private val client: SupabaseClient) {
         val rooms: Flow<PostgresAction>,
         val participants: Flow<PostgresAction>,
         val breaks: Flow<PostgresAction.Insert>,
+        val events: Flow<PostgresAction.Insert>,
+        val milestones: Flow<PostgresAction.Insert>,
+        val joinRequests: Flow<PostgresAction>,
     )
 
     private companion object {
         const val BREAK_FEED_LIMIT = 30L
+        const val EVENT_FEED_LIMIT = 30L
         const val DEFAULT_PAGE_SIZE = 20
         const val MAX_PAGE_SIZE = 50
         const val CODE_RETRIES = 5

@@ -50,11 +50,34 @@ data class RoomUiState(
     val resultQueuedOffline: Boolean = false,
     /** A device signal that isn't guarding the stack — surfaced as a warning. */
     val sensorWarning: String? = null,
+
+    // Phase 2 panels.
+    val events: List<app.stackd.data.room.RoomEvent> = emptyList(),
+    val milestones: List<app.stackd.data.room.Milestone> = emptyList(),
+    val joinRequests: List<app.stackd.data.room.JoinRequest> = emptyList(),
+    val workspace: List<app.stackd.data.room.WorkspaceItem> = emptyList(),
+    /** user_ids that have marked themselves ready in the lobby. */
+    val readyIds: Set<String> = emptySet(),
+    val isModerator: Boolean = false,
 ) {
     val me: ParticipantRow? get() = participants.firstOrNull { it.userId == meId }
     val isHost: Boolean get() = room != null && meId != null && room.hostId == meId
     val iBreached: Boolean get() = me?.breached == true
     val code: String get() = room?.code.orEmpty()
+    val iAmReady: Boolean get() = meId != null && meId in readyIds
+
+    /** Participants still in the room (haven't left). */
+    val present: List<ParticipantRow> get() = participants.filter { it.leftAt == null }
+
+    /** Collective focus across everyone, in seconds — the shared-goal numerator. */
+    val collectiveFocusSeconds: Long get() {
+        val started = app.stackd.core.parseIsoMillis(room?.startedAt) ?: return 0
+        if (room?.statusEnum != RoomStatus.ACTIVE) return 0
+        val each = ((System.currentTimeMillis() - started) / 1000).coerceAtLeast(0)
+        return each * present.count { !it.breached }
+    }
+
+    val goalHours: Int get() = ((room?.collectiveGoalSeconds ?: 0) / 3600).toInt()
 }
 
 /**
@@ -124,19 +147,50 @@ class RoomViewModel(
 
             val participants = runCatching { rooms.listParticipants(room.id) }.getOrDefault(emptyList())
             val breaks = runCatching { rooms.listBreaks(room.id) }.getOrDefault(emptyList())
+            val events = runCatching { rooms.listRoomEvents(room.id) }.getOrDefault(emptyList())
+            val milestones = runCatching { rooms.listMilestones(room.id) }.getOrDefault(emptyList())
+            // Join requests only return rows to a moderator (RLS); a non-empty
+            // list is itself the signal that this user can moderate.
+            val joinRequests = runCatching { rooms.listJoinRequests(room.id) }.getOrDefault(emptyList())
+            val workspace = runCatching { rooms.listWorkspace(room.id) }.getOrDefault(emptyList())
 
             _state.value = _state.value.copy(
                 phase = phaseFor(room),
                 room = room,
                 participants = participants,
                 breaks = breaks,
+                events = events,
+                milestones = milestones,
+                joinRequests = joinRequests,
+                workspace = workspace,
+                readyIds = readyFromEvents(events),
+                isModerator = room.hostId == userId || joinRequests.isNotEmpty(),
                 meId = userId,
                 error = null,
             )
             subscribe(room.id)
             startTicker()
+            startHeartbeat()
             reconcile() // one immediate compute so the timer isn't blank for a second
         }
+    }
+
+    /**
+     * Reconstructs the ready set from the event log: the latest ready/unready/
+     * left event per user wins. The web keeps this in a live Set fed by realtime;
+     * seeding it from history means a late joiner sees who's already ready.
+     */
+    private fun readyFromEvents(events: List<app.stackd.data.room.RoomEvent>): Set<String> {
+        val ready = mutableSetOf<String>()
+        // Oldest first so later events override earlier ones.
+        events.sortedBy { it.createdAt }.forEach { e ->
+            val uid = e.actorId ?: return@forEach
+            when (e.kind) {
+                "ready" -> ready.add(uid)
+                "unready", "left" -> ready.remove(uid)
+            }
+        }
+        return ready
     }
 
     /** Re-reads the room row from the server to correct drift after a background freeze. */
@@ -172,7 +226,63 @@ class RoomViewModel(
             decode<BreakRow>(action.record)?.let { addBreak(it) }
         }.launchIn(viewModelScope)
 
+        ch.events.onEach { action ->
+            decode<app.stackd.data.room.RoomEvent>(action.record)?.let { addEvent(it) }
+        }.launchIn(viewModelScope)
+
+        ch.milestones.onEach { action ->
+            decode<app.stackd.data.room.Milestone>(action.record)?.let { addMilestone(it) }
+        }.launchIn(viewModelScope)
+
+        ch.joinRequests.onEach { _ ->
+            // Any change to the request table → re-pull the pending list; the set
+            // is small and a moderator's RLS scopes it. Simpler than diffing.
+            runCatching { rooms.listJoinRequests(roomId) }.getOrNull()?.let {
+                _state.value = _state.value.copy(joinRequests = it, isModerator = _state.value.isModerator || it.isNotEmpty())
+            }
+        }.launchIn(viewModelScope)
+
         viewModelScope.launch { runCatching { ch.channel.subscribe() } }
+    }
+
+    private fun addEvent(event: app.stackd.data.room.RoomEvent) {
+        val list = _state.value.events
+        if (list.any { it.id == event.id }) return
+        val next = (listOf(event) + list).sortedByDescending { it.createdAt }.take(EVENT_CAP)
+        // A ready/unready/left event also moves the ready set live.
+        val ready = _state.value.readyIds.toMutableSet()
+        event.actorId?.let { uid ->
+            when (event.kind) {
+                "ready" -> ready.add(uid)
+                "unready", "left" -> ready.remove(uid)
+            }
+        }
+        _state.value = _state.value.copy(events = next, readyIds = ready)
+    }
+
+    private fun addMilestone(m: app.stackd.data.room.Milestone) {
+        val list = _state.value.milestones
+        if (list.any { it.id == m.id }) return
+        _state.value = _state.value.copy(
+            milestones = (listOf(m) + list).sortedByDescending { it.reachedAt }.take(EVENT_CAP),
+        )
+    }
+
+    /**
+     * Writes this participant's heartbeat every 15s while the session is active,
+     * so the roster's 45s disconnect threshold reflects real presence. Only runs
+     * during ACTIVE — a lobby or ended room has nothing to keep alive.
+     */
+    private fun startHeartbeat() {
+        viewModelScope.launch {
+            while (isActive) {
+                val s = _state.value
+                if (s.room?.statusEnum == RoomStatus.ACTIVE && s.meId != null) {
+                    runCatching { rooms.heartbeat(s.room.id, s.meId) }
+                }
+                kotlinx.coroutines.delay(HEARTBEAT_MS)
+            }
+        }
     }
 
     private fun applyRoom(next: RoomRow) {
@@ -482,7 +592,81 @@ class RoomViewModel(
     private fun nowIso(): String =
         java.time.Instant.ofEpochMilli(System.currentTimeMillis()).toString()
 
+    /* ---------------------------------------------------------------------- */
+    /*  Phase 2 panel actions                                                  */
+    /* ---------------------------------------------------------------------- */
+
+    /** Lobby ready toggle — optimistic, then records the event server-side. */
+    fun toggleReady() {
+        val s = _state.value
+        val room = s.room ?: return
+        val uid = s.meId ?: return
+        if (room.statusEnum != RoomStatus.LOBBY) return
+        val nowReady = uid !in s.readyIds
+        _state.value = s.copy(
+            readyIds = if (nowReady) s.readyIds + uid else s.readyIds - uid,
+        )
+        viewModelScope.launch {
+            runCatching { rooms.recordRoomEvent(room.id, if (nowReady) "ready" else "unready") }
+                .onFailure {
+                    // Roll back the optimistic flip if the server rejected it.
+                    _state.value = _state.value.copy(
+                        readyIds = if (nowReady) _state.value.readyIds - uid else _state.value.readyIds + uid,
+                    )
+                }
+        }
+    }
+
+    fun respondToJoinRequest(requestId: String, approve: Boolean) {
+        // Optimistically drop the row; realtime will reconcile the truth.
+        _state.value = _state.value.copy(
+            joinRequests = _state.value.joinRequests.filterNot { it.id == requestId },
+        )
+        viewModelScope.launch {
+            runCatching { rooms.respondToJoinRequest(requestId, approve) }
+        }
+    }
+
+    fun addWorkspaceItem(kind: String, content: String, url: String? = null) {
+        val room = _state.value.room ?: return
+        val text = content.trim()
+        if (text.isEmpty()) return
+        viewModelScope.launch {
+            runCatching { rooms.addWorkspaceItem(room.id, kind, text, url) }.getOrNull()?.let { item ->
+                _state.value = _state.value.copy(workspace = listOf(item) + _state.value.workspace)
+            }
+        }
+    }
+
+    fun toggleWorkspaceDone(id: String) {
+        val current = _state.value.workspace.firstOrNull { it.id == id } ?: return
+        val next = !current.done
+        _state.value = _state.value.copy(
+            workspace = _state.value.workspace.map { if (it.id == id) it.copy(done = next) else it },
+        )
+        viewModelScope.launch {
+            runCatching { rooms.updateWorkspaceItem(id, next) }.onFailure {
+                _state.value = _state.value.copy(
+                    workspace = _state.value.workspace.map { if (it.id == id) it.copy(done = current.done) else it },
+                )
+            }
+        }
+    }
+
+    fun deleteWorkspaceItem(id: String) {
+        val removed = _state.value.workspace.firstOrNull { it.id == id }
+        _state.value = _state.value.copy(workspace = _state.value.workspace.filterNot { it.id == id })
+        viewModelScope.launch {
+            runCatching { rooms.deleteWorkspaceItem(id) }.onFailure {
+                // Restore on failure so a lost delete doesn't silently vanish.
+                removed?.let { _state.value = _state.value.copy(workspace = (_state.value.workspace + it).sortedBy { w -> w.position }) }
+            }
+        }
+    }
+
     private companion object {
         const val BREAK_FEED_CAP = 30
+        const val EVENT_CAP = 30
+        const val HEARTBEAT_MS = 15_000L
     }
 }
