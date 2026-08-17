@@ -13,6 +13,7 @@ import app.stackd.feature.room.session.BreachSeverity
 import app.stackd.feature.room.session.EnforcementMode
 import app.stackd.feature.room.session.FinalizeInputs
 import app.stackd.feature.room.session.FocusScore
+import app.stackd.feature.room.session.FocusSessionService
 import app.stackd.feature.room.session.SessionClock
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
@@ -88,6 +89,9 @@ class RoomViewModel(
     // Optim 02: one-write guards, mirroring the web's completion/finalize refs.
     private var completionLock = false
     private var finalizeLock = false
+
+    /** Whether the countdown foreground service is currently running. */
+    private var foregroundTimerRunning = false
 
     init {
         enter()
@@ -180,12 +184,41 @@ class RoomViewModel(
         if (prev?.updatedAt != null && next.updatedAt != null && next.updatedAt < prev.updatedAt) return
 
         _state.value = _state.value.copy(room = next, phase = phaseFor(next, _state.value))
-        if (next.statusEnum == RoomStatus.ACTIVE) armIfNeeded()
+        if (next.statusEnum == RoomStatus.ACTIVE) {
+            armIfNeeded()
+            startForegroundTimer(next)
+        }
         if (next.statusEnum == RoomStatus.COMPLETE || next.statusEnum == RoomStatus.ABORTED) {
             _state.value = _state.value.copy(armed = false)
+            stopForegroundTimer()
             maybeFinalize()
         }
         tick()
+    }
+
+    /**
+     * The Android counterpart to the web's `use-lock-screen-timer`: a foreground
+     * service whose ongoing notification counts down to the session's end,
+     * visible on the lock screen and while the app is backgrounded. Anchored to
+     * the server's end time so the OS renders the countdown without us waking
+     * every second. Started once the session is genuinely active (a real
+     * `started_at`), idempotent on repeated ACTIVE rows.
+     */
+    private fun startForegroundTimer(room: RoomRow) {
+        val started = app.stackd.core.parseIsoMillis(room.startedAt) ?: return
+        if (foregroundTimerRunning) return
+        foregroundTimerRunning = true
+        FocusSessionService.start(
+            context = container.appContextForWork,
+            roomCode = room.code,
+            endsAtMillis = SessionClock.endsAtMillis(started, room.targetDurationSeconds),
+        )
+    }
+
+    private fun stopForegroundTimer() {
+        if (!foregroundTimerRunning) return
+        foregroundTimerRunning = false
+        FocusSessionService.stop(container.appContextForWork)
     }
 
     private fun upsertParticipant(row: ParticipantRow) {
@@ -420,6 +453,8 @@ class RoomViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        // Leaving the screen must not leave a countdown notification stranded.
+        stopForegroundTimer()
         channel?.let { ch -> viewModelScope.launch { runCatching { ch.unsubscribe() } } }
     }
 

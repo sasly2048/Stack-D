@@ -135,3 +135,63 @@ data class FocusHistoryRoomRef(
     val status: String,
     @SerialName("started_at") val startedAt: String? = null,
 )
+
+/* -------------------------------------------------------------------------- */
+/*  Phase 2 room panels — events, milestones, join requests, workspace         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One entry in a room's live activity feed (`room_events`). [payload] is opaque
+ * JSON the UI reads per-kind (e.g. a pinned message). Kinds mirror the web's
+ * label/glyph maps: joined, left, started, breach, completed, pinned, goal_hit,
+ * ready, all_ready, disconnected, reconnected, join_requested, join_approved,
+ * join_denied, moderator_added/removed, paused, resumed, unready.
+ */
+@Serializable
+data class RoomEvent(
+    val id: String,
+    @SerialName("room_id") val roomId: String,
+    @SerialName("actor_id") val actorId: String? = null,
+    @SerialName("actor_name") val actorName: String? = null,
+    val kind: String,
+    val payload: kotlinx.serialization.json.JsonObject? = null,
+    @SerialName("created_at") val createdAt: String,
+)
+
+/** A room story beat (`room_milestones`) — the in-room timeline reads these. */
+@Serializable
+data class Milestone(
+    val id: String,
+    val kind: String,
+    val label: String,
+    @SerialName("reached_at") val reachedAt: String,
+)
+
+/** A pending request to join a request-visibility room (`room_join_requests`). */
+@Serializable
+data class JoinRequest(
+    val id: String,
+    @SerialName("room_id") val roomId: String,
+    @SerialName("user_id") val userId: String,
+    @SerialName("display_name") val displayName: String,
+    val message: String? = null,
+    /** pending | approved | denied | cancelled */
+    val status: String,
+    @SerialName("created_at") val createdAt: String,
+)
+
+/** A personal note/todo/link captured during a session (`workspace_items`). */
+@Serializable
+data class WorkspaceItem(
+    val id: String,
+    @SerialName("session_id") val sessionId: String? = null,
+    @SerialName("room_id") val roomId: String? = null,
+    @SerialName("user_id") val userId: String,
+    /** note | todo | link */
+    val kind: String,
+    val content: String,
+    val url: String? = null,
+    val done: Boolean = false,
+    val position: Int = 0,
+    @SerialName("created_at") val createdAt: String,
+)
