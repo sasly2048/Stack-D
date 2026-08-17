@@ -120,6 +120,11 @@ fun RoomRoute(
         onEnd = vm::endSession,
         onAbort = vm::abortSession,
         onExit = onExit,
+        onToggleReady = vm::toggleReady,
+        onRespondJoin = vm::respondToJoinRequest,
+        onAddWorkspace = vm::addWorkspaceItem,
+        onToggleWorkspace = vm::toggleWorkspaceDone,
+        onDeleteWorkspace = vm::deleteWorkspaceItem,
     )
 }
 
@@ -130,6 +135,11 @@ fun RoomScreen(
     onEnd: () -> Unit,
     onAbort: () -> Unit,
     onExit: () -> Unit,
+    onToggleReady: () -> Unit = {},
+    onRespondJoin: (String, Boolean) -> Unit = { _, _ -> },
+    onAddWorkspace: (String, String, String?) -> Unit = { _, _, _ -> },
+    onToggleWorkspace: (String) -> Unit = {},
+    onDeleteWorkspace: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -148,9 +158,14 @@ fun RoomScreen(
         when (state.phase) {
             RoomPhase.LOADING -> Loading()
             RoomPhase.ERROR -> ErrorBanner(state.error ?: "Something went wrong.", onRetry = onExit)
-            RoomPhase.LOBBY -> Lobby(state, onStart, onAbort, onExit)
+            RoomPhase.LOBBY -> Lobby(
+                state, onStart, onAbort, onExit, onToggleReady, onRespondJoin,
+            )
             RoomPhase.COUNTDOWN -> Countdown(state)
-            RoomPhase.ACTIVE -> Active(state, onEnd, onAbort)
+            RoomPhase.ACTIVE -> Active(
+                state, onEnd, onAbort,
+                onToggleReady, onAddWorkspace, onToggleWorkspace, onDeleteWorkspace,
+            )
             RoomPhase.ENDED -> Ended(state, onExit)
         }
       }
@@ -165,7 +180,14 @@ private fun Loading() {
 }
 
 @Composable
-private fun Lobby(state: RoomUiState, onStart: () -> Unit, onAbort: () -> Unit, onExit: () -> Unit) {
+private fun Lobby(
+    state: RoomUiState,
+    onStart: () -> Unit,
+    onAbort: () -> Unit,
+    onExit: () -> Unit,
+    onToggleReady: () -> Unit,
+    onRespondJoin: (String, Boolean) -> Unit,
+) {
     val colors = Stackd.colors
     SectionLabel("LOBBY")
     Spacer(Modifier.height(12.dp))
@@ -178,13 +200,22 @@ private fun Lobby(state: RoomUiState, onStart: () -> Unit, onAbort: () -> Unit, 
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        "${(state.room?.targetDurationSeconds ?: 0) / 60} min · ${state.participants.size} in the room",
+        "${(state.room?.targetDurationSeconds ?: 0) / 60} min · ${state.present.size} in the room",
         style = MonoLabelSmall,
         color = colors.textMuted,
     )
-    Spacer(Modifier.height(28.dp))
-    Roster(state)
-    Spacer(Modifier.height(28.dp))
+    Spacer(Modifier.height(24.dp))
+    if (state.isModerator) {
+        JoinRequestsPanel(state.joinRequests, onRespondJoin)
+        Spacer(Modifier.height(16.dp))
+    }
+    PresenceRoster(state, onToggleReady)
+    Spacer(Modifier.height(16.dp))
+    if (state.milestones.isNotEmpty()) {
+        MilestoneTimeline(state.milestones)
+        Spacer(Modifier.height(16.dp))
+    }
+    Spacer(Modifier.height(12.dp))
 
     if (state.isHost) {
         EmberButton(text = "Start Session", onClick = onStart)
@@ -213,7 +244,15 @@ private fun Countdown(state: RoomUiState) {
 }
 
 @Composable
-private fun Active(state: RoomUiState, onEnd: () -> Unit, onAbort: () -> Unit) {
+private fun Active(
+    state: RoomUiState,
+    onEnd: () -> Unit,
+    onAbort: () -> Unit,
+    onToggleReady: () -> Unit,
+    onAddWorkspace: (String, String, String?) -> Unit,
+    onToggleWorkspace: (String) -> Unit,
+    onDeleteWorkspace: (String) -> Unit,
+) {
     val colors = Stackd.colors
 
     // Progress ring + remaining time.
@@ -266,9 +305,24 @@ private fun Active(state: RoomUiState, onEnd: () -> Unit, onAbort: () -> Unit) {
         ErrorBanner("Your stack broke. You're out for this session, but it's still running for the others.")
     }
 
-    Spacer(Modifier.height(24.dp))
-    Roster(state)
-    Spacer(Modifier.height(24.dp))
+    Spacer(Modifier.height(20.dp))
+    SharedGoalBar(state)
+    if (state.goalHours > 0) Spacer(Modifier.height(16.dp))
+    PresenceRoster(state, onToggleReady)
+    Spacer(Modifier.height(16.dp))
+    LiveActivityRail(state)
+    Spacer(Modifier.height(16.dp))
+    WorkspacePanel(
+        items = state.workspace,
+        onAdd = onAddWorkspace,
+        onToggle = onToggleWorkspace,
+        onDelete = onDeleteWorkspace,
+    )
+    Spacer(Modifier.height(16.dp))
+    if (state.milestones.isNotEmpty()) {
+        MilestoneTimeline(state.milestones)
+        Spacer(Modifier.height(16.dp))
+    }
 
     if (state.isHost) {
         EmberButton(text = "End Now", onClick = onEnd)
@@ -317,38 +371,6 @@ private fun Stat(label: String, value: String) {
         Text(label, style = MonoLabelSmall, color = colors.textMuted)
         Spacer(Modifier.height(4.dp))
         Text(value, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun Roster(state: RoomUiState) {
-    val colors = Stackd.colors
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
-            .padding(16.dp),
-    ) {
-        SectionLabel("THE STACK", color = colors.textMuted)
-        Spacer(Modifier.height(12.dp))
-        state.participants.forEach { p ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    p.displayName + if (p.userId == state.meId) " (you)" else "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (p.breached) colors.textMuted else colors.textPrimary,
-                )
-                Text(
-                    if (p.breached) "BREACHED" else "${p.integrity}%",
-                    style = MonoLabelSmall,
-                    color = if (p.breached) colors.breach else colors.live,
-                )
-            }
-        }
     }
 }
 
