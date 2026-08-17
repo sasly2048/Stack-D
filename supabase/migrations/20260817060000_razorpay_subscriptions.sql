@@ -90,3 +90,14 @@ GRANT EXECUTE ON FUNCTION public.grant_subscription(UUID, public.access_tier, TE
   TO service_role;
 GRANT EXECUTE ON FUNCTION public.record_webhook_event(TEXT, TEXT)
   TO service_role;
+
+-- ---------------------------------------------------------------------------
+-- Map each local plan to its Razorpay plan_id. These come from the Razorpay
+-- dashboard (Subscriptions > Plans); test-mode IDs shown here. When switching
+-- to live mode, re-create the plans on the live account and update these to the
+-- rzp_live plan_ids (or run scripts/razorpay-setup-plans.mjs against live).
+-- ---------------------------------------------------------------------------
+UPDATE public.plans SET provider_ref = 'plan_TR133rXgAe3tPs' WHERE id = 'pro_monthly';
+UPDATE public.plans SET provider_ref = 'plan_TR13jDreVvufax' WHERE id = 'pro_annual';
+UPDATE public.plans SET provider_ref = 'plan_TR141R9aEkP0dl' WHERE id = 'elite_monthly';
+UPDATE public.plans SET provider_ref = 'plan_TR14KzfILy9Ccx' WHERE id = 'elite_annual';
