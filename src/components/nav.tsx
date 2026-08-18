@@ -9,31 +9,35 @@ import { routeVisible } from "@/lib/feature-flags";
 import { useNavTier, type NavTier } from "@/hooks/use-nav-tier";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
 
-type NavItem = { to: string; label: string; visibility: string };
+type NavItem = { to: string; label: string; visibility?: string };
 
-// Tablet and below show only "New Session" + the drawer trigger, so every link
-// here is desktop-only (`lg`). The drawer is the single source of truth for
-// tablet/phone navigation.
+/**
+ * Ordered by real usage priority, Profile intentionally last (Exit follows it
+ * in the drawer). Only the handful with a `visibility` class render inline on
+ * desktop — everything else lives in the drawer, which keeps the logo clear
+ * and stops the bar from crowding at mid widths.
+ */
 const AUTHED_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "Analytics", visibility: "hidden lg:inline" },
   { to: "/groups", label: "Circles", visibility: "hidden lg:inline" },
-  { to: "/seasons", label: "Seasons", visibility: "hidden xl:inline" },
-  { to: "/leaderboard", label: "Ranks", visibility: "hidden lg:inline" },
-  { to: "/challenges", label: "Rites", visibility: "hidden xl:inline" },
-  { to: "/insights", label: "Insights", visibility: "hidden xl:inline" },
-  { to: "/timeline", label: "Timeline", visibility: "hidden 2xl:inline" },
-  { to: "/feed", label: "Feed", visibility: "hidden 2xl:inline" },
-  { to: "/friends", label: "Friends", visibility: "hidden xl:inline" },
-  { to: "/achievements", label: "Marks", visibility: "hidden 2xl:inline" },
-  { to: "/wrapped", label: "Wrapped", visibility: "hidden 2xl:inline" },
-  { to: "/vault", label: "Vault", visibility: "hidden 2xl:inline" },
-  { to: "/dna", label: "DNA", visibility: "hidden 2xl:inline" },
-  { to: "/replay", label: "Replay", visibility: "hidden 2xl:inline" },
-  { to: "/partners", label: "Partners", visibility: "hidden 2xl:inline" },
-  { to: "/capsule", label: "Capsule", visibility: "hidden 2xl:inline" },
+  { to: "/leaderboard", label: "Ranks", visibility: "hidden xl:inline" },
+  { to: "/insights", label: "Insights", visibility: "hidden 2xl:inline" },
+  { to: "/timeline", label: "Timeline" },
+  { to: "/challenges", label: "Rites" },
+  { to: "/seasons", label: "Seasons" },
+  { to: "/friends", label: "Friends" },
+  { to: "/feed", label: "Feed" },
+  { to: "/achievements", label: "Marks" },
+  { to: "/wrapped", label: "Wrapped" },
+  { to: "/dna", label: "DNA" },
+  { to: "/replay", label: "Replay" },
+  { to: "/vault", label: "Vault" },
+  { to: "/capsule", label: "Capsule" },
+  { to: "/partners", label: "Partners" },
+  { to: "/companion", label: "Atlas" },
   { to: "/profile", label: "Profile", visibility: "hidden lg:inline" },
-  { to: "/companion", label: "Atlas", visibility: "hidden 2xl:inline" },
 ];
+
 
 /** Shared hover treatment: text + icon ember glow, no background box/border. */
 const NAV_GLOW =
