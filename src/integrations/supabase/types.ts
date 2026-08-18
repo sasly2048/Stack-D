@@ -71,6 +71,21 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_emails: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
       auth_alerts: {
         Row: {
           created_at: string
@@ -501,6 +516,54 @@ export type Database = {
           },
         ]
       }
+      lifetime_promo: {
+        Row: {
+          coupon_code: string | null
+          ends_at: string | null
+          id: number
+          is_active: boolean
+          max_redemptions: number
+          redeemed_count: number
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          coupon_code?: string | null
+          ends_at?: string | null
+          id?: number
+          is_active?: boolean
+          max_redemptions?: number
+          redeemed_count?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          coupon_code?: string | null
+          ends_at?: string | null
+          id?: number
+          is_active?: boolean
+          max_redemptions?: number
+          redeemed_count?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lifetime_redemptions: {
+        Row: {
+          redeemed_at: string
+          user_id: string
+        }
+        Insert: {
+          redeemed_at?: string
+          user_id: string
+        }
+        Update: {
+          redeemed_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       login_streaks: {
         Row: {
           last_claim_date: string | null
@@ -732,6 +795,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plans: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          interval: string
+          is_active: boolean
+          price_inr: number
+          provider_ref: string | null
+          sort_order: number
+          tier: Database["public"]["Enums"]["access_tier"]
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id: string
+          interval: string
+          is_active?: boolean
+          price_inr: number
+          provider_ref?: string | null
+          sort_order?: number
+          tier: Database["public"]["Enums"]["access_tier"]
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          interval?: string
+          is_active?: boolean
+          price_inr?: number
+          provider_ref?: string | null
+          sort_order?: number
+          tier?: Database["public"]["Enums"]["access_tier"]
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -1259,6 +1358,36 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          provider_ref: string | null
+          source: string
+          tier: Database["public"]["Enums"]["access_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          provider_ref?: string | null
+          source?: string
+          tier?: Database["public"]["Enums"]["access_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          provider_ref?: string | null
+          source?: string
+          tier?: Database["public"]["Enums"]["access_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -1537,6 +1666,24 @@ export type Database = {
           },
         ]
       }
+      webhook_events: {
+        Row: {
+          event_type: string
+          id: string
+          processed_at: string
+        }
+        Insert: {
+          event_type: string
+          id: string
+          processed_at?: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          processed_at?: string
+        }
+        Relationships: []
+      }
       webhooks: {
         Row: {
           active: boolean
@@ -1684,6 +1831,19 @@ export type Database = {
             }
             Returns: string
           }
+      grant_subscription: {
+        Args: {
+          _period_end: string
+          _provider_ref: string
+          _tier: Database["public"]["Enums"]["access_tier"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      has_tier: {
+        Args: { _required: Database["public"]["Enums"]["access_tier"] }
+        Returns: boolean
+      }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
@@ -1701,6 +1861,16 @@ export type Database = {
         Returns: boolean
       }
       join_season: { Args: { _season_id: string }; Returns: undefined }
+      lifetime_promo_status: {
+        Args: never
+        Returns: {
+          active: boolean
+          already_redeemed: boolean
+          ends_at: string
+          seats_remaining: number
+          seats_total: number
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -1709,6 +1879,16 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      my_entitlement: {
+        Args: never
+        Returns: {
+          expires_at: string
+          is_admin: boolean
+          is_premium: boolean
+          source: string
+          tier: Database["public"]["Enums"]["access_tier"]
+        }[]
       }
       my_season_rank: { Args: { _season_id: string }; Returns: number }
       presence_heartbeat: { Args: never; Returns: undefined }
@@ -1765,6 +1945,11 @@ export type Database = {
         Args: { _kind: string; _payload?: Json; _room_id: string }
         Returns: string
       }
+      record_webhook_event: {
+        Args: { _id: string; _type: string }
+        Returns: boolean
+      }
+      redeem_lifetime: { Args: { _code: string }; Returns: string }
       refresh_personality: { Args: { _user_id: string }; Returns: string }
       room_code_exists: { Args: { _code: string }; Returns: boolean }
       season_standings: {
@@ -1778,12 +1963,17 @@ export type Database = {
         }[]
       }
       start_focus_session: { Args: { _room_id: string }; Returns: string }
+      tier_rank: {
+        Args: { _t: Database["public"]["Enums"]["access_tier"] }
+        Returns: number
+      }
       update_session_meta: {
         Args: { _history_id: string; _notes: string; _tags: string[] }
         Returns: undefined
       }
     }
     Enums: {
+      access_tier: "free" | "pro" | "elite"
       breach_severity: "minor" | "severe"
       room_status: "lobby" | "active" | "complete" | "aborted"
     }
@@ -1913,6 +2103,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      access_tier: ["free", "pro", "elite"],
       breach_severity: ["minor", "severe"],
       room_status: ["lobby", "active", "complete", "aborted"],
     },
