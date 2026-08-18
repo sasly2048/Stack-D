@@ -291,6 +291,46 @@
     transform: scale(1.15);
   }
 }
+/* Pro celebration — a single ember scan line crossing the viewport once. */
+@keyframes pro-scan {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+/* Elite celebration — ignition flash: a bright bloom that fades fast. */
+@keyframes elite-ignite {
+  0% {
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, transparent 40%);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    background: radial-gradient(circle at center, rgba(255, 196, 138, 0) 0%, transparent 60%);
+    opacity: 0;
+  }
+}
+/* Elite crest wordmark shimmer sweep. */
+@keyframes elite-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
 @keyframes ripple-pulse {
   0% {
     transform: scale(0.85);

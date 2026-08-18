@@ -15,7 +15,8 @@ import {
 } from "@/lib/use-entitlement";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { PremiumSuccess } from "./premium-success";
+import { CelebratePro } from "./celebrate-pro";
+import { CelebrateElite } from "./celebrate-elite";
 
 type Interval = "monthly" | "annual";
 
@@ -37,14 +38,14 @@ export function UpgradeDialog({
   const [plans, setPlans] = useState<Plan[]>([]);
   const [interval, setInterval] = useState<Interval>("annual");
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
-  const [successTier, setSuccessTier] = useState<string | null>(null);
+  const [celebrate, setCelebrate] = useState<"pro" | "elite" | null>(null);
 
   const onCheckout = async (plan: Plan) => {
     if (checkingOut) return;
     setCheckingOut(plan.id);
     try {
       const { subscriptionId, keyId } = await startCheckout({ data: { planId: plan.id } });
-      const tierLabel = plan.tier === "elite" ? "Elite" : "Pro";
+      const tier = plan.tier === "elite" ? "elite" : "pro";
       await openRazorpayCheckout({
         keyId,
         subscriptionId,
@@ -56,7 +57,9 @@ export function UpgradeDialog({
           onOpenChange(false);
           const ok = await pollEntitlementUntilPremium(loadEntitlement);
           if (ok) {
-            setSuccessTier(tierLabel);
+            // Tier-specific celebration — Pro and Elite are entirely separate
+            // sequences, not one recolored animation.
+            setCelebrate(tier);
           } else {
             // Webhook hasn't landed yet; entitlement will catch up on next load.
             toast.success("Payment received — unlocking your account shortly.");
@@ -95,11 +98,8 @@ export function UpgradeDialog({
 
   return (
     <>
-      <PremiumSuccess
-        open={successTier !== null}
-        tierLabel={successTier ?? "Pro"}
-        onClose={() => setSuccessTier(null)}
-      />
+      <CelebratePro open={celebrate === "pro"} onClose={() => setCelebrate(null)} />
+      <CelebrateElite open={celebrate === "elite"} onClose={() => setCelebrate(null)} />
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl border-border bg-card p-0 gap-0 overflow-hidden">
           {/* Header */}
