@@ -103,6 +103,7 @@ export function Nav() {
           {user ? (
             <>
               {AUTHED_ITEMS.map((item) => {
+                if (!item.visibility) return null;
                 if (!routeVisible(item.to, labs)) return null;
                 return (
                   <Link
