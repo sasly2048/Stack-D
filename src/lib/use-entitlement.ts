@@ -24,6 +24,42 @@ export function invalidateEntitlement() {
   inflight = null;
 }
 
+/**
+ * Refetch entitlement now and push it to every mounted component — no page
+ * refresh needed. Takes the bound server-fn loader (from useServerFn) since the
+ * fetch needs the caller's auth. Returns the fresh entitlement.
+ */
+export async function refreshEntitlement(load: () => Promise<Entitlement>): Promise<Entitlement> {
+  const e = await load();
+  broadcast(e);
+  return e;
+}
+
+/**
+ * Poll entitlement until the user is premium, or attempts run out. Used right
+ * after a Razorpay payment: the client sees success before the webhook has
+ * written the subscription row, so we re-check every `intervalMs` until the
+ * server confirms premium (then the UI flips live). Resolves true once premium,
+ * false if it never lands in time (payment still succeeded server-side; the
+ * user will see it on next load).
+ */
+export async function pollEntitlementUntilPremium(
+  load: () => Promise<Entitlement>,
+  { attempts = 12, intervalMs = 1500 }: { attempts?: number; intervalMs?: number } = {},
+): Promise<boolean> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const e = await load();
+      broadcast(e);
+      if (e.isPremium) return true;
+    } catch {
+      // transient — keep polling
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return false;
+}
+
 export function useEntitlement() {
   const load = useServerFn(getEntitlement);
   const [ent, setEnt] = useState<Entitlement | null>(cache);

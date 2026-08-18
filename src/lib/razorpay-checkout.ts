@@ -45,6 +45,9 @@ export async function openRazorpayCheckout(opts: {
   subscriptionId: string;
   name?: string;
   description?: string;
+  /** Fires when the user completes payment (before the webhook confirms). */
+  onSuccess?: () => void;
+  /** Fires when the user closes/cancels the modal. */
   onDismiss?: () => void;
 }): Promise<void> {
   await loadScript();
@@ -56,6 +59,10 @@ export async function openRazorpayCheckout(opts: {
     name: opts.name ?? "Stack'd Premium",
     description: opts.description,
     theme: { color: "#f0a968" }, // ember, matches the product
+    // handler fires on successful payment. Authoritative confirmation is still
+    // the webhook writing the subscription row — the caller polls entitlement
+    // from here rather than trusting this client signal outright.
+    handler: () => opts.onSuccess?.(),
     modal: { ondismiss: opts.onDismiss },
   });
   rzp.open();
