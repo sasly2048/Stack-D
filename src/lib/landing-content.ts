@@ -130,7 +130,7 @@ export const LANDING_CONTENT = {
     },
     {
       title: "No Gamification",
-      description: "No points, no streaks, no leaderboards. Just the weight of presence.",
+      description: "The game is staying present.",
     },
   ],
 
@@ -184,7 +184,7 @@ export const LANDING_CONTENT = {
   cta: {
     primary: "Start a Room",
     secondary: "Join with Code",
-    tagline: "No signup. No email. No friction.",
+    tagline: "No setup. Join in seconds.",
   },
 };
 
