@@ -66,14 +66,25 @@ export function LifetimeCoupon() {
 }
 
 /**
- * Profile tag shown when the user holds lifetime access. Sits next to the name.
+ * Profile membership tag. Shows the caller's premium standing next to the name:
+ * Admin, Lifetime member, Elite, or Pro. Nothing for free users. Lifetime beats
+ * the plain tier label since it's the more meaningful status.
  */
 export function LifetimeBadge() {
   const { entitlement } = useEntitlement();
-  if (entitlement?.source !== "lifetime") return null;
+  if (!entitlement || !entitlement.isPremium) return null;
+
+  const label = entitlement.isAdmin
+    ? "Admin"
+    : entitlement.source === "lifetime"
+      ? "Lifetime member"
+      : entitlement.tier === "elite"
+        ? "Elite"
+        : "Pro";
+
   return (
     <span className="rounded-full border border-ember/50 bg-ember/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ember">
-      Lifetime member
+      {label}
     </span>
   );
 }
