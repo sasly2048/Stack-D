@@ -83,24 +83,11 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
         const eventType = event.event ?? "unknown";
         const supabase = createClient(supabaseUrl, serviceKey);
 
-        // Idempotency: process each Razorpay event id at most once. Fall back to
-        // a signature-derived key if the header is somehow absent.
-        const dedupeId = eventId || signature.slice(0, 64);
-        const { data: firstSeen, error: dedupeErr } = await supabase.rpc("record_webhook_event", {
-          _id: dedupeId,
-          _type: eventType,
-        });
-        if (dedupeErr) {
-          console.error("razorpay_webhook_dedupe_failed", dedupeErr);
-          return Response.json({ error: "Server error" }, { status: 500 });
-        }
-        if (firstSeen === false) {
-          return Response.json({ ok: true, deduped: true });
-        }
-
         // We only act on events that establish/extend paid access. Cancellation
         // and completion simply let current_period_end lapse — my_entitlement()
-        // already collapses an expired sub to free, so no write is needed.
+        // already collapses an expired sub to free, so no write is needed. These
+        // are ignored BEFORE the idempotency claim so they never occupy the
+        // ledger and can't block a retry of something meaningful.
         const ACTIVATING = new Set([
           "subscription.activated",
           "subscription.charged",
@@ -110,6 +97,23 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
           return Response.json({ ok: true, ignored: eventType });
         }
 
+        // Idempotency with real processing state: claim the event as
+        // 'processing'. Only a genuinely 'processed' event is skipped — a prior
+        // failed/crashed attempt returns 'new' so Razorpay's retry re-runs it.
+        const dedupeId = eventId || signature.slice(0, 64);
+        const { data: claim, error: claimErr } = await supabase.rpc("begin_webhook_event", {
+          _id: dedupeId,
+          _type: eventType,
+        });
+        if (claimErr) {
+          console.error("razorpay_webhook_claim_failed", claimErr);
+          // 500 → Razorpay retries. Nothing was marked processed.
+          return Response.json({ error: "Server error" }, { status: 500 });
+        }
+        if (claim === "processed") {
+          return Response.json({ ok: true, deduped: true });
+        }
+
         const sub = event.payload?.subscription?.entity;
         const planId = sub?.plan_id;
         const subId = sub?.id;
@@ -117,15 +121,21 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
         const userId = sub?.notes?.user_id;
         const currentEnd = sub?.current_end;
 
+        // Helper: on any failure past the claim, mark the event failed (keeps it
+        // retryable + visible) and return 5xx so Razorpay redelivers.
+        const failAndRetry = async (reason: string, extra?: unknown) => {
+          console.error(`razorpay_webhook_${reason}`, extra);
+          await supabase.rpc("fail_webhook_event", { _id: dedupeId });
+          return Response.json({ error: reason }, { status: 500 });
+        };
+
         if (!planId || !subId || !userId || !currentEnd) {
-          console.error("razorpay_webhook_missing_fields", { planId, subId, userId, currentEnd });
-          return Response.json({ error: "Missing fields" }, { status: 400 });
+          return failAndRetry("missing_fields", { planId, subId, userId, currentEnd });
         }
 
         const tier = await tierForPlan(supabase, planId);
         if (!tier) {
-          console.error("razorpay_webhook_unknown_plan", { planId });
-          return Response.json({ error: "Unknown plan" }, { status: 400 });
+          return failAndRetry("unknown_plan", { planId });
         }
 
         const periodEnd = new Date(currentEnd * 1000).toISOString();
@@ -136,8 +146,18 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
           _period_end: periodEnd,
         });
         if (grantErr) {
-          console.error("razorpay_webhook_grant_failed", grantErr);
-          return Response.json({ error: "Grant failed" }, { status: 500 });
+          return failAndRetry("grant_failed", grantErr);
+        }
+
+        // Provisioning succeeded — NOW mark processed. If this mark itself fails,
+        // a redelivery re-grants (grant_subscription is an idempotent upsert), so
+        // it's safe.
+        const { error: completeErr } = await supabase.rpc("complete_webhook_event", {
+          _id: dedupeId,
+        });
+        if (completeErr) {
+          console.error("razorpay_webhook_complete_failed", completeErr);
+          // Grant already applied; a retry is harmless (idempotent upsert).
         }
 
         return Response.json({ ok: true, tier, until: periodEnd });
