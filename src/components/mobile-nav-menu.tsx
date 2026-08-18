@@ -32,7 +32,7 @@ export function MobileNavMenu({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         aria-label="Open navigation menu"
-        className="grid size-9 shrink-0 place-items-center text-muted-foreground transition-[color,filter] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[filter:drop-shadow(0_0_10px_var(--icon-glow-ember))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian lg:hidden"
+        className="grid size-9 shrink-0 place-items-center text-muted-foreground transition-[color,filter] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[filter:drop-shadow(0_0_10px_var(--icon-glow-ember))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
       >
         <Menu className="size-4" aria-hidden="true" />
       </SheetTrigger>
