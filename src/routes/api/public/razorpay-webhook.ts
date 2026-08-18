@@ -24,18 +24,19 @@ function verifySignature(rawBody: string, signature: string, secret: string): bo
   return timingSafeEqual(a, b);
 }
 
-/** Map a Razorpay plan_id back to our local tier via the plans table. */
-async function tierForPlan(
+/** Map a Razorpay plan_id back to our local plan (id + tier) via the plans table. */
+async function localPlanForRazorpay(
   supabase: SupabaseClient,
   planId: string,
-): Promise<"pro" | "elite" | null> {
+): Promise<{ id: string; tier: "pro" | "elite" } | null> {
   const { data } = await supabase
     .from("plans")
-    .select("tier")
+    .select("id, tier")
     .eq("provider_ref", planId)
     .maybeSingle();
-  const tier = (data as { tier?: string } | null)?.tier;
-  return tier === "pro" || tier === "elite" ? tier : null;
+  const row = data as { id?: string; tier?: string } | null;
+  if (!row?.id || (row.tier !== "pro" && row.tier !== "elite")) return null;
+  return { id: row.id, tier: row.tier };
 }
 
 export const Route = createFileRoute("/api/public/razorpay-webhook")({
@@ -133,17 +134,18 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
           return failAndRetry("missing_fields", { planId, subId, userId, currentEnd });
         }
 
-        const tier = await tierForPlan(supabase, planId);
-        if (!tier) {
+        const localPlan = await localPlanForRazorpay(supabase, planId);
+        if (!localPlan) {
           return failAndRetry("unknown_plan", { planId });
         }
 
         const periodEnd = new Date(currentEnd * 1000).toISOString();
         const { error: grantErr } = await supabase.rpc("grant_subscription", {
           _user_id: userId,
-          _tier: tier,
+          _tier: localPlan.tier,
           _provider_ref: subId,
           _period_end: periodEnd,
+          _plan_id: localPlan.id,
         });
         if (grantErr) {
           return failAndRetry("grant_failed", grantErr);
@@ -160,7 +162,7 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
           // Grant already applied; a retry is harmless (idempotent upsert).
         }
 
-        return Response.json({ ok: true, tier, until: periodEnd });
+        return Response.json({ ok: true, tier: localPlan.tier, until: periodEnd });
       },
     },
   },

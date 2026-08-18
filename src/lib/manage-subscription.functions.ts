@@ -27,7 +27,7 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<SubscriptionDetail> => {
     const { data: sub } = await context.supabase
       .from("subscriptions" as never)
-      .select("tier, source, current_period_end, provider_ref")
+      .select("tier, source, current_period_end, provider_ref, plan_id")
       .eq("user_id" as never, context.userId as never)
       .maybeSingle();
 
@@ -36,6 +36,7 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
       source?: string;
       current_period_end?: string | null;
       provider_ref?: string | null;
+      plan_id?: string | null;
     } | null;
 
     if (!s || !s.tier || s.tier === "free") {
@@ -50,22 +51,17 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
       };
     }
 
-    // Match the plan by tier + provider_ref where possible for the amount/interval.
-    const { data: plans } = await context.supabase
-      .from("plans" as never)
-      .select("tier, interval, price_inr, display_name, provider_ref")
-      .eq("tier" as never, s.tier as never);
-
-    const rows = (plans ?? []) as Array<{
-      tier: AccessTier;
-      interval: "monthly" | "annual";
-      price_inr: number;
-      display_name: string;
-      provider_ref: string | null;
-    }>;
-    // A razorpay sub's provider_ref is the subscription id, not the plan id, so
-    // fall back to the first plan of the tier when we can't match a plan row.
-    const plan = rows[0] ?? null;
+    // Look up the EXACT plan the subscription is on (stored at grant time), so
+    // the interval/price/label are correct — not an arbitrary row of the tier.
+    let plan: PlanRow | null = null;
+    if (s.plan_id) {
+      const { data: p } = await context.supabase
+        .from("plans" as never)
+        .select("interval, price_inr, display_name")
+        .eq("id" as never, s.plan_id as never)
+        .maybeSingle();
+      plan = (p as unknown as PlanRow | null) ?? null;
+    }
 
     const isRazorpay = s.source === "razorpay" && Boolean(s.provider_ref);
 
@@ -79,6 +75,12 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
       cancellable: isRazorpay,
     };
   });
+
+interface PlanRow {
+  interval: "monthly" | "annual";
+  price_inr: number;
+  display_name: string;
+}
 
 export type CancelResult = "cancelled" | "not_cancellable" | "error";
 
