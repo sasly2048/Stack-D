@@ -101,7 +101,7 @@ function DnaPage() {
         </div>
         <h1 className="text-4xl font-serif mt-2 mb-8">Your focus signature</h1>
 
-        <PremiumGate feature="advanced_analytics">
+        <PremiumGate feature="focus_dna">
           {/* The previous `.catch(() => {})` meant a failed load sat on
             "Analyzing 60 days of focus…" indefinitely — a loading state that
             could never resolve. Errors now surface with a retry. */}

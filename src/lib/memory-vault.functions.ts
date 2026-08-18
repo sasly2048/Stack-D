@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { requireTier } from "@/lib/require-tier";
+import { requireFeature } from "@/lib/require-tier";
 import { z } from "zod";
 
 export interface VaultItem {
@@ -26,7 +26,7 @@ export const listVault = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }): Promise<VaultItem[]> => {
-    await requireTier(context.supabase, "elite");
+    await requireFeature(context.supabase, "vault");
     let q = context.supabase
       .from("memory_vault_items")
       .select("id, history_id, title, body, url, tags, ai_summary, created_at")

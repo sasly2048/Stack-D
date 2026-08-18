@@ -33,13 +33,13 @@ export function PremiumGate({
   const [open, setOpen] = useState(false);
 
   const cat = feature ? PREMIUM_FEATURES.find((f) => f.key === feature) : undefined;
-  const required: Exclude<AccessTier, "free"> = tier ?? cat?.minTier ?? "pro";
+  const required: Exclude<AccessTier, "free"> = tier ?? cat?.requiredTier ?? "pro";
 
   // While loading, render nothing rather than flashing the lock or the content.
   if (loading) return null;
   if (has(required)) return <>{children}</>;
 
-  const heading = label ?? cat?.label ?? "A premium feature";
+  const heading = label ?? cat?.uiLabel ?? "A premium feature";
   const tierName = required === "elite" ? "Elite" : "Pro";
 
   return (

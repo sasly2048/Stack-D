@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { getProfile, updateMyProfile, type PublicProfile } from "@/lib/profile.functions";
 import { LowPowerToggle } from "@/components/low-power-toggle";
 import { LifetimeBadge, LifetimeCoupon } from "@/components/premium/lifetime-coupon";
+import { ManageSubscription } from "@/components/premium/manage-subscription";
 import { formatHandle } from "@/lib/handle";
 import { useXpSync } from "@/lib/xp-sync";
 
@@ -187,6 +188,8 @@ function MyProfile() {
         <MilestoneShelf />
 
         <UsernameForm current={p.username} />
+
+        <ManageSubscription />
 
         <LifetimeCoupon />
 

@@ -166,8 +166,8 @@ export function UpgradeDialog({
               {PREMIUM_FEATURES.map((f) => (
                 <li key={f.key} className="flex items-center gap-2.5 text-sm">
                   <Check className="size-3.5 text-ember shrink-0" />
-                  <span className="text-silver">{f.label}</span>
-                  {f.minTier === "elite" && (
+                  <span className="text-silver">{f.uiLabel}</span>
+                  {f.requiredTier === "elite" && (
                     <span className="ml-auto font-mono text-[9px] uppercase tracking-widest text-ember-glow">
                       Elite
                     </span>

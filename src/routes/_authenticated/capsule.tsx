@@ -90,7 +90,7 @@ function CapsulePage() {
           </p>
         </header>
 
-        <PremiumGate feature="vault" label="Time Capsule">
+        <PremiumGate feature="time_capsules" label="Time Capsule">
           <section className="border border-white/10 rounded-md p-6 bg-black/30">
             <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
               Compose
