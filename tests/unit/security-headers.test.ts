@@ -38,6 +38,15 @@ describe("CSP allows every origin the app genuinely uses", () => {
     expect(directive("connect-src")).toContain("https://ai.gateway.lovable.dev");
   });
 
+  it("permits Razorpay Checkout to load, frame and call home", () => {
+    // The checkout script, its payment iframe, and its API/telemetry calls each
+    // sit under a different directive. Miss one and checkout fails with
+    // "Failed to load Razorpay Checkout" (script-src) or a blank/blocked modal.
+    expect(directive("script-src")).toContain("https://checkout.razorpay.com");
+    expect(directive("frame-src")).toContain("https://api.razorpay.com");
+    expect(directive("connect-src")).toContain("https://*.razorpay.com");
+  });
+
   it("permits user avatars from arbitrary https hosts", () => {
     expect(directive("img-src")).toContain("https:");
     expect(directive("img-src")).toContain("data:");
