@@ -46,6 +46,13 @@ export function UpgradeDialog({
     try {
       const { subscriptionId, keyId } = await startCheckout({ data: { planId: plan.id } });
       const tier = plan.tier === "elite" ? "elite" : "pro";
+      // Close our Radix dialog BEFORE opening Razorpay. Radix keeps a focus trap
+      // and sets pointer-events on everything outside its content while open;
+      // Razorpay's checkout iframe is appended to <body>, outside that tree, so
+      // leaving our dialog open makes the Razorpay modal unclickable (clicks
+      // fall through to the page). Closing first hands pointer control to
+      // Razorpay cleanly.
+      onOpenChange(false);
       await openRazorpayCheckout({
         keyId,
         subscriptionId,
@@ -54,7 +61,6 @@ export function UpgradeDialog({
           // Payment done client-side. Poll until the webhook has written the
           // subscription (server-authoritative), pushing the fresh entitlement
           // to every mounted component so the UI flips with no page refresh.
-          onOpenChange(false);
           const ok = await pollEntitlementUntilPremium(loadEntitlement);
           if (ok) {
             // Tier-specific celebration — Pro and Elite are entirely separate

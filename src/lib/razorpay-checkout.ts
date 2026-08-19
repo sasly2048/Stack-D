@@ -53,6 +53,16 @@ export async function openRazorpayCheckout(opts: {
   await loadScript();
   if (!window.Razorpay) throw new Error("Razorpay unavailable");
 
+  // Safety net: Radix Dialog (our upgrade modal) can briefly leave
+  // `pointer-events: none` on <body> while it unmounts. If that lands right as
+  // Razorpay opens, the whole page — Razorpay's iframe included — becomes
+  // unclickable. Clear it on the next frame so control is fully handed over.
+  requestAnimationFrame(() => {
+    if (document.body.style.pointerEvents === "none") {
+      document.body.style.pointerEvents = "";
+    }
+  });
+
   const rzp = new window.Razorpay({
     key: opts.keyId,
     subscription_id: opts.subscriptionId,
