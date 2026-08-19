@@ -1362,6 +1362,7 @@ export type Database = {
         Row: {
           created_at: string
           current_period_end: string | null
+          plan_id: string | null
           provider_ref: string | null
           source: string
           tier: Database["public"]["Enums"]["access_tier"]
@@ -1371,6 +1372,7 @@ export type Database = {
         Insert: {
           created_at?: string
           current_period_end?: string | null
+          plan_id?: string | null
           provider_ref?: string | null
           source?: string
           tier?: Database["public"]["Enums"]["access_tier"]
@@ -1380,13 +1382,22 @@ export type Database = {
         Update: {
           created_at?: string
           current_period_end?: string | null
+          plan_id?: string | null
           provider_ref?: string | null
           source?: string
           tier?: Database["public"]["Enums"]["access_tier"]
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
@@ -1671,16 +1682,19 @@ export type Database = {
           event_type: string
           id: string
           processed_at: string
+          status: string
         }
         Insert: {
           event_type: string
           id: string
           processed_at?: string
+          status?: string
         }
         Update: {
           event_type?: string
           id?: string
           processed_at?: string
+          status?: string
         }
         Relationships: []
       }
@@ -1720,6 +1734,10 @@ export type Database = {
     }
     Functions: {
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      begin_webhook_event: {
+        Args: { _id: string; _type: string }
+        Returns: string
+      }
       check_and_record_hit: {
         Args: { _key: string; _max_hits: number; _window_seconds: number }
         Returns: boolean
@@ -1761,6 +1779,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_webhook_event: { Args: { _id: string }; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -1807,6 +1826,7 @@ export type Database = {
         Returns: undefined
       }
       evaluate_milestones: { Args: { _user_id: string }; Returns: string[] }
+      fail_webhook_event: { Args: { _id: string }; Returns: undefined }
       finalize_focus_session:
         | {
             Args: {
@@ -1834,6 +1854,7 @@ export type Database = {
       grant_subscription: {
         Args: {
           _period_end: string
+          _plan_id?: string
           _provider_ref: string
           _tier: Database["public"]["Enums"]["access_tier"]
           _user_id: string
