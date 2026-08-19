@@ -9,6 +9,8 @@ import {
 } from "@/lib/manage-subscription.functions";
 import { invalidateEntitlement } from "@/lib/use-entitlement";
 import { useEntitlement } from "@/lib/use-entitlement";
+import { featuresFor } from "@/lib/premium-catalog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const eyebrow = "font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim";
 
@@ -112,36 +114,56 @@ export function ManageSubscription() {
 
       {detail.cancellable && (
         <div className="mt-5 border-t border-border pt-4">
-          {confirming ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="text-sm text-silver-dim">
-                Cancel? You keep {tierName} until {fmtDate(detail.currentPeriodEnd)}.
-              </p>
-              <button
-                onClick={onCancel}
-                disabled={busy}
-                className="rounded-full border border-breach/50 px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest text-breach transition hover:bg-breach/10 disabled:opacity-40"
-              >
-                {busy ? "Cancelling…" : "Confirm cancel"}
-              </button>
-              <button
-                onClick={() => setConfirming(false)}
-                disabled={busy}
-                className="font-mono text-[11px] uppercase tracking-widest text-silver-dim hover:text-silver"
-              >
-                Keep it
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirming(true)}
-              className="font-mono text-[11px] uppercase tracking-widest text-silver-dim transition hover:text-breach"
-            >
-              Cancel subscription
-            </button>
-          )}
+          <button
+            onClick={() => setConfirming(true)}
+            className="font-mono text-[11px] uppercase tracking-widest text-silver-dim transition hover:text-breach"
+          >
+            Cancel subscription
+          </button>
         </div>
       )}
+
+      {/* Retention prompt — a real "are you sure?" with what they'd lose, and
+          "Keep" as the prominent action. */}
+      <Dialog open={confirming} onOpenChange={(v) => !busy && setConfirming(v)}>
+        <DialogContent className="max-w-md border-border bg-card">
+          <p className={eyebrow}>Before you go</p>
+          <DialogTitle className="mt-2 font-serif text-2xl text-silver font-normal">
+            Keep your {tierName}?
+          </DialogTitle>
+          <p className="mt-2 text-sm text-silver-dim">
+            Cancelling ends {tierName} on{" "}
+            <span className="text-silver">{fmtDate(detail.currentPeriodEnd)}</span>. You&apos;ll
+            keep full access until then — after that you&apos;d lose:
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {featuresFor(detail.tier === "elite" ? "elite" : "pro")
+              .slice(0, 5)
+              .map((f) => (
+                <li key={f.key} className="flex items-center gap-2 text-sm text-silver">
+                  <span className="text-ember">·</span>
+                  {f.uiLabel}
+                </li>
+              ))}
+          </ul>
+          <div className="mt-6 flex flex-col gap-2">
+            <button
+              onClick={() => setConfirming(false)}
+              disabled={busy}
+              className="w-full rounded-full border border-ember/50 bg-ember/10 py-2.5 font-mono text-[11px] uppercase tracking-widest text-ember transition hover:bg-ember/20 disabled:opacity-40"
+            >
+              Keep my {tierName}
+            </button>
+            <button
+              onClick={onCancel}
+              disabled={busy}
+              className="w-full py-2 font-mono text-[11px] uppercase tracking-widest text-silver-dim transition hover:text-breach disabled:opacity-40"
+            >
+              {busy ? "Cancelling…" : "Cancel anyway"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

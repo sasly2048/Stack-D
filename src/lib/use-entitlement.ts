@@ -45,7 +45,7 @@ export async function refreshEntitlement(load: () => Promise<Entitlement>): Prom
  */
 export async function pollEntitlementUntilPremium(
   load: () => Promise<Entitlement>,
-  { attempts = 12, intervalMs = 1500 }: { attempts?: number; intervalMs?: number } = {},
+  { attempts = 20, intervalMs = 800 }: { attempts?: number; intervalMs?: number } = {},
 ): Promise<boolean> {
   for (let i = 0; i < attempts; i++) {
     try {

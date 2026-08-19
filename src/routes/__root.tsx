@@ -17,6 +17,7 @@ import { SmoothScroll } from "@/components/smooth-scroll";
 import { CommandPalette } from "@/components/command-palette";
 import { FloatingTimer } from "@/components/floating-timer";
 import { GlobalRealtimeToasts } from "@/components/global-realtime-toasts";
+import { CelebrationHost } from "@/components/premium/celebration-host";
 import { QueueBadge } from "@/components/queue-badge";
 import { useXpSync, XP_DERIVED_QUERY_KEYS } from "@/lib/xp-sync";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -298,6 +299,7 @@ function RootComponent() {
       <QueueBadge />
       <OfflineBanner />
       <SessionCeremony />
+      <CelebrationHost />
       <Toaster
         theme="dark"
         position="top-center"

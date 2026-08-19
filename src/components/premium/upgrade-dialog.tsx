@@ -13,10 +13,9 @@ import {
   pollEntitlementUntilPremium,
   refreshEntitlement,
 } from "@/lib/use-entitlement";
+import { triggerCelebration } from "@/lib/celebration-bus";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { CelebratePro } from "./celebrate-pro";
-import { CelebrateElite } from "./celebrate-elite";
 
 type Interval = "monthly" | "annual";
 
@@ -38,7 +37,6 @@ export function UpgradeDialog({
   const [plans, setPlans] = useState<Plan[]>([]);
   const [interval, setInterval] = useState<Interval>("annual");
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
-  const [celebrate, setCelebrate] = useState<"pro" | "elite" | null>(null);
 
   const onCheckout = async (plan: Plan) => {
     if (checkingOut) return;
@@ -57,19 +55,14 @@ export function UpgradeDialog({
         keyId,
         subscriptionId,
         description: `${plan.displayName} · Stack'd`,
-        onSuccess: async () => {
-          // Payment done client-side. Poll until the webhook has written the
-          // subscription (server-authoritative), pushing the fresh entitlement
-          // to every mounted component so the UI flips with no page refresh.
-          const ok = await pollEntitlementUntilPremium(loadEntitlement);
-          if (ok) {
-            // Tier-specific celebration — Pro and Elite are entirely separate
-            // sequences, not one recolored animation.
-            setCelebrate(tier);
-          } else {
-            // Webhook hasn't landed yet; entitlement will catch up on next load.
-            toast.success("Payment received — unlocking your account shortly.");
-          }
+        onSuccess: () => {
+          // Celebrate IMMEDIATELY — the payment succeeded, so don't make the
+          // user wait on the webhook round-trip. Fired on the global bus so it
+          // survives UpgradeCard unmounting when entitlement flips premium.
+          triggerCelebration(tier);
+          // In the background, poll until the webhook has written the sub so the
+          // gates/UI unlock server-authoritatively (no page refresh needed).
+          void pollEntitlementUntilPremium(loadEntitlement);
         },
         onDismiss: () => {
           // Cancelled or closed pre-success: refetch in case it actually went
@@ -103,92 +96,86 @@ export function UpgradeDialog({
   }, [plans]);
 
   return (
-    <>
-      <CelebratePro open={celebrate === "pro"} onClose={() => setCelebrate(null)} />
-      <CelebrateElite open={celebrate === "elite"} onClose={() => setCelebrate(null)} />
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl border-border bg-card p-0 gap-0 overflow-hidden">
-          {/* Header */}
-          <div className="px-6 pt-6 pb-5 border-b border-border">
-            <p className={eyebrow}>Stack&apos;d Premium</p>
-            <DialogTitle className="mt-2 font-serif text-2xl text-silver font-normal">
-              Go deeper on your focus
-            </DialogTitle>
-            <DialogDescription className="mt-1 text-sm text-silver-dim">
-              {reason ?? "Unlock advanced analytics, unlimited history, and more."}
-            </DialogDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl border-border bg-card p-0 gap-0 overflow-hidden">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-5 border-b border-border">
+          <p className={eyebrow}>Stack&apos;d Premium</p>
+          <DialogTitle className="mt-2 font-serif text-2xl text-silver font-normal">
+            Go deeper on your focus
+          </DialogTitle>
+          <DialogDescription className="mt-1 text-sm text-silver-dim">
+            {reason ?? "Unlock advanced analytics, unlimited history, and more."}
+          </DialogDescription>
 
-            {/* Monthly / Annual toggle */}
-            <div className="mt-5 inline-flex items-center gap-1 rounded-full border border-border p-1">
-              {(["monthly", "annual"] as const).map((iv) => (
-                <button
-                  key={iv}
-                  onClick={() => setInterval(iv)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-widest transition-colors",
-                    interval === iv
-                      ? "bg-ember/15 text-ember"
-                      : "text-silver-dim hover:text-silver",
-                  )}
-                >
-                  {iv}
-                  {iv === "annual" && (
-                    <span className="ml-1.5 text-pulse normal-case tracking-normal">save 40%+</span>
-                  )}
-                </button>
-              ))}
-            </div>
+          {/* Monthly / Annual toggle */}
+          <div className="mt-5 inline-flex items-center gap-1 rounded-full border border-border p-1">
+            {(["monthly", "annual"] as const).map((iv) => (
+              <button
+                key={iv}
+                onClick={() => setInterval(iv)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-widest transition-colors",
+                  interval === iv ? "bg-ember/15 text-ember" : "text-silver-dim hover:text-silver",
+                )}
+              >
+                {iv}
+                {iv === "annual" && (
+                  <span className="ml-1.5 text-pulse normal-case tracking-normal">save 40%+</span>
+                )}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Tiers */}
-          <div className="grid sm:grid-cols-2 gap-3 px-6 py-5">
-            <TierColumn
-              name="Pro"
-              tagline={TIER_TAGLINE.pro}
-              plan={interval === "annual" ? byTier.proAnnual : byTier.proMonthly}
-              monthly={byTier.proMonthly}
-              annual={byTier.proAnnual}
-              interval={interval}
-              onCheckout={onCheckout}
-              checkingOut={checkingOut}
-            />
-            <TierColumn
-              name="Elite"
-              tagline={TIER_TAGLINE.elite}
-              best
-              plan={interval === "annual" ? byTier.eliteAnnual : byTier.eliteMonthly}
-              monthly={byTier.eliteMonthly}
-              annual={byTier.eliteAnnual}
-              interval={interval}
-              onCheckout={onCheckout}
-              checkingOut={checkingOut}
-            />
-          </div>
+        {/* Tiers */}
+        <div className="grid sm:grid-cols-2 gap-3 px-6 py-5">
+          <TierColumn
+            name="Pro"
+            tagline={TIER_TAGLINE.pro}
+            plan={interval === "annual" ? byTier.proAnnual : byTier.proMonthly}
+            monthly={byTier.proMonthly}
+            annual={byTier.proAnnual}
+            interval={interval}
+            onCheckout={onCheckout}
+            checkingOut={checkingOut}
+          />
+          <TierColumn
+            name="Elite"
+            tagline={TIER_TAGLINE.elite}
+            best
+            plan={interval === "annual" ? byTier.eliteAnnual : byTier.eliteMonthly}
+            monthly={byTier.eliteMonthly}
+            annual={byTier.eliteAnnual}
+            interval={interval}
+            onCheckout={onCheckout}
+            checkingOut={checkingOut}
+          />
+        </div>
 
-          {/* Feature comparison */}
-          <div className="px-6 pb-5">
-            <p className={eyebrow}>What&apos;s included</p>
-            <ul className="mt-3 space-y-1.5">
-              {PREMIUM_FEATURES.map((f) => (
-                <li key={f.key} className="flex items-center gap-2.5 text-sm">
-                  <Check className="size-3.5 text-ember shrink-0" />
-                  <span className="text-silver">{f.uiLabel}</span>
-                  {f.requiredTier === "elite" && (
-                    <span className="ml-auto font-mono text-[9px] uppercase tracking-widest text-ember-glow">
-                      Elite
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* Feature comparison */}
+        <div className="px-6 pb-5">
+          <p className={eyebrow}>What&apos;s included</p>
+          <ul className="mt-3 space-y-1.5">
+            {PREMIUM_FEATURES.map((f) => (
+              <li key={f.key} className="flex items-center gap-2.5 text-sm">
+                <Check className="size-3.5 text-ember shrink-0" />
+                <span className="text-silver">{f.uiLabel}</span>
+                {f.requiredTier === "elite" && (
+                  <span className="ml-auto font-mono text-[9px] uppercase tracking-widest text-ember-glow">
+                    Elite
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
 
-          <p className="px-6 pb-6 text-center text-[11px] text-silver-dim">
-            Cancel anytime. No auto-renewal surprises — we tell you before every charge.
-          </p>
-        </DialogContent>
-      </Dialog>
-    </>
+        <p className="px-6 pb-6 text-center text-[11px] text-silver-dim">
+          Cancel anytime. No auto-renewal surprises — we tell you before every charge.
+        </p>
+      </DialogContent>
+    </Dialog>
   );
 }
 
