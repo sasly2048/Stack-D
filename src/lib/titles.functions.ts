@@ -39,47 +39,13 @@ export const equipTitle = createServerFn({ method: "POST" })
 export const evaluateTitles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ awarded: string[] }> => {
-    const { data: profile } = await context.supabase
-      .from("profiles")
-      .select("current_focus_streak,total_focus_seconds")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const { data: hist } = await context.supabase
-      .from("focus_history")
-      .select("score,created_at")
-      .eq("profile_id", context.userId);
-    const { data: rooms } = await context.supabase
-      .from("participants")
-      .select("room_id")
-      .eq("user_id", context.userId);
-    const { data: events } = await context.supabase
-      .from("room_scheduled_events")
-      .select("id")
-      .eq("created_by", context.userId);
-
-    const rows = hist ?? [];
-    const flowCount = rows.filter((r) => (r.score ?? 0) >= 95).length;
-    const nightCount = rows.filter((r) => {
-      const h = new Date(r.created_at).getHours();
-      return h >= 22 || h < 4;
-    }).length;
-    const hours = (profile?.total_focus_seconds ?? 0) / 3600;
-    const uniqueRooms = new Set((rooms ?? []).map((r) => r.room_id)).size;
-
-    const criteria: Array<[string, boolean]> = [
-      ["night_owl", nightCount >= 3],
-      ["deep_thinker", flowCount >= 10],
-      ["legend", hours >= 100],
-      ["focused", (profile?.current_focus_streak ?? 0) >= 7],
-      ["explorer", uniqueRooms >= 5],
-      ["planner", (events?.length ?? 0) >= 3],
-    ];
-    const eligible = criteria.filter(([, ok]) => ok).map(([id]) => id);
-    if (!eligible.length) return { awarded: [] };
-    const rowsToInsert = eligible.map((id) => ({ user_id: context.userId, title_id: id }));
-    const { data: inserted } = await context.supabase
-      .from("user_titles")
-      .upsert(rowsToInsert, { onConflict: "user_id,title_id", ignoreDuplicates: true })
-      .select("title_id");
-    return { awarded: (inserted ?? []).map((r) => r.title_id as string) };
+    // Awarding is now server-authoritative: award_earned_titles() (SECURITY
+    // DEFINER) re-checks every title's criteria against the caller's real data
+    // and inserts only the earned ones. Direct writes to user_titles are
+    // revoked, so a client can no longer grant itself a title. This wrapper just
+    // invokes the RPC and returns the newly-awarded ids.
+    const { data, error } = await context.supabase.rpc("award_earned_titles" as never);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as unknown as Array<{ title_id: string }>;
+    return { awarded: rows.map((r) => r.title_id) };
   });

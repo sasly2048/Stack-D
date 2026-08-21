@@ -62,6 +62,44 @@ function getCtx(): AudioContext | null {
   }
 }
 
+/**
+ * Browsers create an AudioContext 'suspended' and only let it start inside a
+ * user gesture. Many of our sounds fire programmatically (after a setTimeout,
+ * on a route change, from a webhook poll), which is NOT a gesture — so without
+ * this, the first such sound is silently dropped. Prime and resume the context
+ * on the first real gesture so every later sound just works.
+ */
+let unlocked = false;
+function installUnlock() {
+  if (typeof window === "undefined" || unlocked) return;
+  const unlock = () => {
+    unlocked = true;
+    const c = getCtx();
+    if (c && c.state === "suspended") void c.resume().catch(() => undefined);
+    // Nudge the pipeline awake with a silent tick so the first audible sound
+    // isn't clipped.
+    if (c) {
+      try {
+        const o = c.createOscillator();
+        const g = c.createGain();
+        g.gain.value = 0;
+        o.connect(g).connect(c.destination);
+        o.start();
+        o.stop(c.currentTime + 0.01);
+      } catch {
+        /* noop */
+      }
+    }
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("keydown", unlock);
+    window.removeEventListener("touchstart", unlock);
+  };
+  window.addEventListener("pointerdown", unlock, { once: false });
+  window.addEventListener("keydown", unlock, { once: false });
+  window.addEventListener("touchstart", unlock, { once: false });
+}
+if (typeof window !== "undefined") installUnlock();
+
 interface Note {
   f: number; // freq
   t: number; // start offset (s)
