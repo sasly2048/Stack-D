@@ -11,7 +11,8 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { RouteErrorBoundary } from "@/components/route-error-boundary";
+import { clearStaleChunkFlag } from "@/lib/error-recovery";
 import { supabase } from "@/integrations/supabase/client";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { CommandPalette } from "@/components/command-palette";
