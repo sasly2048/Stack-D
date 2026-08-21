@@ -6,6 +6,7 @@ import { Nav } from "@/components/nav";
 import { Logo } from "@/components/logo";
 import { CodeInput } from "@/components/code-input";
 import { useAuth } from "@/hooks/use-auth";
+import { useRedirectIfAuthed } from "@/hooks/use-redirect-if-authed";
 import { validateRoomCode } from "@/lib/room.functions";
 import { ERROR_COPY, type CodeError } from "@/lib/room-code";
 import { track } from "@/lib/observability";

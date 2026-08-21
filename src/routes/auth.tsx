@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/use-auth";
+import { useRedirectIfAuthed } from "@/hooks/use-redirect-if-authed";
 import { siteUrl } from "@/lib/site";
 import {
   getLastAuthProvider,
@@ -46,6 +47,10 @@ const MAX_CONFIRM_ATTEMPTS = 3;
 
 function Auth() {
   const { next } = Route.useSearch();
+  // Only a session that already existed when this page mounted counts: a
+  // session appearing mid-flow is the sign-in happening right now, which has
+  // its own confirmation step.
+  useRedirectIfAuthed("/dashboard", { initialOnly: true });
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const guard = useServerFn(guardSignIn);
