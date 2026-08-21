@@ -23,12 +23,16 @@ export const getRouter = () => {
         // the screen's own error UI is the right place to explain it — a toast
         // there would double up.
         if (query.state.data === undefined) return;
+        // Aborted/offline/token-hydration blips resolve themselves; the retry
+        // and the offline banner already cover them.
+        if (classifyRouteError(error) !== "fatal") return;
         const message = error instanceof Error ? error.message : "Something went wrong.";
         toast.error("Couldn't refresh", {
           id: `qc-${String(query.queryHash)}`,
           description: message.slice(0, 140),
         });
       },
+
     }),
     defaultOptions: {
       queries: {
