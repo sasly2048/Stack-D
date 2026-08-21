@@ -130,9 +130,13 @@ const VOICES = [
 // function and this UI can never drift apart (and so both are unit-testable).
 
 function Landing() {
+  // Signed-in users have no business on the marketing page — bounce them to
+  // their dashboard on navigation, direct URL hits, refreshes and back/forward.
+  useRedirectIfAuthed("/dashboard");
   const { data: prose } = useBrandProse();
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const validate = useServerFn(validateRoomCode);
   const [code, setCode] = useState("");
   const [error, setError] = useState<CodeError>(null);
