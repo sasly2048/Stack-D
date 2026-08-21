@@ -3,6 +3,7 @@ import { createRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { routeTree } from "./routeTree.gen";
 import { RouteErrorBoundary } from "./components/route-error-boundary";
+import { classifyRouteError } from "./lib/error-recovery";
 
 /**
  * Session data is short-lived and shared: a room's participant list changes by
