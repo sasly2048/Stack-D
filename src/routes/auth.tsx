@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/use-auth";
-import { useRedirectIfAuthed } from "@/hooks/use-redirect-if-authed";
 import { siteUrl } from "@/lib/site";
 import { feedback } from "@/lib/feedback";
 import { getLastAuthProvider, setLastAuthProvider, type AuthProviderId } from "@/lib/prefs";
@@ -44,10 +43,12 @@ const MAX_CONFIRM_ATTEMPTS = 3;
 
 function Auth() {
   const { next } = Route.useSearch();
-  // Only a session that already existed when this page mounted counts: a
-  // session appearing mid-flow is the sign-in happening right now, which has
-  // its own confirmation step.
-  useRedirectIfAuthed("/dashboard", { initialOnly: true });
+  // NOTE: no auto-redirect for an already-authed visitor here. A session that
+  // exists on mount is indistinguishable from an OAuth return (Google/Apple
+  // bring you back to /auth already signed in), and auto-redirecting skipped the
+  // VerifyStep confirmation entirely for social sign-in. Instead, an authed user
+  // on this page always goes through the confirm gate below (setConfirmStep),
+  // which then navigates to the dashboard — same path for email and OAuth.
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const guard = useServerFn(guardSignIn);

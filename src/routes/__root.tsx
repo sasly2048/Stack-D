@@ -19,6 +19,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { FloatingTimer } from "@/components/floating-timer";
 import { GlobalRealtimeToasts } from "@/components/global-realtime-toasts";
 import { CelebrationHost } from "@/components/premium/celebration-host";
+import { primeAudio } from "@/lib/sfx";
 import { QueueBadge } from "@/components/queue-badge";
 import { useXpSync, XP_DERIVED_QUERY_KEYS } from "@/lib/xp-sync";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -59,7 +60,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return <RouteErrorBoundary error={error} reset={reset} />;
 }
-
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -193,7 +193,13 @@ function RootComponent() {
     clearStaleChunkFlag();
   }, []);
 
-
+  // Arm the audio unlock from app start so UI sound effects (which often fire
+  // programmatically, not from a direct click) can play after the user's first
+  // interaction. Must be eager — installing it lazily on the first sound would
+  // miss that first gesture.
+  useEffect(() => {
+    primeAudio();
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {

@@ -69,36 +69,54 @@ function getCtx(): AudioContext | null {
  * this, the first such sound is silently dropped. Prime and resume the context
  * on the first real gesture so every later sound just works.
  */
-let unlocked = false;
-function installUnlock() {
-  if (typeof window === "undefined" || unlocked) return;
+let unlockInstalled = false;
+/**
+ * Arm the audio unlock. MUST be called eagerly at app start (from __root), not
+ * lazily when the first sound plays — otherwise the listener may not exist yet
+ * when the user's first gesture happens, and the context is never resumed. The
+ * unlock force-creates the context (regardless of the sound pref, so it's ready
+ * if the user turns sound on later) and resumes it inside the gesture, which is
+ * the only place a browser will let it start.
+ */
+export function primeAudio() {
+  if (typeof window === "undefined" || unlockInstalled) return;
+  unlockInstalled = true;
+
   const unlock = () => {
-    unlocked = true;
-    const c = getCtx();
-    if (c && c.state === "suspended") void c.resume().catch(() => undefined);
-    // Nudge the pipeline awake with a silent tick so the first audible sound
-    // isn't clipped.
-    if (c) {
-      try {
-        const o = c.createOscillator();
-        const g = c.createGain();
-        g.gain.value = 0;
-        o.connect(g).connect(c.destination);
-        o.start();
-        o.stop(c.currentTime + 0.01);
-      } catch {
-        /* noop */
-      }
+    const Ctor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return;
+    try {
+      ctx ??= new Ctor();
+      // resume() inside the gesture is what actually starts the context.
+      void ctx.resume().catch(() => undefined);
+      // Silent tick to fully wake the pipeline so the first real sound isn't
+      // clipped.
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      o.connect(g).connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.01);
+    } catch {
+      /* noop */
     }
-    window.removeEventListener("pointerdown", unlock);
-    window.removeEventListener("keydown", unlock);
-    window.removeEventListener("touchstart", unlock);
+    // Keep listening — a single gesture may fire before the context is fully
+    // running on some browsers, and re-resuming is harmless. Remove after a
+    // couple of gestures to avoid leaking.
+    gestureCount++;
+    if (gestureCount >= 3) {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    }
   };
-  window.addEventListener("pointerdown", unlock, { once: false });
-  window.addEventListener("keydown", unlock, { once: false });
-  window.addEventListener("touchstart", unlock, { once: false });
+  let gestureCount = 0;
+  window.addEventListener("pointerdown", unlock);
+  window.addEventListener("keydown", unlock);
+  window.addEventListener("touchstart", unlock);
 }
-if (typeof window !== "undefined") installUnlock();
 
 interface Note {
   f: number; // freq
