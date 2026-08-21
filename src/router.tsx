@@ -2,6 +2,7 @@ import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { routeTree } from "./routeTree.gen";
+import { RouteErrorBoundary } from "./components/route-error-boundary";
 
 /**
  * Session data is short-lived and shared: a room's participant list changes by
