@@ -57,7 +57,11 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Any route without its own boundary gets the recovering-first boundary
+    // instead of a bare error screen.
+    defaultErrorComponent: RouteErrorBoundary,
   });
+
 
   return router;
 };

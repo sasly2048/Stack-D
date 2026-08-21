@@ -187,6 +187,14 @@ function RootComponent() {
     }
   });
 
+  // The app booted, so whatever chunk was stale is no longer stale: re-arm the
+  // one-shot reload for the next deploy.
+  useEffect(() => {
+    clearStaleChunkFlag();
+  }, []);
+
+
+
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
