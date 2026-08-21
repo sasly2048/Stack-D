@@ -6,6 +6,7 @@ import { Nav } from "@/components/nav";
 import { Logo } from "@/components/logo";
 import { CodeInput } from "@/components/code-input";
 import { useAuth } from "@/hooks/use-auth";
+import { useRedirectIfAuthed } from "@/hooks/use-redirect-if-authed";
 import { validateRoomCode } from "@/lib/room.functions";
 import { ERROR_COPY, type CodeError } from "@/lib/room-code";
 import { track } from "@/lib/observability";
@@ -130,9 +131,13 @@ const VOICES = [
 // function and this UI can never drift apart (and so both are unit-testable).
 
 function Landing() {
+  // Signed-in users have no business on the marketing page — bounce them to
+  // their dashboard on navigation, direct URL hits, refreshes and back/forward.
+  useRedirectIfAuthed("/dashboard");
   const { data: prose } = useBrandProse();
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const validate = useServerFn(validateRoomCode);
   const [code, setCode] = useState("");
   const [error, setError] = useState<CodeError>(null);
