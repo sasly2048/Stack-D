@@ -1734,6 +1734,12 @@ export type Database = {
     }
     Functions: {
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      award_earned_titles: {
+        Args: never
+        Returns: {
+          title_id: string
+        }[]
+      }
       begin_webhook_event: {
         Args: { _id: string; _type: string }
         Returns: string
