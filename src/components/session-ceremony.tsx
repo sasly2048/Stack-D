@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { haptic } from "@/lib/haptics";
+import { feedback } from "@/lib/feedback";
 import { copy } from "@/lib/copy";
 import { getSessionSummary, type SessionSummary } from "@/lib/session-summary.functions";
 
@@ -81,7 +82,7 @@ export function SessionCeremony() {
       setDetail(d);
       setSummary(null);
       setBeat(0);
-      haptic("success");
+      feedback("success"); // session complete — sound + haptic together
     };
     window.addEventListener("stackd:ceremony", handler);
     return () => window.removeEventListener("stackd:ceremony", handler);

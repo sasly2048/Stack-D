@@ -10,6 +10,7 @@ import {
 import { invalidateEntitlement } from "@/lib/use-entitlement";
 import { useEntitlement } from "@/lib/use-entitlement";
 import { featuresFor } from "@/lib/premium-catalog";
+import { feedback } from "@/lib/feedback";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const eyebrow = "font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim";
@@ -59,6 +60,7 @@ export function ManageSubscription() {
     try {
       const { result, message } = await cancel();
       if (result === "cancelled") {
+        feedback("success");
         toast.success(message);
         invalidateEntitlement();
         setConfirming(false);
@@ -66,9 +68,11 @@ export function ManageSubscription() {
           .then(setDetail)
           .catch(() => undefined);
       } else {
+        feedback("error");
         toast.error(message);
       }
     } catch (e: unknown) {
+      feedback("error");
       toast.error(e instanceof Error ? e.message : "Cancel failed");
     } finally {
       setBusy(false);

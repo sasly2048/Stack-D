@@ -14,6 +14,7 @@ import {
   refreshEntitlement,
 } from "@/lib/use-entitlement";
 import { triggerCelebration } from "@/lib/celebration-bus";
+import { feedback } from "@/lib/feedback";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
@@ -40,6 +41,7 @@ export function UpgradeDialog({
 
   const onCheckout = async (plan: Plan) => {
     if (checkingOut) return;
+    feedback("purchase"); // selecting a plan / starting checkout
     setCheckingOut(plan.id);
     try {
       const { subscriptionId, keyId } = await startCheckout({ data: { planId: plan.id } });
@@ -71,6 +73,7 @@ export function UpgradeDialog({
         },
       });
     } catch (e: unknown) {
+      feedback("error");
       toast.error(e instanceof Error ? e.message : "Checkout failed");
     } finally {
       setCheckingOut(null);

@@ -7,11 +7,8 @@ import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/use-auth";
 import { useRedirectIfAuthed } from "@/hooks/use-redirect-if-authed";
 import { siteUrl } from "@/lib/site";
-import {
-  getLastAuthProvider,
-  setLastAuthProvider,
-  type AuthProviderId,
-} from "@/lib/prefs";
+import { feedback } from "@/lib/feedback";
+import { getLastAuthProvider, setLastAuthProvider, type AuthProviderId } from "@/lib/prefs";
 import { LastUsedBadge } from "@/components/ui/badge-hint";
 import { Logo } from "@/components/logo";
 import { guardSignIn, logAuthAttempt } from "@/lib/auth.functions";
@@ -83,7 +80,8 @@ function Auth() {
   // A field only reports its own error once the user has left it, so the form
   // never turns red while it is being filled in for the first time.
   const [touched, setTouched] = useState({ email: false, password: false });
-  const emailInvalid = touched.email && email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const emailInvalid =
+    touched.email && email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const passwordInvalid = touched.password && password.length > 0 && password.length < 6;
   // Submit stays available until something is actually wrong — a button that
   // is disabled from the start gives the user nothing to act on.
@@ -221,7 +219,10 @@ function Auth() {
           setConfirmStep(false);
           setTimeout(() => emailRef.current?.focus(), 50);
         }}
-        onConfirm={() => navigate({ to: next ?? "/dashboard", replace: true })}
+        onConfirm={() => {
+          feedback("auth");
+          navigate({ to: next ?? "/dashboard", replace: true });
+        }}
         log={log}
       />
     );

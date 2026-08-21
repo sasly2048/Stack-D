@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import { redeemLifetime } from "@/lib/subscription.functions";
 import { useEntitlement, invalidateEntitlement } from "@/lib/use-entitlement";
-import { haptic } from "@/lib/haptics";
+import { feedback } from "@/lib/feedback";
 
 /**
  * Lifetime redemption on the profile page. If the user already holds lifetime,
@@ -26,14 +26,16 @@ export function LifetimeCoupon() {
     try {
       const { result, message } = await redeem({ data: { code } });
       if (result === "ok") {
-        haptic("success");
+        feedback("success");
         toast.success(message);
         invalidateEntitlement();
         setCode("");
       } else {
+        feedback("error");
         toast.error(message);
       }
     } catch (e: unknown) {
+      feedback("error");
       toast.error(e instanceof Error ? e.message : "Redemption failed");
     } finally {
       setBusy(false);

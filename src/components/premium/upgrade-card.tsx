@@ -1,3 +1,4 @@
+import { feedback } from "@/lib/feedback";
 import { useState } from "react";
 import { X } from "lucide-react";
 
@@ -41,7 +42,10 @@ export function UpgradeCard() {
           Unlimited history, advanced analytics, and more — from ₹75/mo on annual.
         </p>
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            feedback("open");
+            setOpen(true);
+          }}
           className="mt-3 rounded-full border border-ember/50 text-ember font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-ember/10 transition"
         >
           Upgrade to Pro

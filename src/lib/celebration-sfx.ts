@@ -11,8 +11,10 @@
  * handler so the gesture unlocks audio.
  */
 
+import { soundEnabled } from "./sfx";
+
 function getCtx(): AudioContext | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !soundEnabled()) return null;
   const Ctor =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;

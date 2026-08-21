@@ -13,6 +13,7 @@ import { INTERACTIVE } from "@/components/ui/interactive";
 import { useAuth } from "@/hooks/use-auth";
 import { getProfile, updateMyProfile, type PublicProfile } from "@/lib/profile.functions";
 import { LowPowerToggle } from "@/components/low-power-toggle";
+import { SoundToggle } from "@/components/sound-toggle";
 import { LifetimeBadge, LifetimeCoupon } from "@/components/premium/lifetime-coupon";
 import { ManageSubscription } from "@/components/premium/manage-subscription";
 import { formatHandle } from "@/lib/handle";
@@ -268,6 +269,7 @@ function MyProfile() {
             Settings
           </h2>
           <LowPowerToggle />
+          <SoundToggle />
         </section>
       </main>
     </div>

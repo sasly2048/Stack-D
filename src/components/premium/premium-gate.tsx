@@ -1,3 +1,4 @@
+import { feedback } from "@/lib/feedback";
 import { useState, type ReactNode } from "react";
 import { Lock } from "lucide-react";
 
@@ -49,7 +50,10 @@ export function PremiumGate({
         <p className="mt-3 font-serif text-base text-silver">{heading}</p>
         <p className="mt-1 text-sm text-silver-dim">Available on {tierName}.</p>
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            feedback("open");
+            setOpen(true);
+          }}
           className="mt-4 rounded-full border border-ember/50 text-ember font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-ember/10 transition"
         >
           Unlock with {tierName}
