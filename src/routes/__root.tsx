@@ -56,42 +56,9 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-obsidian px-4 text-silver">
-      <div className="max-w-md text-center">
-        <div className="font-mono text-[10px] tracking-[0.3em] text-breach uppercase mb-6">
-          RUNTIME_EXCEPTION
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">Session interrupted</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {error.message || "Something went off-protocol."}
-        </p>
-        <div className="mt-8 flex gap-3 justify-center">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="bg-silver text-obsidian px-6 py-2.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all"
-          >
-            Retry
-          </button>
-          <a
-            href="/"
-            className="border border-silver/20 px-6 py-2.5 rounded-lg font-mono text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
-          >
-            Origin
-          </a>
-        </div>
-      </div>
-    </div>
-  );
+  return <RouteErrorBoundary error={error} reset={reset} />;
 }
+
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
