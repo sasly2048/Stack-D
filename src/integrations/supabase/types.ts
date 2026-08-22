@@ -1857,6 +1857,15 @@ export type Database = {
             }
             Returns: string
           }
+      get_my_private_profile: {
+        Args: never
+        Returns: {
+          productivity_dna: string
+          username: string
+          username_canonical: string
+          username_changed_at: string
+        }[]
+      }
       grant_subscription: {
         Args: {
           _period_end: string
@@ -1997,6 +2006,10 @@ export type Database = {
       update_session_meta: {
         Args: { _history_id: string; _notes: string; _tags: string[] }
         Returns: undefined
+      }
+      username_is_taken: {
+        Args: { _canonical: string; _exclude_user?: string }
+        Returns: boolean
       }
     }
     Enums: {

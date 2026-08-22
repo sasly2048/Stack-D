@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { fetchMyPrivateProfile } from "./private-profile.server";
 
 export interface AwardCard {
   id: string;
@@ -68,9 +69,11 @@ export const getSessionSummary = createServerFn({ method: "POST" })
 
     const { data: prof } = await supabase
       .from("profiles")
-      .select("lifetime_xp, prestige_level, current_focus_streak, productivity_dna")
+      .select("lifetime_xp, prestige_level, current_focus_streak")
       .eq("id", userId)
       .maybeSingle();
+
+    const privateProfile = await fetchMyPrivateProfile(supabase);
 
     const lifetimeXp = (prof?.lifetime_xp as number) ?? 0;
     const { level, into, span } = levelFromXp(lifetimeXp);
@@ -169,7 +172,7 @@ export const getSessionSummary = createServerFn({ method: "POST" })
       milestones,
       rankNow,
       rankBefore,
-      personality: (prof?.productivity_dna as string) ?? null,
+      personality: privateProfile?.productivity_dna ?? null,
       friendsFinished,
     };
   });

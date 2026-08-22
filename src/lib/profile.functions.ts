@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { fetchMyPrivateProfile } from "./private-profile.server";
 
 export type PublicProfile = {
   id: string;
@@ -36,7 +37,7 @@ export const getProfile = createServerFn({ method: "GET" })
 
     const [{ data: p, error: pErr }, { count }, { data: unlocks }, { data: fs }] =
       await Promise.all([
-        supabase.from("profiles").select("*").eq("id", targetId).maybeSingle(),
+        supabase.from("profiles").select("id, display_name, username, avatar_url, bio, title, prestige_level, banner_gradient, banner_url, pinned_showcase, lifetime_xp, current_focus_streak, best_streak, total_focus_seconds, created_at, last_active_at").eq("id", targetId).maybeSingle(),
         supabase
           .from("focus_history")
           .select("id", { count: "exact", head: true })
@@ -56,6 +57,9 @@ export const getProfile = createServerFn({ method: "GET" })
               .maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
+    // Personality analysis is owner-only; strangers never see it.
+    const privateProfile = targetId === userId ? await fetchMyPrivateProfile(supabase) : null;
+
     if (pErr) throw new Error(pErr.message);
     if (!p) throw new Error("not_found");
 
@@ -92,7 +96,7 @@ export const getProfile = createServerFn({ method: "GET" })
       avatar_url: p.avatar_url,
 
       bio: (p as { bio?: string | null }).bio ?? null,
-      productivity_dna: (p as { productivity_dna?: string | null }).productivity_dna ?? null,
+      productivity_dna: privateProfile?.productivity_dna ?? null,
       created_at: p.created_at,
       lifetime_xp: p.lifetime_xp ?? 0,
       current_focus_streak: p.current_focus_streak ?? 0,

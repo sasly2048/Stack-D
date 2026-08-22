@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeature } from "@/lib/require-tier";
+import { fetchMyPrivateProfile } from "./private-profile.server";
 
 export interface DnaProfile {
   archetype: string;
@@ -66,14 +67,10 @@ export const getProductivityDna = createServerFn({ method: "GET" })
       .map((t) => t.value.toString(36).padStart(2, "0").slice(-1).toUpperCase())
       .join("");
 
-    const { data: prof } = await context.supabase
-      .from("profiles")
-      .select("productivity_dna")
-      .eq("id", context.userId)
-      .maybeSingle();
+    const privateProfile = await fetchMyPrivateProfile(context.supabase);
 
     return {
-      personality: (prof?.productivity_dna as string) ?? null,
+      personality: privateProfile?.productivity_dna ?? null,
       archetype,
       traits,
       peakHour,
