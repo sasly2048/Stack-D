@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { fetchMyPrivateProfile } from "./private-profile.server";
 
 export interface WrappedStats {
   year: number;
@@ -63,6 +64,8 @@ export const getWrapped = createServerFn({ method: "GET" })
       .select("display_name, lifetime_xp, best_streak")
       .eq("id", userId)
       .maybeSingle();
+
+    const privateProfile = await fetchMyPrivateProfile(supabase);
 
     const lifetimeXp = (prof?.lifetime_xp as number) ?? 0;
     const { count: total } = await supabase

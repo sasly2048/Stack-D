@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { fetchMyPrivateProfile } from "./private-profile.server";
 
 export interface AwardCard {
   id: string;
@@ -71,6 +72,8 @@ export const getSessionSummary = createServerFn({ method: "POST" })
       .select("lifetime_xp, prestige_level, current_focus_streak")
       .eq("id", userId)
       .maybeSingle();
+
+    const privateProfile = await fetchMyPrivateProfile(supabase);
 
     const lifetimeXp = (prof?.lifetime_xp as number) ?? 0;
     const { level, into, span } = levelFromXp(lifetimeXp);
