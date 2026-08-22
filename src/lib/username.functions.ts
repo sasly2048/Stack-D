@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import {
 import { fetchMyPrivateProfile } from "./private-profile.server";
+import {
   USERNAME_CHANGE_COOLDOWN_HOURS,
   USERNAME_MESSAGES,
   validateUsername,
