@@ -510,6 +510,20 @@
   }
 }
 
+/* Fluid vertical padding for full-height landing sections. Fixed pt-36/pb-28
+   (144/112px) left large empty bands on shorter viewports (e.g. a ~800px-tall
+   MacBook) while looking right on a tall desktop. clamp() scales the padding
+   with the viewport so every height feels intentional: tighter on laptops,
+   more generous on large screens — never a marooned block of centered text. */
+@utility scene-pad-y {
+  padding-top: clamp(3.5rem, 8vh, 9rem);
+  padding-bottom: clamp(3rem, 6vh, 7rem);
+}
+@utility scene-pad-y-compact {
+  padding-top: clamp(3rem, 6vh, 8rem);
+  padding-bottom: clamp(2rem, 4vh, 2.5rem);
+}
+
 @utility animate-breathing {
   animation: breathing 4s var(--ease-ritual) infinite;
 }
