@@ -98,6 +98,21 @@ export function UpgradeDialog({
     };
   }, [plans]);
 
+  // The toggle's savings label must match the per-tier numbers shown on the
+  // cards, not a hardcoded guess. Show the best available annual saving (Pro at
+  // ₹129/₹899 = 42%; Elite at ₹249/₹1799 = 40%) so "save up to N%" is always
+  // exactly what a card below it displays.
+  const maxSavings = useMemo(() => {
+    const pairs = [
+      [byTier.proMonthly, byTier.proAnnual],
+      [byTier.eliteMonthly, byTier.eliteAnnual],
+    ] as const;
+    return pairs.reduce((max, [m, a]) => {
+      if (!m || !a) return max;
+      return Math.max(max, annualSavingsPct(m.priceInr, a.priceInr));
+    }, 0);
+  }, [byTier]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl border-border bg-card p-0 gap-0 overflow-hidden">
@@ -123,8 +138,10 @@ export function UpgradeDialog({
                 )}
               >
                 {iv}
-                {iv === "annual" && (
-                  <span className="ml-1.5 text-pulse normal-case tracking-normal">save 40%+</span>
+                {iv === "annual" && maxSavings > 0 && (
+                  <span className="ml-1.5 text-pulse normal-case tracking-normal">
+                    save up to {maxSavings}%
+                  </span>
                 )}
               </button>
             ))}

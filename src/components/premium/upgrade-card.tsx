@@ -48,7 +48,7 @@ export function UpgradeCard() {
           }}
           className="mt-3 rounded-full border border-ember/50 text-ember font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-ember/10 transition"
         >
-          Upgrade to Pro
+          See plans
         </button>
       </div>
       <UpgradeDialog open={open} onOpenChange={setOpen} />
