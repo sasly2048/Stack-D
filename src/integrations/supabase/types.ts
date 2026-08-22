@@ -391,6 +391,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "focus_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       focus_history: {
@@ -442,6 +449,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "focus_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -512,6 +526,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1730,7 +1751,63 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          banner_gradient: string | null
+          banner_url: string | null
+          best_streak: number | null
+          bio: string | null
+          created_at: string | null
+          current_focus_streak: number | null
+          display_name: string | null
+          id: string | null
+          last_active_at: string | null
+          lifetime_xp: number | null
+          pinned_showcase: Json | null
+          prestige_level: number | null
+          title: string | null
+          total_focus_seconds: number | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          banner_gradient?: string | null
+          banner_url?: string | null
+          best_streak?: number | null
+          bio?: string | null
+          created_at?: string | null
+          current_focus_streak?: number | null
+          display_name?: string | null
+          id?: string | null
+          last_active_at?: string | null
+          lifetime_xp?: number | null
+          pinned_showcase?: Json | null
+          prestige_level?: number | null
+          title?: string | null
+          total_focus_seconds?: number | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          banner_gradient?: string | null
+          banner_url?: string | null
+          best_streak?: number | null
+          bio?: string | null
+          created_at?: string | null
+          current_focus_streak?: number | null
+          display_name?: string | null
+          id?: string | null
+          last_active_at?: string | null
+          lifetime_xp?: number | null
+          pinned_showcase?: Json | null
+          prestige_level?: number | null
+          title?: string | null
+          total_focus_seconds?: number | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
@@ -1997,6 +2074,10 @@ export type Database = {
       update_session_meta: {
         Args: { _history_id: string; _notes: string; _tags: string[] }
         Returns: undefined
+      }
+      username_is_taken: {
+        Args: { _canonical: string; _exclude_user?: string }
+        Returns: boolean
       }
     }
     Enums: {
