@@ -524,6 +524,15 @@
   padding-bottom: clamp(2rem, 4vh, 2.5rem);
 }
 
+/* Top padding that clears the fixed 64px nav (+ its safe-area inset) with a
+   little breathing room, scaling down on short viewports. Replaces scattered
+   fixed pt-24/28/32 (96/112/128px) that wasted ~a quarter of the height on
+   short screens like a foldable's flip cover (~748px tall). Floor keeps clear
+   of the nav; the vh term adds proportional breathing space on taller screens. */
+@utility pt-nav {
+  padding-top: calc(clamp(5.25rem, 8vh, 8rem) + env(safe-area-inset-top));
+}
+
 @utility animate-breathing {
   animation: breathing 4s var(--ease-ritual) infinite;
 }

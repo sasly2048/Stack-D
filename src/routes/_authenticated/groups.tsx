@@ -257,7 +257,7 @@ function GroupsPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-32 pb-20 px-6 max-w-5xl mx-auto">
+      <main className="pt-nav pb-20 px-6 max-w-5xl mx-auto">
         <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2">
           CIRCLES / LEADERBOARDS
         </div>

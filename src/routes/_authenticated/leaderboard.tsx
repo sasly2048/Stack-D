@@ -106,7 +106,7 @@ function Leaderboard() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
+      <main className="pt-nav pb-20 px-6 max-w-4xl mx-auto">
         <div className="mb-12">
           <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2">
             LEADERBOARD / LIFETIME_XP

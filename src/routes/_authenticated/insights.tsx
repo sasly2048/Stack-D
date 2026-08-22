@@ -40,7 +40,7 @@ function InsightsPage() {
     return (
       <div className="min-h-screen bg-obsidian text-silver">
         <Nav />
-        <div className="mx-auto max-w-4xl px-6 pt-32">
+        <div className="mx-auto max-w-4xl px-6 pt-nav">
           <QueryBoundary
             isPending={analytics.isPending}
             isError={analytics.isError}

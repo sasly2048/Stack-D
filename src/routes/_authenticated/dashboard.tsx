@@ -229,7 +229,7 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-32 pb-20 px-6 max-w-7xl mx-auto">
+      <main className="pt-nav pb-20 px-6 max-w-7xl mx-auto">
         <div className="mb-8">
           <DynamicGreeting />
         </div>
