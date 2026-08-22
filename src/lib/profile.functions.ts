@@ -36,7 +36,7 @@ export const getProfile = createServerFn({ method: "GET" })
 
     const [{ data: p, error: pErr }, { count }, { data: unlocks }, { data: fs }] =
       await Promise.all([
-        supabase.from("profiles").select("*").eq("id", targetId).maybeSingle(),
+        supabase.from("profiles").select("id, display_name, username, avatar_url, bio, title, prestige_level, banner_gradient, banner_url, pinned_showcase, lifetime_xp, current_focus_streak, best_streak, total_focus_seconds, created_at, last_active_at").eq("id", targetId).maybeSingle(),
         supabase
           .from("focus_history")
           .select("id", { count: "exact", head: true })

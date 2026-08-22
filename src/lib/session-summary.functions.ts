@@ -68,7 +68,7 @@ export const getSessionSummary = createServerFn({ method: "POST" })
 
     const { data: prof } = await supabase
       .from("profiles")
-      .select("lifetime_xp, prestige_level, current_focus_streak, productivity_dna")
+      .select("lifetime_xp, prestige_level, current_focus_streak")
       .eq("id", userId)
       .maybeSingle();
 
@@ -169,7 +169,7 @@ export const getSessionSummary = createServerFn({ method: "POST" })
       milestones,
       rankNow,
       rankBefore,
-      personality: (prof?.productivity_dna as string) ?? null,
+      personality: privateProfile?.productivity_dna ?? null,
       friendsFinished,
     };
   });
