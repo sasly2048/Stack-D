@@ -6,7 +6,7 @@ import {
   getRewardStatus,
   type RewardStatus,
 } from "@/lib/daily-rewards.functions";
-import { haptic } from "@/lib/haptics";
+import { feedback } from "@/lib/feedback";
 import { notifyXpChanged, useXpSync } from "@/lib/xp-sync";
 
 export function DailyRewardCard() {
@@ -32,10 +32,11 @@ export function DailyRewardCard() {
     setClaiming(true);
     try {
       const res = await claim();
-      haptic("success");
+      feedback("xp");
       toast.success(`+${res.rewardXp} XP · Day ${res.dayOfStreak}`);
       notifyXpChanged();
     } catch (e: unknown) {
+      feedback("error");
       toast.error(e instanceof Error ? e.message : "Claim failed");
     } finally {
       setClaiming(false);

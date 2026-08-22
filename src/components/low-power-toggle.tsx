@@ -1,4 +1,5 @@
 import { useLowPower, setLowPower } from "@/hooks/use-low-power";
+import { feedback } from "@/lib/feedback";
 
 /**
  * Small pill toggle for Low Power Mode. Renders in Profile / Settings so
@@ -16,7 +17,10 @@ export function LowPowerToggle() {
         </p>
       </div>
       <button
-        onClick={() => setLowPower(!on)}
+        onClick={() => {
+          feedback("select");
+          setLowPower(!on);
+        }}
         role="switch"
         aria-checked={on}
         className={`relative w-12 h-6 rounded-full transition ${on ? "bg-ember" : "bg-white/10"}`}
