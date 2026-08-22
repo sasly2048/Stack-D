@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
@@ -172,8 +172,24 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+// Fallback QueryClient. During hydration or an aborted route transition,
+// Route.useRouteContext() can briefly return a context whose queryClient is
+// undefined — passing client={undefined} to QueryClientProvider throws
+// "Cannot read properties of undefined (reading 'mount')" and, intermittently
+// on refresh, escalates to the route error boundary. A stable module-level
+// fallback guarantees the provider always gets a real client.
+let fallbackQueryClient: QueryClient | null = null;
+function getFallbackQueryClient(): QueryClient {
+  fallbackQueryClient ??= new QueryClient();
+  return fallbackQueryClient;
+}
+
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+  const ctx = Route.useRouteContext();
+  const queryClient = useMemo(
+    () => ctx?.queryClient ?? getFallbackQueryClient(),
+    [ctx?.queryClient],
+  );
   const router = useRouter();
 
   // One subscriber for every XP-derived surface. Screens used to opt in

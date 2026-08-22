@@ -27,9 +27,14 @@ function textOf(error: unknown): string {
 const RELOAD_PATTERNS =
   /failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|unable to preload|chunkloaderror|'text\/html' is not a valid javascript mime type/;
 
-// Transient: retrying the loader/query is enough.
+// Transient: retrying the loader/query is enough. Also covers a couple of
+// hydration/transition races that self-heal on a retry: a router transition
+// aborted mid-flight ("invalid state"), and the specific provider-mount crash
+// seen when a route context is momentarily incomplete during hydration
+// ("reading 'mount'"). These are narrow, signature-scoped — a generic "reading
+// 'x' of undefined" is still fatal.
 const SILENT_PATTERNS =
-  /\baborted\b|aborterror|the operation was aborted|network ?error|failed to fetch|load failed|econnreset|etimedout|networkerror when attempting|no authorization header|unauthorized|jwt expired|401|429|503|504|fetch failed|signal is aborted/;
+  /\baborted\b|aborterror|the operation was aborted|network ?error|failed to fetch|load failed|econnreset|etimedout|networkerror when attempting|no authorization header|unauthorized|jwt expired|401|429|503|504|fetch failed|signal is aborted|transition was aborted|invalid state|reading 'mount'|reading "mount"/;
 
 export function classifyRouteError(error: unknown): RecoveryKind {
   const text = textOf(error);
