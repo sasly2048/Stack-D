@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeature } from "@/lib/require-tier";
 
 /**
  * AI narrative functions: pattern discovery, weekly story, group coach.
@@ -30,6 +31,9 @@ async function ai(prompt: string, system: string): Promise<string> {
 export const getWeeklyStory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ story: string }> => {
+    // Real AI-gateway call (cost) — Elite only. Enforced server-side, not just
+    // behind the UI gate.
+    await requireFeature(context.supabase, "elite_weekly_reports");
     const since = new Date(Date.now() - 7 * 86400_000).toISOString();
     const { data: hist } = await context.supabase
       .from("focus_history")
@@ -58,6 +62,7 @@ export const getWeeklyStory = createServerFn({ method: "POST" })
 export const discoverPatterns = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ patterns: string[] }> => {
+    await requireFeature(context.supabase, "atlas_coach");
     const { data: hist } = await context.supabase
       .from("focus_history")
       .select("duration_seconds,score,created_at")

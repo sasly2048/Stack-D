@@ -55,6 +55,7 @@ export const createVaultItem = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }): Promise<{ id: string }> => {
+    await requireFeature(context.supabase, "vault");
     const { data: row, error } = await context.supabase
       .from("memory_vault_items")
       .insert({
@@ -75,6 +76,7 @@ export const deleteVaultItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    await requireFeature(context.supabase, "vault");
     const { error } = await context.supabase
       .from("memory_vault_items")
       .delete()
@@ -88,6 +90,7 @@ export const summarizeVaultItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }): Promise<{ summary: string }> => {
+    await requireFeature(context.supabase, "vault");
     const { data: item } = await context.supabase
       .from("memory_vault_items")
       .select("title, body")

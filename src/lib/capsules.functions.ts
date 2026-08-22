@@ -26,6 +26,7 @@ export const writeCapsule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { message: string; days: number }) => input)
   .handler(async ({ data, context }): Promise<{ id: string }> => {
+    await requireFeature(context.supabase, "time_capsules");
     const msg = data.message.trim().slice(0, 4000);
     if (!msg) throw new Error("empty");
     const days = Math.min(365, Math.max(1, Math.floor(data.days)));
@@ -43,6 +44,7 @@ export const openCapsule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => input)
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    await requireFeature(context.supabase, "time_capsules");
     await context.supabase
       .from("time_capsules")
       .update({ opened_at: new Date().toISOString() })

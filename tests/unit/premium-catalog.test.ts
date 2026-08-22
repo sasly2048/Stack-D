@@ -53,6 +53,13 @@ describe("premium catalog integrity", () => {
     const gated = PREMIUM_FEATURES.filter((f) => f.serverGate)
       .map((f) => f.key)
       .sort();
-    expect(gated).toEqual(["focus_dna", "focus_forecast", "time_capsules", "vault"]);
+    expect(gated).toEqual([
+      "atlas_coach",
+      "elite_weekly_reports",
+      "focus_dna",
+      "focus_forecast",
+      "time_capsules",
+      "vault",
+    ]);
   });
 });
