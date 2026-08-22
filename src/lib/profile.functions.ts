@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { fetchMyPrivateProfile } from "./private-profile.server";
 
 export type PublicProfile = {
   id: string;
@@ -56,6 +57,9 @@ export const getProfile = createServerFn({ method: "GET" })
               .maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
+    // Personality analysis is owner-only; strangers never see it.
+    const privateProfile = targetId === userId ? await fetchMyPrivateProfile(supabase) : null;
+
     if (pErr) throw new Error(pErr.message);
     if (!p) throw new Error("not_found");
 
@@ -92,7 +96,7 @@ export const getProfile = createServerFn({ method: "GET" })
       avatar_url: p.avatar_url,
 
       bio: (p as { bio?: string | null }).bio ?? null,
-      productivity_dna: (p as { productivity_dna?: string | null }).productivity_dna ?? null,
+      productivity_dna: privateProfile?.productivity_dna ?? null,
       created_at: p.created_at,
       lifetime_xp: p.lifetime_xp ?? 0,
       current_focus_streak: p.current_focus_streak ?? 0,

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
+import { fetchMyPrivateProfile } from "./private-profile.server";
   USERNAME_CHANGE_COOLDOWN_HOURS,
   USERNAME_MESSAGES,
   validateUsername,
@@ -71,14 +72,20 @@ export const checkUsername = createServerFn({ method: "POST" })
     const check = await screen(data.username, context.userId, false);
     if (!check.ok) return publicResult(check);
 
-    const { data: existing } = await context.supabase
-      .from("profiles")
-      .select("id")
-      .eq("username_canonical", check.canonical)
-      .maybeSingle();
+    const { data: taken } = await (
+      context.supabase as unknown as {
+        rpc: (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: boolean | null }>;
+      }
+    ).rpc("username_is_taken", {
+      _canonical: check.canonical,
+      _exclude_user: context.userId,
+    });
 
     // Same wording as "reserved": never reveal that another account holds it.
-    if (existing && existing.id !== context.userId) {
+    if (taken) {
       return { ok: false, reason: "taken", message: USERNAME_MESSAGES.taken };
     }
     return { ok: true, username: check.username };
@@ -92,11 +99,7 @@ export const setMyUsername = createServerFn({ method: "POST" })
     const check = await screen(data.username, context.userId, true);
     if (!check.ok) return publicResult(check);
 
-    const { data: me } = await context.supabase
-      .from("profiles")
-      .select("username, username_canonical, username_changed_at")
-      .eq("id", context.userId)
-      .maybeSingle();
+    const me = await fetchMyPrivateProfile(context.supabase);
 
     // No-op re-save shouldn't burn the cooldown.
     if (me?.username_canonical === check.canonical && me?.username === check.username) {
