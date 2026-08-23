@@ -7,6 +7,19 @@ import { PREMIUM_FEATURES, featureByKey, featuresFor, TIER_TAGLINE } from "@/lib
  * the invariants the gates and UI both rely on.
  */
 describe("premium catalog integrity", () => {
+  it("every feature has a valid delivery status", () => {
+    for (const f of PREMIUM_FEATURES) {
+      expect(["live", "beta", "soon"], f.key).toContain(f.status);
+    }
+  });
+
+  it("a server-gated feature is never advertised as coming soon", () => {
+    // If we enforce it server-side, it exists — it must not read 'soon'.
+    for (const f of PREMIUM_FEATURES.filter((x) => x.serverGate)) {
+      expect(f.status, f.key).not.toBe("soon");
+    }
+  });
+
   it("has unique feature keys", () => {
     const keys = PREMIUM_FEATURES.map((f) => f.key);
     expect(new Set(keys).size).toBe(keys.length);

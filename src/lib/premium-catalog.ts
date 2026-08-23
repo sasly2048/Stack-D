@@ -42,7 +42,19 @@ export interface PremiumFeature {
   uiLabel: string;
   /** One-line benefit description. */
   description: string;
+  /**
+   * Delivery status, so the UI never advertises something that isn't really
+   * there. live = fully working + server-enforced; beta = usable but rough or
+   * partially built; soon = not implemented yet (shown for IA completeness).
+   */
+  status: "live" | "beta" | "soon";
 }
+
+export const STATUS_LABEL: Record<PremiumFeature["status"], string> = {
+  live: "Live",
+  beta: "Beta",
+  soon: "Coming soon",
+};
 
 /**
  * PRO features — understanding. ELITE features — optimization/intelligence.
@@ -52,6 +64,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   // ---- PRO — Understand Your Focus ------------------------------------------
   {
     key: "focus_dna",
+    status: "live",
     requiredTier: "pro",
     serverGate: true,
     limit: null,
@@ -60,6 +73,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "deep_analytics",
+    status: "live",
     requiredTier: "pro",
     serverGate: false, // insights route not hard-gated yet; DNA carries the gate
     limit: null,
@@ -68,6 +82,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "unlimited_history",
+    status: "live",
     requiredTier: "pro",
     serverGate: false, // limit-based, not a hard route lock
     limit: null,
@@ -76,6 +91,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "custom_protocols",
+    status: "soon",
     requiredTier: "pro",
     serverGate: false, // backend not built yet
     limit: null,
@@ -84,6 +100,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "advanced_recaps",
+    status: "beta",
     requiredTier: "pro",
     serverGate: false,
     limit: null,
@@ -92,6 +109,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "advanced_leaderboards",
+    status: "live",
     requiredTier: "pro",
     serverGate: false,
     limit: null,
@@ -100,6 +118,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "progress_insights",
+    status: "beta",
     requiredTier: "pro",
     serverGate: false,
     limit: null,
@@ -108,6 +127,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "custom_themes",
+    status: "beta",
     requiredTier: "pro",
     serverGate: false,
     limit: null,
@@ -118,6 +138,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   // ---- ELITE — Optimize Your Focus ------------------------------------------
   {
     key: "atlas_coach",
+    status: "beta",
     requiredTier: "elite",
     serverGate: true, // discoverPatterns (real AI-gateway call) enforces this
     limit: 100, // intended monthly Atlas actions (metering is future work)
@@ -126,6 +147,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "focus_forecast",
+    status: "live",
     requiredTier: "elite",
     serverGate: true,
     limit: null,
@@ -134,6 +156,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "adaptive_sessions",
+    status: "soon",
     requiredTier: "elite",
     serverGate: false,
     limit: null,
@@ -142,6 +165,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "focus_autopilot",
+    status: "soon",
     requiredTier: "elite",
     serverGate: false,
     limit: null,
@@ -150,6 +174,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "private_circles",
+    status: "soon",
     requiredTier: "elite",
     serverGate: false,
     limit: null,
@@ -158,6 +183,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "advanced_room_controls",
+    status: "soon",
     requiredTier: "elite",
     serverGate: false,
     limit: null,
@@ -166,6 +192,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "elite_weekly_reports",
+    status: "beta",
     requiredTier: "elite",
     serverGate: true, // getWeeklyStory (real AI-gateway call) enforces this
     limit: null,
@@ -174,6 +201,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "vault",
+    status: "live",
     requiredTier: "elite",
     serverGate: true,
     limit: null,
@@ -182,6 +210,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "time_capsules",
+    status: "live",
     requiredTier: "elite",
     serverGate: true,
     limit: null,
@@ -190,6 +219,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     key: "early_access",
+    status: "soon",
     requiredTier: "elite",
     serverGate: false,
     limit: null,

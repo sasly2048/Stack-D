@@ -7,7 +7,7 @@ import { getEntitlement, getPlans, type Plan } from "@/lib/subscription.function
 import { createSubscription } from "@/lib/razorpay.functions";
 import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
 import { annualSavingsPct } from "@/lib/entitlement-rules";
-import { PREMIUM_FEATURES, TIER_TAGLINE } from "@/lib/premium-catalog";
+import { PREMIUM_FEATURES, STATUS_LABEL, TIER_TAGLINE } from "@/lib/premium-catalog";
 import {
   invalidateEntitlement,
   pollEntitlementUntilPremium,
@@ -179,8 +179,27 @@ export function UpgradeDialog({
           <ul className="mt-3 space-y-1.5">
             {PREMIUM_FEATURES.map((f) => (
               <li key={f.key} className="flex items-center gap-2.5 text-sm">
-                <Check className="size-3.5 text-ember shrink-0" />
-                <span className="text-silver">{f.uiLabel}</span>
+                <Check
+                  className={cn(
+                    "size-3.5 shrink-0",
+                    f.status === "soon" ? "text-silver-dim" : "text-ember",
+                  )}
+                />
+                <span className={f.status === "soon" ? "text-silver-dim" : "text-silver"}>
+                  {f.uiLabel}
+                </span>
+                {f.status !== "live" && (
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest",
+                      f.status === "beta"
+                        ? "bg-pulse/10 text-pulse"
+                        : "bg-white/[0.06] text-silver-dim",
+                    )}
+                  >
+                    {STATUS_LABEL[f.status]}
+                  </span>
+                )}
                 {f.requiredTier === "elite" && (
                   <span className="ml-auto font-mono text-[9px] uppercase tracking-widest text-ember-glow">
                     Elite

@@ -7,6 +7,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Bun-only project — keep npm's lockfile out
+package-lock.json
+
 node_modules
 dist
 dist-ssr
