@@ -140,7 +140,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     key: "atlas_coach",
     status: "beta",
     requiredTier: "elite",
-    serverGate: true, // discoverPatterns (real AI-gateway call) enforces this
+    serverGate: true, // enforced by the AI budget meter (requireAiBudget)
     limit: 100, // intended monthly Atlas actions (metering is future work)
     uiLabel: "Atlas AI Coach",
     description: "An ambient coach that reads your history and recommends what's next.",
@@ -194,7 +194,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     key: "elite_weekly_reports",
     status: "beta",
     requiredTier: "elite",
-    serverGate: true, // getWeeklyStory (real AI-gateway call) enforces this
+    serverGate: true, // enforced by the AI budget meter (requireAiBudget)
     limit: null,
     uiLabel: "Elite Weekly Reports",
     description: "A weekly intelligence digest of your focus.",

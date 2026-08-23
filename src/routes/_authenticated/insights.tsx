@@ -9,14 +9,23 @@ import { GoalForecast } from "@/components/insights/goal-forecast";
 import { WeeklyNarrativeCard } from "@/components/insights/weekly-narrative-card";
 import { FocusRadar } from "@/components/analytics/focus-radar";
 import { AtlasWhisper } from "@/components/atlas-whisper";
+import { AiUsageMeter } from "@/components/premium/ai-usage-meter";
 
 export const Route = createFileRoute("/_authenticated/insights")({
   head: () => ({
     meta: [
       { title: "Insights — Stack'd" },
-      { name: "description", content: "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history." },
+      {
+        name: "description",
+        content:
+          "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history.",
+      },
       { property: "og:title", content: "Insights — Stack'd" },
-      { property: "og:description", content: "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history." },
+      {
+        property: "og:description",
+        content:
+          "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history.",
+      },
     ],
   }),
   component: InsightsPage,
@@ -78,6 +87,7 @@ function InsightsPage() {
           <Stat label="XP earned" value={data.totals.xp.toLocaleString()} />
         </section>
 
+        <AiUsageMeter />
         <AtlasWhisper context="insights" />
         <WeeklyNarrativeCard />
         <GoalForecast />

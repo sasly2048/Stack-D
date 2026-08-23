@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeature } from "@/lib/require-tier";
+import { requireAiBudget } from "@/lib/require-ai-budget";
 import { z } from "zod";
 
 export interface VaultItem {
@@ -111,7 +112,9 @@ export const summarizeVaultItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }): Promise<{ summary: string }> => {
+    // Vault access is Elite; the summary also spends one AI action (Elite = 200).
     await requireFeature(context.supabase, "vault");
+    await requireAiBudget(context.supabase);
     const { data: item } = await context.supabase
       .from("memory_vault_items")
       .select("title, body")

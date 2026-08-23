@@ -149,3 +149,20 @@ export const redeemLifetime = createServerFn({ method: "POST" })
     const result = (res ?? "bad_code") as RedeemResult;
     return { result, message: REDEEM_MESSAGES[result] ?? REDEEM_MESSAGES.bad_code };
   });
+
+export interface AiUsage {
+  used: number;
+  allowance: number;
+  remaining: number;
+  unlimited: boolean;
+}
+
+/** The caller's AI usage this billing period, for a transparent counter. */
+export const getAiUsage = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AiUsage> => {
+    const { data, error } = await context.supabase.rpc("ai_usage_status" as never);
+    if (error) throw new Error(error.message);
+    const row = (Array.isArray(data) ? data[0] : data) as AiUsage | null;
+    return row ?? { used: 0, allowance: 0, remaining: 0, unlimited: false };
+  });
