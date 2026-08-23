@@ -425,12 +425,16 @@ export const createRoomFromTemplate = createServerFn({ method: "POST" })
     if (tErr) throw new Error(tErr.message);
     if (!tpl) throw new Error("template_not_found");
 
-    // Generate unique code (retry a few times)
-    const gen = () =>
-      Array.from(
-        { length: 6 },
-        () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)],
-      ).join("");
+    // Generate a unique code with cryptographically secure randomness. The
+    // 32-char alphabet divides 256 evenly, so a byte % 32 is unbiased — no
+    // modulo skew and no Math.random() predictability. DB uniqueness is still
+    // enforced by the retry loop + the code column's unique constraint.
+    const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const gen = () => {
+      const bytes = new Uint8Array(6);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, (b) => ALPHABET[b % 32]).join("");
+    };
     let room: { code: string; id: string } | null = null;
     let lastErr = "room_code_collision";
     for (let i = 0; i < 5 && !room; i++) {
