@@ -14,6 +14,23 @@ export interface VaultItem {
   created_at: string;
 }
 
+/**
+ * Make a user search term safe to interpolate into a PostgREST .or() ilike
+ * filter. The term goes into a filter STRING, so its control characters (comma,
+ * parens, dot, backslash) would break the filter or inject extra conditions;
+ * strip those. Then escape the ilike wildcards (% and _) so a literal '%'
+ * searches for a percent sign instead of matching every row. Returns "" when
+ * nothing searchable remains — callers should then skip the filter, not match
+ * all rows.
+ */
+export function sanitizeVaultSearch(raw: string): string {
+  return raw
+    .replace(/[,()\\.]/g, " ")
+    .replace(/[%_]/g, (c) => `\\${c}`)
+    .trim()
+    .slice(0, 100);
+}
+
 export const listVault = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
@@ -34,8 +51,12 @@ export const listVault = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(data.limit);
     if (data.tag) q = q.contains("tags", [data.tag]);
-    if (data.q)
-      q = q.or(`title.ilike.%${data.q}%,body.ilike.%${data.q}%,ai_summary.ilike.%${data.q}%`);
+    if (data.q) {
+      const term = sanitizeVaultSearch(data.q);
+      if (term) {
+        q = q.or(`title.ilike.%${term}%,body.ilike.%${term}%,ai_summary.ilike.%${term}%`);
+      }
+    }
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return (rows ?? []) as VaultItem[];

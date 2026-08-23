@@ -86,9 +86,10 @@ function Radar({ traits }: { traits: { label: string; value: number }[] }) {
 function DnaPage() {
   const load = useServerFn(getProductivityDna);
 
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const dnaQuery = useQuery({
-    queryKey: ["productivity-dna"],
-    queryFn: () => load() as Promise<DnaProfile>,
+    queryKey: ["productivity-dna", tz],
+    queryFn: () => load({ data: { tz } }) as Promise<DnaProfile>,
   });
   const dna = dnaQuery.data;
 
