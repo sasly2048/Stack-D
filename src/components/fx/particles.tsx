@@ -58,14 +58,30 @@ export function Particles({ count = 40, className = "" }: { count?: number; clas
 
     resize();
     seed();
-    tick();
+
+    // Don't animate while the tab is hidden. Browsers already throttle rAF when
+    // backgrounded, but an explicit pause guarantees zero work (and zero battery
+    // on mobile) instead of relying on that throttle.
+    const start = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(tick);
+    };
+    const stop = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    };
+    const onVisibility = () => (document.hidden ? stop() : start());
+    document.addEventListener("visibilitychange", onVisibility);
+    if (!document.hidden) start();
+
     const ro = new ResizeObserver(() => {
       resize();
       seed();
     });
     ro.observe(canvas);
     return () => {
-      cancelAnimationFrame(raf);
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
       ro.disconnect();
     };
   }, [count]);
