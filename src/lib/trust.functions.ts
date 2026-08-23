@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const fileReport = createServerFn({ method: "POST" })
@@ -26,7 +28,7 @@ export const fileReport = createServerFn({ method: "POST" })
 
 export const blockUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string }) => input)
+  .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     if (data.userId === context.userId) throw new Error("self");
     await context.supabase
@@ -34,19 +36,24 @@ export const blockUser = createServerFn({ method: "POST" })
       .insert({ blocker_id: context.userId, blocked_id: data.userId });
     // Blocking severs the relationship: drop any friendship row in either
     // direction so a prior "accepted" friend can't keep friends-only access.
+    // Two parameterized deletes rather than a raw .or() string — no filter-
+    // injection surface even if a future caller skips the UUID validation.
     await context.supabase
       .from("friendships")
       .delete()
-      .or(
-        `and(requester_id.eq.${context.userId},addressee_id.eq.${data.userId}),` +
-          `and(requester_id.eq.${data.userId},addressee_id.eq.${context.userId})`,
-      );
+      .eq("requester_id", context.userId)
+      .eq("addressee_id", data.userId);
+    await context.supabase
+      .from("friendships")
+      .delete()
+      .eq("requester_id", data.userId)
+      .eq("addressee_id", context.userId);
     return { ok: true };
   });
 
 export const unblockUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string }) => input)
+  .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     await context.supabase
       .from("user_blocks")
