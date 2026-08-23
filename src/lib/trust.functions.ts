@@ -32,6 +32,15 @@ export const blockUser = createServerFn({ method: "POST" })
     await context.supabase
       .from("user_blocks")
       .insert({ blocker_id: context.userId, blocked_id: data.userId });
+    // Blocking severs the relationship: drop any friendship row in either
+    // direction so a prior "accepted" friend can't keep friends-only access.
+    await context.supabase
+      .from("friendships")
+      .delete()
+      .or(
+        `and(requester_id.eq.${context.userId},addressee_id.eq.${data.userId}),` +
+          `and(requester_id.eq.${data.userId},addressee_id.eq.${context.userId})`,
+      );
     return { ok: true };
   });
 
