@@ -86,6 +86,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage: {
+        Row: {
+          action_count: number
+          period_end: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_count?: number
+          period_end?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_count?: number
+          period_end?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       auth_alerts: {
         Row: {
           created_at: string
@@ -848,6 +869,7 @@ export type Database = {
           pinned_showcase: Json
           prestige_level: number
           productivity_dna: string | null
+          timezone: string
           title: string | null
           total_focus_seconds: number
           updated_at: string
@@ -870,6 +892,7 @@ export type Database = {
           pinned_showcase?: Json
           prestige_level?: number
           productivity_dna?: string | null
+          timezone?: string
           title?: string | null
           total_focus_seconds?: number
           updated_at?: string
@@ -892,6 +915,7 @@ export type Database = {
           pinned_showcase?: Json
           prestige_level?: number
           productivity_dna?: string | null
+          timezone?: string
           title?: string | null
           total_focus_seconds?: number
           updated_at?: string
@@ -1733,6 +1757,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ai_allowance: {
+        Args: { _tier: Database["public"]["Enums"]["access_tier"] }
+        Returns: number
+      }
+      ai_meter: {
+        Args: never
+        Returns: {
+          allowance: number
+          ok: boolean
+          remaining: number
+          unlimited: boolean
+          used: number
+        }[]
+      }
+      ai_usage_status: {
+        Args: never
+        Returns: {
+          allowance: number
+          remaining: number
+          unlimited: boolean
+          used: number
+        }[]
+      }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       award_earned_titles: {
         Args: never
@@ -1744,6 +1791,7 @@ export type Database = {
         Args: { _id: string; _type: string }
         Returns: string
       }
+      blocks_exist: { Args: { _a: string; _b: string }; Returns: boolean }
       check_and_record_hit: {
         Args: { _key: string; _max_hits: number; _window_seconds: number }
         Returns: boolean
@@ -1755,10 +1803,6 @@ export type Database = {
           new_streak: number
           reward_xp: number
         }[]
-      }
-      set_my_timezone: {
-        Args: { _tz: string }
-        Returns: undefined
       }
       claim_room_seat: {
         Args: { _code: string }
@@ -2002,6 +2046,7 @@ export type Database = {
           xp: number
         }[]
       }
+      set_my_timezone: { Args: { _tz: string }; Returns: undefined }
       start_focus_session: { Args: { _room_id: string }; Returns: string }
       tier_rank: {
         Args: { _t: Database["public"]["Enums"]["access_tier"] }
@@ -2011,6 +2056,7 @@ export type Database = {
         Args: { _history_id: string; _notes: string; _tags: string[] }
         Returns: undefined
       }
+      user_timezone: { Args: { _user_id: string }; Returns: string }
       username_is_taken: {
         Args: { _canonical: string; _exclude_user?: string }
         Returns: boolean
