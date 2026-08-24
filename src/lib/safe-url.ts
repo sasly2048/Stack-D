@@ -18,8 +18,9 @@ const BLOCKED_HOSTNAMES = new Set([
 function isPrivateIPv4(host: string): boolean {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
   if (!m) return false;
-  const [a, b] = [Number(m[1]), Number(m[2])];
-  if ([a, Number(m[2]), Number(m[3]), Number(m[4])].some((n) => n > 255)) return true;
+  const octets = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
+  if (octets.some((n) => n > 255)) return false; // not a valid IPv4 at all
+  const [a, b] = octets;
   if (a === 0 || a === 10 || a === 127) return true;
   if (a === 169 && b === 254) return true; // link-local / cloud metadata
   if (a === 172 && b >= 16 && b <= 31) return true;
@@ -36,6 +37,11 @@ function isPrivateIPv6(host: string): boolean {
   if (h.startsWith("fe80") || h.startsWith("fc") || h.startsWith("fd")) return true;
   if (h.startsWith("::ffff:")) return isPrivateIPv4(h.slice(7));
   return false;
+}
+
+/** True if `host` is a private/loopback/link-local IPv4 or IPv6 literal. */
+export function isPrivateIp(host: string): boolean {
+  return isPrivateIPv4(host) || isPrivateIPv6(host);
 }
 
 /** Returns an error code string when the URL is unsafe, otherwise null. */

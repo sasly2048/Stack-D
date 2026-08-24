@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { checkPublicHttpUrl } from "@/lib/safe-url";
+import { assertPublicUrl } from "@/lib/safe-url.server";
 
 
 export interface Delivery {
@@ -46,9 +46,10 @@ export const testWebhook = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error || !wh) throw new Error("not_found");
 
-    // SSRF guard: re-validate at send time (rows may predate validation).
-    const urlProblem = checkPublicHttpUrl(wh.url);
-    if (urlProblem) throw new Error(urlProblem);
+    // SSRF guard: re-validate at send time (rows may predate validation) AND
+    // resolve DNS so a public hostname pointing at an internal IP is rejected
+    // before fetch connects. Throws an error code string on any failure.
+    await assertPublicUrl(wh.url);
 
 
     const payload = JSON.stringify({
