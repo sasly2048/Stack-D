@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { publicDbError } from "@/lib/db-error";
 
@@ -64,7 +65,11 @@ export const listPartners = createServerFn({ method: "GET" })
  */
 export const pairPartner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { partnerId: string; asRole: "mentor" | "mentee" }) => input)
+  .inputValidator((input) =>
+    z
+      .object({ partnerId: z.string().uuid(), asRole: z.enum(["mentor", "mentee"]) })
+      .parse(input),
+  )
   .handler(async ({ data, context }): Promise<{ id: string }> => {
     if (data.partnerId === context.userId) throw new Error("self");
     const mentor = data.asRole === "mentor" ? context.userId : data.partnerId;
@@ -89,7 +94,9 @@ export const pairPartner = createServerFn({ method: "POST" })
 /** Only the invited party can accept or decline. */
 export const respondToPairing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { relationshipId: string; accept: boolean }) => input)
+  .inputValidator((input) =>
+    z.object({ relationshipId: z.string().uuid(), accept: z.boolean() }).parse(input),
+  )
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { error } = await context.supabase
       .from("mentor_relationships")
