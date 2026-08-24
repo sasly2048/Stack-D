@@ -49,6 +49,18 @@ export const blockUser = createServerFn({ method: "POST" })
       .delete()
       .eq("requester_id", data.userId)
       .eq("addressee_id", context.userId);
+    // Also sever any mentorship in either role arrangement, for the same
+    // reason: a block should end an existing relationship, not just future ones.
+    await context.supabase
+      .from("mentor_relationships")
+      .delete()
+      .eq("mentor_id", context.userId)
+      .eq("mentee_id", data.userId);
+    await context.supabase
+      .from("mentor_relationships")
+      .delete()
+      .eq("mentor_id", data.userId)
+      .eq("mentee_id", context.userId);
     return { ok: true };
   });
 
