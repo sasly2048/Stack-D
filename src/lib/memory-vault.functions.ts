@@ -139,7 +139,7 @@ export const summarizeVaultItem = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     // Reserve the AI action around the gateway call so a provider failure
     // refunds the unit instead of burning it.
-    const summary = await withAiBudget(context.supabase, async () => {
+    const summary = await withAiBudget(context.supabase, context.userId, async () => {
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Lovable-API-Key": key },

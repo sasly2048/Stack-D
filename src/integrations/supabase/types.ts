@@ -1788,7 +1788,7 @@ export type Database = {
         }[]
       }
       ai_refund: {
-        Args: Record<PropertyKey, never>
+        Args: { _user_id: string }
         Returns: undefined
       }
       begin_webhook_event: {

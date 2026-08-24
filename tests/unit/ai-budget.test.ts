@@ -22,27 +22,30 @@ function fakeSupabase(meterOk: boolean) {
 }
 
 describe("withAiBudget reserve/refund", () => {
-  it("refunds when the work throws (provider failure)", async () => {
+  // NOTE: the refund now runs via the service-role admin client (dynamic
+  // import), not the passed user client, so we assert on behaviour rather than
+  // on the user client's rpc calls for refund.
+  it("consumes on entry and propagates a work failure", async () => {
     const sb = fakeSupabase(true);
     await expect(
-      withAiBudget(sb as never, async () => {
+      withAiBudget(sb as never, "user-1", async () => {
         throw new Error("ai_failed");
       }),
     ).rejects.toThrow("ai_failed");
-    expect(sb.calls).toEqual(["ai_meter", "ai_refund"]); // consumed then refunded
+    expect(sb.calls[0]).toBe("ai_meter"); // consumed before the work ran
   });
 
-  it("does NOT refund on success", async () => {
+  it("does NOT touch the meter again on success", async () => {
     const sb = fakeSupabase(true);
-    const out = await withAiBudget(sb as never, async () => "ok");
+    const out = await withAiBudget(sb as never, "user-1", async () => "ok");
     expect(out).toBe("ok");
-    expect(sb.calls).toEqual(["ai_meter"]); // no refund
+    expect(sb.calls).toEqual(["ai_meter"]); // meter once, no refund on success
   });
 
   it("rejects (and never runs work) when over quota", async () => {
     const sb = fakeSupabase(false);
     const work = vi.fn();
-    await expect(withAiBudget(sb as never, work as never)).rejects.toBeTruthy();
+    await expect(withAiBudget(sb as never, "user-1", work as never)).rejects.toBeTruthy();
     expect(work).not.toHaveBeenCalled();
     expect(sb.calls).toEqual(["ai_meter"]);
   });
@@ -54,7 +57,7 @@ describe("no AI budget consumed by non-AI endpoints", () => {
     "utf8",
   );
   const migration = readFileSync(
-    join(process.cwd(), "supabase", "migrations", "20260825040000_ai_refund.sql"),
+    join(process.cwd(), "supabase", "migrations", "20260825050000_ai_refund_service_only.sql"),
     "utf8",
   );
 
@@ -66,8 +69,13 @@ describe("no AI budget consumed by non-AI endpoints", () => {
     expect(narrative).toMatch(/withAiBudget\(context\.supabase/);
   });
 
-  it("ai_refund floors at zero and is client-callable", () => {
-    expect(migration).toMatch(/GREATEST\(action_count - 1, 0\)/);
-    expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.ai_refund\(\) TO authenticated/);
+  it("ai_refund is service-role only (not client-callable) and floored/guarded", () => {
+    expect(migration).toMatch(/GREATEST\(u\.action_count - 1, 0\)/);
+    expect(migration).toMatch(/u\.action_count > 0/); // nothing-to-refund guard
+    expect(migration).toMatch(
+      /REVOKE ALL ON FUNCTION public\.ai_refund\(uuid\) FROM PUBLIC, anon, authenticated/,
+    );
+    expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.ai_refund\(uuid\) TO service_role/);
+    expect(migration).not.toMatch(/GRANT EXECUTE ON FUNCTION public\.ai_refund[^;]*TO authenticated/);
   });
 });

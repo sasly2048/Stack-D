@@ -49,7 +49,7 @@ export const getWeeklyStory = createServerFn({ method: "POST" })
     }
     const strongest = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
     const summary = `Sessions: ${rows.length}. Total minutes: ${totalMin}. Avg score: ${avg}. Strongest day: ${strongest}.`;
-    const story = await withAiBudget(context.supabase, () =>
+    const story = await withAiBudget(context.supabase, context.userId, () =>
       ai(
         `Data:\n${summary}\n\nWrite a 3-sentence narrative recap. No stats-dump. Warm, poetic, decisive.`,
         "You are Stack'd, a focus companion. Reply in short poetic sentences, no bullet points.",
