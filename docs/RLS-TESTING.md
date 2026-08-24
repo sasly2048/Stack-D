@@ -49,6 +49,47 @@ local stack. This only affects the throwaway test users.
 - a non-host cannot change a `rooms` lifecycle
 - a blocked user cannot create a `friendships` row with the blocker
 
+## Write-policy audit (P2-22)
+
+Snapshot of every non-SELECT RLS policy, resolved latest-wins across all
+migrations (2026-08-24). Every write is gated by an authority predicate — there
+is **no `WITH CHECK (true)` on any INSERT/UPDATE**, and every DELETE `USING`
+clause is owner/host-scoped. The only `USING (true)` policies are SELECT reads
+(leaderboard/room-lookup/roster visibility); `profiles` reads are further
+restricted by column-level `GRANT SELECT` (see 20260822051951).
+
+| Table | Cmd | Authority |
+|---|---|---|
+| breaks | INSERT | `auth.uid() = user_id` |
+| email_* / suppressed_emails | INSERT/UPDATE/ALL | `auth.role() = 'service_role'` |
+| focus_groups | INSERT/UPDATE/DELETE | `auth.uid() = created_by` |
+| friendships | INSERT | `auth.uid() = requester_id AND status='pending'` |
+| friendships | DELETE | `auth.uid() IN (requester_id, addressee_id)` |
+| group_members | INSERT | member of the group's `focus_groups` row |
+| group_members | DELETE | self-leave or group creator |
+| memory_vault_items | ALL | `auth.uid() = user_id AND has_tier('elite')` |
+| mentor_relationships | ALL/DELETE | `auth.uid() IN (mentor_id, mentee_id)` |
+| participants | INSERT | `auth.uid() = user_id` |
+| profiles | INSERT/UPDATE | `auth.uid() = id` |
+| room_join_requests | INSERT | `auth.uid() = user_id AND status='pending'` |
+| room_join_requests | UPDATE | requester or room moderator |
+| room_moderators | INSERT/DELETE | `is_room_host(room_id, auth.uid())` |
+| room_scheduled_events | ALL | room moderator AND `created_by = auth.uid()` |
+| rooms | INSERT/UPDATE/DELETE | `auth.uid() = host_id` |
+| session_reactions | INSERT | `user_id = auth.uid()` AND session exists |
+| session_reactions | DELETE | `user_id = auth.uid()` |
+| session_workspace_items | ALL | `user_id = auth.uid()` |
+| time_capsules | ALL | `auth.uid() = user_id AND has_tier('elite')` |
+| user_blocks | INSERT/DELETE | `auth.uid() = blocker_id` |
+| user_reports | INSERT | `auth.uid() = reporter_id` |
+| user_reports | UPDATE | room owner of the reported room |
+| user_titles | DELETE | `auth.uid() = user_id` |
+| webhooks | ALL | `auth.uid() = user_id` |
+
+Note: column-freeze triggers (participants integrity, rooms lifecycle, profile
+scoring) enforce *which columns* a legitimate owner may change — the RLS above
+governs *which rows*. Both layers are exercised by the tests in `tests/rls/`.
+
 ## Manual IDOR checklist (pre-release, against staging)
 
 For tables/flows not yet in the automated suite, spot-check as a second,
