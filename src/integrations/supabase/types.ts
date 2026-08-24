@@ -1756,6 +1756,10 @@ export type Database = {
           reward_xp: number
         }[]
       }
+      set_my_timezone: {
+        Args: { _tz: string }
+        Returns: undefined
+      }
       claim_room_seat: {
         Args: { _code: string }
         Returns: {

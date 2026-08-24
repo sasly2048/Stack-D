@@ -27,6 +27,22 @@ export type PublicProfile = {
   friendship?: { id: string; status: string; direction: "incoming" | "outgoing" | "friend" } | null;
 };
 
+/**
+ * Report the browser's IANA timezone so streak/daily-reward/challenge day
+ * boundaries and the DNA personality label are computed in the user's local
+ * time, not UTC. The DB (set_my_timezone) validates against pg_timezone_names
+ * and rejects anything that isn't a real zone.
+ */
+export const setMyTimezone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ tz: z.string().min(1).max(64) }).parse(d))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    // Ignore the error: a bad/unknown zone just leaves the stored value as-is
+    // (defaults to 'UTC'), never blocks the caller.
+    await context.supabase.rpc("set_my_timezone", { _tz: data.tz });
+    return { ok: true };
+  });
+
 /** Fetch a profile (self or other). Includes achievement unlocks + session count. */
 export const getProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
