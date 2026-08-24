@@ -1791,6 +1791,10 @@ export type Database = {
         Args: { _id: string; _type: string }
         Returns: string
       }
+      equip_title: {
+        Args: { _title_id: string | null }
+        Returns: string | null
+      }
       blocks_exist: { Args: { _a: string; _b: string }; Returns: boolean }
       check_and_record_hit: {
         Args: { _key: string; _max_hits: number; _window_seconds: number }

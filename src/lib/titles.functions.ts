@@ -21,20 +21,14 @@ export const equipTitle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ titleId: z.string().nullable() }).parse(d))
   .handler(async ({ data, context }) => {
-    let name: string | null = null;
-    if (data.titleId) {
-      const { data: owned } = await context.supabase
-        .from("user_titles")
-        .select("titles(name)")
-        .eq("user_id", context.userId)
-        .eq("title_id", data.titleId)
-        .maybeSingle();
-      const t = (owned as unknown as { titles: { name: string } | null } | null)?.titles;
-      if (!t) throw new Error("not_owned");
-      name = t.name;
-    }
-    await context.supabase.from("profiles").update({ title: name }).eq("id", context.userId);
-    return { ok: true, title: name };
+    // profiles.title is client-unwritable (column grant). equip_title() is
+    // SECURITY DEFINER: it verifies ownership in user_titles, then sets the
+    // title server-side. NULL clears it.
+    const { data: name, error } = await context.supabase.rpc("equip_title", {
+      _title_id: data.titleId,
+    });
+    if (error) throw publicDbError(error, "db_write_failed");
+    return { ok: true, title: (name as string | null) ?? null };
   });
 
 export const evaluateTitles = createServerFn({ method: "POST" })

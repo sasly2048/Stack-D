@@ -112,6 +112,43 @@ describe.skipIf(!up)("RLS / IDOR — cross-user access is denied", () => {
     expect(check!.status).toBe("lobby");
   });
 
+  it("a user cannot inflate their OWN progression columns (column grant)", async () => {
+    // The real test of the column-grant fix: PATCH lifetime_xp on your own row.
+    // Postgres rejects it because UPDATE isn't granted on that column, so the
+    // request errors (or affects zero columns) — regardless of the broken
+    // current_user trigger guard.
+    const { data: before } = await admin!
+      .from("profiles")
+      .select("lifetime_xp")
+      .eq("id", alice.id)
+      .single();
+
+    await alice.client
+      .from("profiles")
+      .update({ lifetime_xp: 999_999 })
+      .eq("id", alice.id);
+
+    const { data: after } = await admin!
+      .from("profiles")
+      .select("lifetime_xp")
+      .eq("id", alice.id)
+      .single();
+    expect(after!.lifetime_xp).toBe(before!.lifetime_xp); // unchanged
+  });
+
+  it("a user can still edit their own display_name (granted column)", async () => {
+    await alice.client
+      .from("profiles")
+      .update({ display_name: "Alice Renamed" })
+      .eq("id", alice.id);
+    const { data } = await admin!
+      .from("profiles")
+      .select("display_name")
+      .eq("id", alice.id)
+      .single();
+    expect(data!.display_name).toBe("Alice Renamed");
+  });
+
   it("a blocked user cannot create a friendship with the blocker", async () => {
     // Alice blocks Bob.
     await admin!.from("user_blocks").insert({ blocker_id: alice.id, blocked_id: bob.id });
