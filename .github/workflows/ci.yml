@@ -37,6 +37,47 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
+  rls:
+    # Real RLS/IDOR tests need a live Postgres + GoTrue. GitHub runners have
+    # Docker, so we boot the local Supabase stack here (the suite auto-skips
+    # anywhere Docker is absent, e.g. a dev laptop without it).
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase (applies all migrations)
+        run: supabase start
+
+      - name: Point tests at the local stack
+        run: |
+          # Export the local stack's URL + keys for the RLS suite. `supabase
+          # status -o env` prints API_URL / ANON_KEY / SERVICE_ROLE_KEY.
+          eval "$(supabase status -o env)"
+          {
+            echo "SUPABASE_TEST_URL=$API_URL"
+            echo "SUPABASE_TEST_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_TEST_SERVICE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: RLS / IDOR tests
+        run: bun run test:rls
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
+
   e2e:
     runs-on: ubuntu-latest
     needs: verify
