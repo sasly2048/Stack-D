@@ -68,3 +68,13 @@ export function checkPublicHttpUrl(raw: string): string | null {
 export function isPublicHttpUrl(raw: string): boolean {
   return checkPublicHttpUrl(raw) === null;
 }
+
+/** True only for http:/https: URLs — rejects javascript:, data:, file:, etc. */
+export function isHttpScheme(raw: string): boolean {
+  try {
+    const p = new URL(raw).protocol;
+    return p === "http:" || p === "https:";
+  } catch {
+    return false;
+  }
+}

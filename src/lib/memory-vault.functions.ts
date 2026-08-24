@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeature } from "@/lib/require-tier";
 import { requireAiBudget } from "@/lib/require-ai-budget";
 import { z } from "zod";
+import { httpUrl } from "@/lib/zod-url";
 
 export interface VaultItem {
   id: string;
@@ -71,7 +72,7 @@ export const createVaultItem = createServerFn({ method: "POST" })
       .object({
         title: z.string().min(1).max(200),
         body: z.string().max(20000).optional(),
-        url: z.string().url().optional(),
+        url: httpUrl.max(2000).optional(),
         tags: z.array(z.string().max(24)).max(12).default([]),
         historyId: z.string().uuid().optional(),
       })
@@ -79,6 +80,18 @@ export const createVaultItem = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<{ id: string }> => {
     await requireFeature(context.supabase, "vault");
+    // #20: RLS only checks the vault row's user_id, not that historyId belongs
+    // to the caller. Verify ownership here so a user can't attach another
+    // user's focus_history id (which they might know) to their vault item.
+    if (data.historyId) {
+      const { data: owned } = await context.supabase
+        .from("focus_history")
+        .select("id")
+        .eq("id", data.historyId)
+        .eq("profile_id", context.userId)
+        .maybeSingle();
+      if (!owned) throw new Error("history_not_owned");
+    }
     const { data: row, error } = await context.supabase
       .from("memory_vault_items")
       .insert({

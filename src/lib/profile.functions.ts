@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { httpUrl } from "@/lib/zod-url";
 import { fetchMyPrivateProfile } from "./private-profile.server";
 import { publicDbError } from "@/lib/db-error";
 
@@ -132,7 +133,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       .object({
         display_name: z.string().trim().min(1).max(40).optional(),
         bio: z.string().trim().max(280).optional(),
-        avatar_url: z.string().url().max(500).optional().or(z.literal("")),
+        avatar_url: httpUrl.max(500).optional().or(z.literal("")),
       })
       .parse(d),
   )

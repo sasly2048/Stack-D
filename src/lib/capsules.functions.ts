@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { publicDbError } from "@/lib/db-error";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeature } from "@/lib/require-tier";
@@ -43,14 +44,14 @@ export const writeCapsule = createServerFn({ method: "POST" })
 
 export const openCapsule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) => input)
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     await requireFeature(context.supabase, "time_capsules");
-    await context.supabase
-      .from("time_capsules")
-      .update({ opened_at: new Date().toISOString() })
-      .eq("id", data.id)
-      .eq("user_id", context.userId)
-      .lte("open_at", new Date().toISOString());
+    // open_at/opened_at are client-unwritable (column grant); opening goes
+    // through the SECURITY DEFINER open_capsule() RPC which enforces the
+    // open_at <= now() gate server-side so it can't be bypassed by editing
+    // open_at directly.
+    const { error } = await context.supabase.rpc("open_capsule", { _id: data.id });
+    if (error) throw publicDbError(error, "capsule_open_failed");
     return { ok: true };
   });

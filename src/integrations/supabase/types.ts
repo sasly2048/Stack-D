@@ -1795,6 +1795,10 @@ export type Database = {
         Args: { _title_id: string | null }
         Returns: string | null
       }
+      open_capsule: {
+        Args: { _id: string }
+        Returns: string
+      }
       blocks_exist: { Args: { _a: string; _b: string }; Returns: boolean }
       check_and_record_hit: {
         Args: { _key: string; _max_hits: number; _window_seconds: number }

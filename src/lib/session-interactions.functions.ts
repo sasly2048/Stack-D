@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { httpUrl } from "@/lib/zod-url";
 import { publicDbError } from "@/lib/db-error";
 
 /* --------------------------------- Types --------------------------------- */
@@ -168,7 +169,7 @@ export const addWorkspaceItem = createServerFn({ method: "POST" })
         roomId: z.string().uuid().optional(),
         kind: z.enum(["note", "todo", "link"]),
         content: z.string().trim().min(1).max(4000),
-        url: z.string().url().max(2000).optional(),
+        url: httpUrl.max(2000).optional(),
       })
       .parse(d),
   )
