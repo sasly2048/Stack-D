@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 /* --------------------------------- Types --------------------------------- */
 
@@ -114,7 +115,7 @@ export const toggleReaction = createServerFn({ method: "POST" })
 
     if (existing) {
       const { error } = await supabase.from("session_reactions").delete().eq("id", existing.id);
-      if (error) throw new Error(error.message);
+      if (error) throw publicDbError(error, "db_write_failed");
       return { toggled: "off" as const };
     }
     const { error } = await supabase.from("session_reactions").insert({
@@ -122,7 +123,7 @@ export const toggleReaction = createServerFn({ method: "POST" })
       user_id: userId,
       emoji: data.emoji,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { toggled: "on" as const };
   });
 
@@ -182,7 +183,7 @@ export const addWorkspaceItem = createServerFn({ method: "POST" })
       })
       .select()
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return row as WorkspaceItem;
   });
 
@@ -207,7 +208,7 @@ export const updateWorkspaceItem = createServerFn({ method: "POST" })
       .update(patch)
       .eq("id", data.id)
       .eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });
 
@@ -221,6 +222,6 @@ export const deleteWorkspaceItem = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.id)
       .eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

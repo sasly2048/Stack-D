@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { publicDbError } from "@/lib/db-error";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type AccessTier = "free" | "pro" | "elite";
@@ -49,7 +50,7 @@ export const getEntitlement = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<Entitlement> => {
     const { data, error } = await context.supabase.rpc("my_entitlement" as never);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     const rows = data as unknown as EntitlementRow[];
     const row = rows?.[0];
     if (!row) throw new Error("Entitlement not resolved");
@@ -97,7 +98,7 @@ export const getLifetimePromoStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<LifetimePromoStatus> => {
     const { data, error } = await context.supabase.rpc("lifetime_promo_status" as never);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     const rows = data as unknown as PromoRow[];
     const row = rows?.[0];
     if (!row) throw new Error("Promo status not resolved");
@@ -145,7 +146,7 @@ export const redeemLifetime = createServerFn({ method: "POST" })
         _code: data.code,
       } as never,
     );
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     const result = (res ?? "bad_code") as RedeemResult;
     return { result, message: REDEEM_MESSAGES[result] ?? REDEEM_MESSAGES.bad_code };
   });
@@ -162,7 +163,7 @@ export const getAiUsage = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AiUsage> => {
     const { data, error } = await context.supabase.rpc("ai_usage_status" as never);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     const row = (Array.isArray(data) ? data[0] : data) as AiUsage | null;
     return row ?? { used: 0, allowance: 0, remaining: 0, unlimited: false };
   });

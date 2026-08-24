@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export type ChallengeRow = {
   id: string;
@@ -80,6 +81,6 @@ export const updateSessionMeta = createServerFn({ method: "POST" })
       _notes: data.notes,
       _tags: data.tags,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

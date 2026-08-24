@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { publicDbError } from "@/lib/db-error";
 
 export interface Season {
   id: string;
@@ -87,6 +88,6 @@ export const joinSeason = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("join_season" as never, {
       _season_id: data.seasonId,
     } as never);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

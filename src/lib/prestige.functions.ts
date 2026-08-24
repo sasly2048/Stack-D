@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export interface PrestigeStatus {
   level: number;
@@ -26,7 +27,7 @@ export const prestigeUp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ newPrestige: number }> => {
     const { data, error } = await context.supabase.rpc("prestige_up");
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     const row = Array.isArray(data) ? data[0] : data;
     return { newPrestige: row.new_prestige };
   });

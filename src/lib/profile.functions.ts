@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchMyPrivateProfile } from "./private-profile.server";
+import { publicDbError } from "@/lib/db-error";
 
 export type PublicProfile = {
   id: string;
@@ -144,6 +145,6 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       .from("profiles")
       .update(patch)
       .eq("id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

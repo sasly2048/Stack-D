@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { publicDbError } from "@/lib/db-error";
 
 export interface HostReport {
   id: string;
@@ -78,6 +79,6 @@ export const resolveReport = createServerFn({ method: "POST" })
       .from("user_reports")
       .update({ status: data.status })
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export type FriendshipStatus = "pending" | "accepted" | "blocked";
 
@@ -84,7 +85,7 @@ export const sendFriendRequest = createServerFn({ method: "POST" })
       addressee_id: data.addresseeId,
       status: "pending",
     });
-    if (error && !/duplicate/i.test(error.message)) throw new Error(error.message);
+    if (error && !/duplicate/i.test(error.message)) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });
 
@@ -99,14 +100,14 @@ export const respondFriendRequest = createServerFn({ method: "POST" })
         .update({ status: "accepted" })
         .eq("id", data.id)
         .eq("addressee_id", userId);
-      if (error) throw new Error(error.message);
+      if (error) throw publicDbError(error, "db_write_failed");
     } else {
       const { error } = await supabase
         .from("friendships")
         .delete()
         .eq("id", data.id)
         .eq("addressee_id", userId);
-      if (error) throw new Error(error.message);
+      if (error) throw publicDbError(error, "db_write_failed");
     }
     return { ok: true };
   });
@@ -121,6 +122,6 @@ export const removeFriend = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.id)
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

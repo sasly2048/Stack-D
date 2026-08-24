@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export interface Partner {
   relationship_id: string;
@@ -81,7 +82,7 @@ export const pairPartner = createServerFn({ method: "POST" })
       )
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { id: row!.id };
   });
 
@@ -94,7 +95,7 @@ export const respondToPairing = createServerFn({ method: "POST" })
       .from("mentor_relationships")
       .update({ status: data.accept ? "active" : "declined" })
       .eq("id", data.relationshipId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });
 

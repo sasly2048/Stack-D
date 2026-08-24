@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { isPublicHttpUrl } from "@/lib/safe-url";
+import { publicDbError } from "@/lib/db-error";
 
 
 export interface Webhook {
@@ -58,7 +59,7 @@ export const createWebhook = createServerFn({ method: "POST" })
       .insert({ user_id: context.userId, url: data.url, events: data.events, secret, active: true })
       .select("id, url, events, secret, active, created_at")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return row as Webhook;
   });
 
@@ -71,7 +72,7 @@ export const toggleWebhook = createServerFn({ method: "POST" })
       .update({ active: data.active })
       .eq("id", data.id)
       .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });
 
@@ -84,6 +85,6 @@ export const deleteWebhook = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.id)
       .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

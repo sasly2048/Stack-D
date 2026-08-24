@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { publicDbError } from "@/lib/db-error";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeature } from "@/lib/require-tier";
 import { requireAiBudget } from "@/lib/require-ai-budget";
@@ -90,7 +91,7 @@ export const createVaultItem = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { id: row.id as string };
   });
 
@@ -104,7 +105,7 @@ export const deleteVaultItem = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.id)
       .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });
 

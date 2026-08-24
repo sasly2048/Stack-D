@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { publicDbError } from "@/lib/db-error";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
@@ -45,7 +46,7 @@ export const evaluateTitles = createServerFn({ method: "POST" })
     // revoked, so a client can no longer grant itself a title. This wrapper just
     // invokes the RPC and returns the newly-awarded ids.
     const { data, error } = await context.supabase.rpc("award_earned_titles" as never);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     const rows = (data ?? []) as unknown as Array<{ title_id: string }>;
     return { awarded: rows.map((r) => r.title_id) };
   });

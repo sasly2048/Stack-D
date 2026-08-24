@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { assertPublicUrl } from "@/lib/safe-url.server";
+import { publicDbError } from "@/lib/db-error";
 
 
 export interface Delivery {
@@ -113,6 +114,6 @@ export const testWebhook = createServerFn({ method: "POST" })
       })
       .select("id, webhook_id, event, status_code, ok, response_snippet, attempt, created_at")
       .single();
-    if (insErr) throw new Error(insErr.message);
+    if (insErr) throw publicDbError(insErr, "db_write_failed");
     return row as Delivery;
   });

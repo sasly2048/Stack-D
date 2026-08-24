@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { publicDbError } from "@/lib/db-error";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -161,7 +162,7 @@ export const updateRoomMeta = createServerFn({ method: "POST" })
     if (data.visibility !== undefined) patch.visibility = data.visibility;
 
     const { error } = await supabase.from("rooms").update(patch).eq("id", data.roomId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
 
     if (data.pinned_message) {
       await supabase.rpc("record_room_event", {
@@ -220,7 +221,7 @@ export const promoteModerator = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("room_moderators")
       .insert({ room_id: data.roomId, user_id: data.userId });
-    if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+    if (error && !error.message.includes("duplicate")) throw publicDbError(error, "db_write_failed");
     await context.supabase.rpc("record_room_event", {
       _room_id: data.roomId,
       _kind: "moderator_added",
@@ -240,7 +241,7 @@ export const demoteModerator = createServerFn({ method: "POST" })
       .delete()
       .eq("room_id", data.roomId)
       .eq("user_id", data.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     await context.supabase.rpc("record_room_event", {
       _room_id: data.roomId,
       _kind: "moderator_removed",
@@ -290,7 +291,7 @@ export const requestToJoinRoom = createServerFn({ method: "POST" })
       },
       { onConflict: "room_id,user_id" },
     );
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
 
     // record via RPC (definer) — requester may not be a room member yet, so
     // the direct insert into room_events is bypassed by the definer check.
@@ -336,7 +337,7 @@ export const respondToJoinRequest = createServerFn({ method: "POST" })
       .from("room_join_requests")
       .update({ status: newStatus, responded_at: new Date().toISOString() })
       .eq("id", req.id);
-    if (uErr) throw new Error(uErr.message);
+    if (uErr) throw publicDbError(uErr, "db_write_failed");
 
     await supabase.rpc("record_room_event", {
       _room_id: req.room_id,
