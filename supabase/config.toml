@@ -1,1 +1,37 @@
 project_id = "wmqyswkqdnfnpdcpdhan"
+
+# Local-stack config for `supabase start` (RLS/IDOR integration tests only).
+# The hosted project is managed by Lovable; this block just makes the local
+# Docker stack runnable so tests/rls/*.test.ts can exercise real policies.
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+# Tests create users directly; skip email confirmation so signup yields a
+# session immediately (the hosted project keeps confirmation ON — see
+# RLS-TESTING.md; this only affects the throwaway local stack).
+enable_confirmations = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = false
+enable_confirmations = false
+
+[analytics]
+enabled = false

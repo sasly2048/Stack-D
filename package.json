@@ -14,6 +14,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:rls": "vitest run --config vitest.rls.config.ts",
     "typecheck": "tsc --noEmit",
     "test:e2e": "python3 tests/e2e/run.py",
     "test:visual": "python3 tests/visual/run.py",
