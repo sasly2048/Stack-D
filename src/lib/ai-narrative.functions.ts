@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { requireAiBudget } from "@/lib/require-ai-budget";
+import { withAiBudget } from "@/lib/require-ai-budget";
 
 /**
  * AI narrative functions: pattern discovery, weekly story, group coach.
@@ -31,9 +31,6 @@ async function ai(prompt: string, system: string): Promise<string> {
 export const getWeeklyStory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ story: string }> => {
-    // Real AI-gateway call (cost). Budget is the gate: free has 0 allowance
-    // (rejected), Pro 20, Elite 200, admin/lifetime unlimited — consumed atomically.
-    await requireAiBudget(context.supabase);
     const since = new Date(Date.now() - 7 * 86400_000).toISOString();
     const { data: hist } = await context.supabase
       .from("focus_history")
@@ -52,9 +49,11 @@ export const getWeeklyStory = createServerFn({ method: "POST" })
     }
     const strongest = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
     const summary = `Sessions: ${rows.length}. Total minutes: ${totalMin}. Avg score: ${avg}. Strongest day: ${strongest}.`;
-    const story = await ai(
-      `Data:\n${summary}\n\nWrite a 3-sentence narrative recap. No stats-dump. Warm, poetic, decisive.`,
-      "You are Stack'd, a focus companion. Reply in short poetic sentences, no bullet points.",
+    const story = await withAiBudget(context.supabase, () =>
+      ai(
+        `Data:\n${summary}\n\nWrite a 3-sentence narrative recap. No stats-dump. Warm, poetic, decisive.`,
+        "You are Stack'd, a focus companion. Reply in short poetic sentences, no bullet points.",
+      ),
     );
     return { story: story.trim() };
   });
@@ -62,7 +61,9 @@ export const getWeeklyStory = createServerFn({ method: "POST" })
 export const discoverPatterns = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ patterns: string[] }> => {
-    await requireAiBudget(context.supabase);
+    // No AI-gateway call here — this is pure local heuristics, so it must not
+    // consume AI budget (it used to call requireAiBudget and burn a unit for
+    // nothing).
     const { data: hist } = await context.supabase
       .from("focus_history")
       .select("duration_seconds,score,created_at")

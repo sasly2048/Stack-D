@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { publicDbError } from "@/lib/db-error";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeature } from "@/lib/require-tier";
-import { requireAiBudget } from "@/lib/require-ai-budget";
+import { withAiBudget } from "@/lib/require-ai-budget";
 import { z } from "zod";
 import { httpUrl } from "@/lib/zod-url";
 
@@ -128,7 +128,6 @@ export const summarizeVaultItem = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ summary: string }> => {
     // Vault access is Elite; the summary also spends one AI action (Elite = 200).
     await requireFeature(context.supabase, "vault");
-    await requireAiBudget(context.supabase);
     const { data: item } = await context.supabase
       .from("memory_vault_items")
       .select("title, body")
@@ -138,23 +137,28 @@ export const summarizeVaultItem = createServerFn({ method: "POST" })
     if (!item) throw new Error("not_found");
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-      body: JSON.stringify({
-        model: "google/gemini-3.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: "You summarize study notes in 2 sentences. Precise, useful for later recall.",
-          },
-          { role: "user", content: `Title: ${item.title}\n\n${item.body ?? ""}` },
-        ],
-      }),
+    // Reserve the AI action around the gateway call so a provider failure
+    // refunds the unit instead of burning it.
+    const summary = await withAiBudget(context.supabase, async () => {
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+        body: JSON.stringify({
+          model: "google/gemini-3.5-flash",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You summarize study notes in 2 sentences. Precise, useful for later recall.",
+            },
+            { role: "user", content: `Title: ${item.title}\n\n${item.body ?? ""}` },
+          ],
+        }),
+      });
+      if (!res.ok) throw new Error("ai_failed");
+      const j = await res.json();
+      return String(j.choices?.[0]?.message?.content ?? "").trim();
     });
-    if (!res.ok) throw new Error("ai_failed");
-    const j = await res.json();
-    const summary = String(j.choices?.[0]?.message?.content ?? "").trim();
     await context.supabase
       .from("memory_vault_items")
       .update({ ai_summary: summary })

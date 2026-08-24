@@ -24,3 +24,30 @@ export async function requireAiBudget(supabase: SupabaseClient): Promise<void> {
     );
   }
 }
+
+/** Give back a consumed AI action (best-effort; never throws). */
+export async function refundAiBudget(supabase: SupabaseClient): Promise<void> {
+  try {
+    await supabase.rpc("ai_refund" as never);
+  } catch {
+    // A failed refund must not mask the original error.
+  }
+}
+
+/**
+ * Reserve one AI action, run `work`, and refund the action if `work` throws
+ * (e.g. the provider call fails) so a user isn't charged for nothing. The
+ * result of `work` is returned on success.
+ */
+export async function withAiBudget<T>(
+  supabase: SupabaseClient,
+  work: () => Promise<T>,
+): Promise<T> {
+  await requireAiBudget(supabase);
+  try {
+    return await work();
+  } catch (err) {
+    await refundAiBudget(supabase);
+    throw err;
+  }
+}

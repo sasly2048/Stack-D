@@ -1787,6 +1787,10 @@ export type Database = {
           title_id: string
         }[]
       }
+      ai_refund: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       begin_webhook_event: {
         Args: { _id: string; _type: string }
         Returns: string
