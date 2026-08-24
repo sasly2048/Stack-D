@@ -101,16 +101,40 @@ export const listRoomTemplates = createServerFn({ method: "GET" })
 /*  Meta read                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Room-code alphabet: 32 symbols, Crockford-style — no confusable I/O/0/1 — so
+ * a byte % 32 is unbiased (256 divides evenly) and codes are unambiguous when
+ * read aloud or typed. crypto.getRandomValues, never Math.random.
+ */
+export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function generateRoomCode(): string {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => ROOM_CODE_ALPHABET[b % 32]).join("");
+}
+
+const ROOM_META_COLS =
+  "id, code, host_id, title, description, banner_url, pinned_message, collective_goal_seconds, visibility, template_key, status, target_duration_seconds, started_at, ended_at, created_at";
+
 export const getRoomMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ code: z.string().length(6) }).parse(d))
   .handler(async ({ data, context }): Promise<RoomMeta | null> => {
+    // Room codes are 6 chars from a 32-symbol alphabet (~1e9 space), so blind
+    // brute force is impractical — but throttle lookups anyway so a valid code
+    // can't be found by fast targeted enumeration, and cap the info returned to
+    // exactly the lobby fields (no select("*")).
+    const { isRateLimited } = await import("@/lib/rate-limit.server");
+    if (await isRateLimited(`roomcode:${context.userId}`, 60, 30)) {
+      throw new Error("rate_limited");
+    }
     const { data: row, error } = await context.supabase
       .from("rooms")
-      .select("*")
+      .select(ROOM_META_COLS)
       .eq("code", data.code.toUpperCase())
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "room_lookup_failed");
     return (row as RoomMeta | null) ?? null;
   });
 
@@ -426,23 +450,13 @@ export const createRoomFromTemplate = createServerFn({ method: "POST" })
     if (tErr) throw new Error(tErr.message);
     if (!tpl) throw new Error("template_not_found");
 
-    // Generate a unique code with cryptographically secure randomness. The
-    // 32-char alphabet divides 256 evenly, so a byte % 32 is unbiased — no
-    // modulo skew and no Math.random() predictability. DB uniqueness is still
-    // enforced by the retry loop + the code column's unique constraint.
-    const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    const gen = () => {
-      const bytes = new Uint8Array(6);
-      crypto.getRandomValues(bytes);
-      return Array.from(bytes, (b) => ALPHABET[b % 32]).join("");
-    };
     let room: { code: string; id: string } | null = null;
     let lastErr = "room_code_collision";
     for (let i = 0; i < 5 && !room; i++) {
       const { data: inserted, error: iErr } = await supabase
         .from("rooms")
         .insert({
-          code: gen(),
+          code: generateRoomCode(),
           host_id: userId,
           target_duration_seconds: tpl.target_duration_seconds,
           status: "lobby",
@@ -460,9 +474,10 @@ export const createRoomFromTemplate = createServerFn({ method: "POST" })
       }
       lastErr = iErr.message;
       // 23505 = unique violation on the room code; retry with a fresh code.
-      if (iErr.code !== "23505") throw new Error(iErr.message);
+      if (iErr.code !== "23505") throw publicDbError(iErr, "db_write_failed");
     }
-    if (!room) throw new Error(lastErr);
+    // Only reached if every retry collided — vanishingly unlikely. Log, stay generic.
+    if (!room) throw publicDbError({ message: lastErr }, "room_code_exhausted");
 
     const { data: prof } = await supabase
       .from("profiles")
