@@ -69,7 +69,10 @@ export const listTimeline = createServerFn({ method: "POST" })
       .in(
         "session_id",
         sessions.map((s) => s.id),
-      );
+      )
+      // Reactions per session are unbounded (any user can react); cap the fetch
+      // so a heavily-reacted session can't balloon this response.
+      .limit(2000);
 
     const grouped = new Map<string, Map<string, { count: number; mine: boolean }>>();
     for (const r of rx ?? []) {

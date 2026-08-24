@@ -209,8 +209,9 @@ export const listRoomModerators = createServerFn({ method: "POST" })
     const { data: rows, error } = await context.supabase
       .from("room_moderators")
       .select("user_id, granted_at")
-      .eq("room_id", data.roomId);
-    if (error) throw new Error(error.message);
+      .eq("room_id", data.roomId)
+      .limit(100);
+    if (error) throw publicDbError(error, "room_lookup_failed");
     const ids = (rows ?? []).map((r) => r.user_id as string);
     let profileMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
     if (ids.length) {
@@ -332,8 +333,11 @@ export const listJoinRequests = createServerFn({ method: "POST" })
       .select("*")
       .eq("room_id", data.roomId)
       .eq("status", "pending")
-      .order("created_at", { ascending: true });
-    if (error) throw new Error(error.message);
+      .order("created_at", { ascending: true })
+      // Cap: a popular/public room can accumulate unbounded pending requests;
+      // don't let one lookup return (and buffer) them all.
+      .limit(200);
+    if (error) throw publicDbError(error, "room_lookup_failed");
     return (rows ?? []) as JoinRequest[];
   });
 

@@ -24,7 +24,8 @@ export const listFriends = createServerFn({ method: "GET" })
       .from("friendships")
       .select("id, requester_id, addressee_id, status, created_at")
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(1000);
     if (error) throw new Error(error.message);
 
     const otherIds = Array.from(
