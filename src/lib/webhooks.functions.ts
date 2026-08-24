@@ -54,7 +54,12 @@ export const createWebhook = createServerFn({ method: "POST" })
 
   .handler(async ({ data, context }) => {
     const secret = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-    const { data: row, error } = await context.supabase
+    // Direct INSERT/UPDATE on webhooks is revoked from clients so a raw Supabase
+    // write can't bypass the SSRF URL validation above. Write via the admin
+    // client AFTER validating, scoping the row to this user explicitly (admin
+    // bypasses RLS, so the user_id here is the only owner guard).
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
       .from("webhooks")
       .insert({ user_id: context.userId, url: data.url, events: data.events, secret, active: true })
       .select("id, url, events, secret, active, created_at")
@@ -67,7 +72,9 @@ export const toggleWebhook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid(), active: z.boolean() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    // UPDATE is revoked from clients; go through admin, scoped to the owner.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
       .from("webhooks")
       .update({ active: data.active })
       .eq("id", data.id)
