@@ -378,6 +378,10 @@ function Room() {
       // Recorded so a historical score stays interpretable if the formula
       // changes — without it, old and new rows silently mean different things.
       _scoring_version: res.scoringVersion,
+      // Server recomputes score/duration/xp authoritatively and only uses this
+      // (clamped) to apply the abandonment penalty — it can lower but never
+      // raise the score. The client _score/_xp/_duration above are display-only.
+      _abandonment_seconds: Math.max(0, Math.round(abandonmentMs / 1000)),
       _owner: me.id,
       _queued_at: Date.now(),
     };
@@ -392,6 +396,7 @@ function Room() {
           _breaches_count: payload._breaches_count,
           _tier: payload._tier,
           _scoring_version: payload._scoring_version,
+          _abandonment_seconds: payload._abandonment_seconds,
         });
         if (!error && typeof hid === "string") {
           setHistoryId(hid);

@@ -1893,30 +1893,19 @@ export type Database = {
       }
       evaluate_milestones: { Args: { _user_id: string }; Returns: string[] }
       fail_webhook_event: { Args: { _id: string }; Returns: undefined }
-      finalize_focus_session:
-        | {
-            Args: {
-              _breaches_count: number
-              _duration_seconds: number
-              _room_id: string
-              _score: number
-              _tier: string
-              _xp: number
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _breaches_count: number
-              _duration_seconds: number
-              _room_id: string
-              _score: number
-              _scoring_version?: number
-              _tier: string
-              _xp: number
-            }
-            Returns: string
-          }
+      finalize_focus_session: {
+        Args: {
+          _abandonment_seconds?: number
+          _breaches_count: number
+          _duration_seconds: number
+          _room_id: string
+          _score: number
+          _scoring_version?: number
+          _tier: string
+          _xp: number
+        }
+        Returns: string
+      }
       get_my_private_profile: {
         Args: never
         Returns: {

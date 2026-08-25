@@ -38,6 +38,12 @@ export interface FinalizePayload {
    * replay rather than crash.
    */
   _scoring_version?: number;
+  /**
+   * Continuous seconds held-breached past the grace window. Server clamps this
+   * to [0, duration] and uses it only to LOWER the score — score/duration/xp
+   * are otherwise server-derived. Optional for on-disk backward-compat.
+   */
+  _abandonment_seconds?: number;
   /** owner stamp so we don't replay another account's payload after sign-out */
   _owner: string;
   _queued_at: number;
@@ -216,6 +222,7 @@ async function runFlush(
       // changed. Replaying it under today's rules would rewrite history, so
       // the version captured at completion travels with the payload.
       _scoring_version: r._scoring_version,
+      _abandonment_seconds: r._abandonment_seconds ?? 0,
     });
 
     if (error) {
