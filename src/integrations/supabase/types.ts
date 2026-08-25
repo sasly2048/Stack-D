@@ -1771,6 +1771,7 @@ export type Database = {
           used: number
         }[]
       }
+      ai_refund: { Args: { _user_id: string }; Returns: undefined }
       ai_usage_status: {
         Args: never
         Returns: {
@@ -1787,20 +1788,8 @@ export type Database = {
           title_id: string
         }[]
       }
-      ai_refund: {
-        Args: { _user_id: string }
-        Returns: undefined
-      }
       begin_webhook_event: {
         Args: { _id: string; _type: string }
-        Returns: string
-      }
-      equip_title: {
-        Args: { _title_id: string | null }
-        Returns: string | null
-      }
-      open_capsule: {
-        Args: { _id: string }
         Returns: string
       }
       blocks_exist: { Args: { _a: string; _b: string }; Returns: boolean }
@@ -1883,6 +1872,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      equip_title: { Args: { _title_id: string }; Returns: string }
       evaluate_achievements: {
         Args: { _history_id: string; _user_id: string }
         Returns: string[]
@@ -1976,6 +1966,7 @@ export type Database = {
         }[]
       }
       my_season_rank: { Args: { _season_id: string }; Returns: number }
+      open_capsule: { Args: { _id: string }; Returns: string }
       presence_heartbeat: { Args: never; Returns: undefined }
       prestige_up: {
         Args: never
