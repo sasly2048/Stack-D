@@ -371,6 +371,110 @@ class RoomRepository(private val client: SupabaseClient) {
         }
     }
 
+    /**
+     * Host/moderator: edits the room's cosmetic columns — the only `rooms`
+     * columns still client-writable after 20260824050000. RLS enforces who may
+     * write; a non-host update just affects zero rows. Mirrors the web's
+     * `updateRoomMeta`, including the `pinned` room event.
+     */
+    suspend fun updateRoomMeta(
+        roomId: String,
+        title: String?,
+        description: String?,
+        pinnedMessage: String?,
+        collectiveGoalSeconds: Long?,
+        visibility: String,
+    ) {
+        client.postgrest.from("rooms").update(
+            {
+                set("title", title?.takeIf { it.isNotBlank() })
+                set("description", description?.takeIf { it.isNotBlank() })
+                set("pinned_message", pinnedMessage?.takeIf { it.isNotBlank() })
+                set("collective_goal_seconds", collectiveGoalSeconds)
+                set("visibility", visibility)
+            },
+        ) {
+            filter { eq("id", roomId) }
+        }
+        if (!pinnedMessage.isNullOrBlank()) {
+            recordRoomEvent(
+                roomId, "pinned",
+                buildJsonObject { put("message", pinnedMessage.take(200)) },
+            )
+        }
+    }
+
+    /**
+     * Total focused seconds banked against this room, for the header's
+     * collective-goal bar. Members/breached come from the roster already held
+     * in state; this is the one aggregate that needs its own read.
+     */
+    suspend fun sumRoomFocusSeconds(roomId: String): Long =
+        client.postgrest.from("focus_history")
+            .select(io.github.jan.supabase.postgrest.query.Columns.list("duration_seconds")) {
+                filter { eq("room_id", roomId) }
+            }
+            .decodeList<DurationRow>()
+            .sumOf { it.durationSeconds }
+
+    @kotlinx.serialization.Serializable
+    private data class DurationRow(
+        @kotlinx.serialization.SerialName("duration_seconds") val durationSeconds: Long,
+    )
+
+    /** Moderator user ids for the header's "Mods · n" line. */
+    suspend fun listModeratorIds(roomId: String): List<String> =
+        client.postgrest.from("room_moderators")
+            .select(io.github.jan.supabase.postgrest.query.Columns.list("user_id")) {
+                filter { eq("room_id", roomId) }
+                limit(100)
+            }
+            .decodeList<ModeratorRow>()
+            .map { it.userId }
+
+    @kotlinx.serialization.Serializable
+    private data class ModeratorRow(
+        @kotlinx.serialization.SerialName("user_id") val userId: String,
+    )
+
+    /** Upcoming (and last-24h) scheduled events, soonest first. */
+    suspend fun listSchedule(roomId: String): List<ScheduledEvent> =
+        client.postgrest.from("room_scheduled_events")
+            .select(io.github.jan.supabase.postgrest.query.Columns.list(
+                "id", "title", "description", "starts_at", "duration_minutes", "created_by",
+            )) {
+                filter {
+                    eq("room_id", roomId)
+                    gte(
+                        "starts_at",
+                        java.time.Instant.now().minusSeconds(86_400).toString(),
+                    )
+                }
+                order("starts_at", Order.ASCENDING)
+                limit(100)
+            }
+            .decodeList()
+
+    suspend fun createScheduledEvent(
+        roomId: String,
+        createdBy: String,
+        title: String,
+        startsAtIso: String,
+        durationMinutes: Int,
+        description: String? = null,
+    ) {
+        client.postgrest.from("room_scheduled_events").insert(
+            buildJsonObject {
+                put("room_id", roomId)
+                put("created_by", createdBy)
+                put("title", title.take(120))
+                description?.takeIf { it.isNotBlank() }?.let { put("description", it.take(500)) }
+                put("starts_at", startsAtIso)
+                put("duration_minutes", durationMinutes.coerceIn(5, 480))
+            },
+        )
+    }
+
     /** This user's workspace items for the room/session, ordered as captured. */
     suspend fun listWorkspace(roomId: String): List<WorkspaceItem> =
         client.postgrest.from("workspace_items")

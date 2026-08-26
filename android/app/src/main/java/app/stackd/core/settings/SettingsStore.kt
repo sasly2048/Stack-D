@@ -52,6 +52,18 @@ class SettingsStore(private val context: Context) {
     }
 
     /**
+     * Last timezone successfully reported for this user. The web dedupes its
+     * `set_my_timezone` call per (user, zone) via localStorage; this is the
+     * DataStore equivalent.
+     */
+    suspend fun reportedTimezone(userId: String): String? =
+        context.dataStore.data.map { it[stringPreferencesKey("tz_$userId")] }.first()
+
+    suspend fun markTimezoneReported(userId: String, tz: String) {
+        context.dataStore.edit { it[stringPreferencesKey("tz_$userId")] = tz }
+    }
+
+    /**
      * Enforcement profile, persisted across sessions like the web's
      * `localStorage["stackd:mode"]`. Defaults to `absolute` — the stricter of
      * the two — so a first run never silently enforces less than the user

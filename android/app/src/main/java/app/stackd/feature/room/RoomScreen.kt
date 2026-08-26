@@ -125,6 +125,8 @@ fun RoomRoute(
         onAddWorkspace = vm::addWorkspaceItem,
         onToggleWorkspace = vm::toggleWorkspaceDone,
         onDeleteWorkspace = vm::deleteWorkspaceItem,
+        onSaveMeta = vm::saveRoomMeta,
+        onAddSchedule = vm::addScheduledEvent,
     )
 }
 
@@ -140,6 +142,8 @@ fun RoomScreen(
     onAddWorkspace: (String, String, String?) -> Unit = { _, _, _ -> },
     onToggleWorkspace: (String) -> Unit = {},
     onDeleteWorkspace: (String) -> Unit = {},
+    onSaveMeta: (String, String, String, Int, String) -> Unit = { _, _, _, _, _ -> },
+    onAddSchedule: (String, String, Int) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -160,6 +164,7 @@ fun RoomScreen(
             RoomPhase.ERROR -> ErrorBanner(state.error ?: "Something went wrong.", onRetry = onExit)
             RoomPhase.LOBBY -> Lobby(
                 state, onStart, onAbort, onExit, onToggleReady, onRespondJoin,
+                onSaveMeta, onAddSchedule,
             )
             RoomPhase.COUNTDOWN -> Countdown(state)
             RoomPhase.ACTIVE -> Active(
@@ -187,6 +192,8 @@ private fun Lobby(
     onExit: () -> Unit,
     onToggleReady: () -> Unit,
     onRespondJoin: (String, Boolean) -> Unit,
+    onSaveMeta: (String, String, String, Int, String) -> Unit,
+    onAddSchedule: (String, String, Int) -> Unit,
 ) {
     val colors = Stackd.colors
     SectionLabel("LOBBY")
@@ -205,11 +212,15 @@ private fun Lobby(
         color = colors.textMuted,
     )
     Spacer(Modifier.height(24.dp))
+    RoomHeaderPanel(state, onSaveMeta)
+    Spacer(Modifier.height(16.dp))
     if (state.isModerator) {
         JoinRequestsPanel(state.joinRequests, onRespondJoin)
         Spacer(Modifier.height(16.dp))
     }
     PresenceRoster(state, onToggleReady)
+    Spacer(Modifier.height(16.dp))
+    SchedulePanel(state, onAddSchedule)
     Spacer(Modifier.height(16.dp))
     if (state.milestones.isNotEmpty()) {
         MilestoneTimeline(state.milestones)

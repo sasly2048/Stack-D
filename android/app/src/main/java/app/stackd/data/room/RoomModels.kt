@@ -40,9 +40,35 @@ data class RoomRow(
     val description: String? = null,
     @SerialName("collective_goal_seconds") val collectiveGoalSeconds: Long? = null,
     val visibility: String? = null,
+    @SerialName("pinned_message") val pinnedMessage: String? = null,
+    @SerialName("banner_url") val bannerUrl: String? = null,
 ) {
     val statusEnum: RoomStatus get() = RoomStatus.from(status)
 }
+
+/** Aggregates behind the room header's goal bar — web's `getRoomStats`. */
+data class RoomStats(
+    val members: Int,
+    val breached: Int,
+    val focusSecondsTotal: Long,
+    val goalSeconds: Long?,
+) {
+    val progressPct: Int
+        get() = if (goalSeconds != null && goalSeconds > 0) {
+            ((focusSecondsTotal * 100) / goalSeconds).toInt().coerceAtMost(100)
+        } else 0
+}
+
+/** One entry of the room's shared schedule (`room_scheduled_events`). */
+@Serializable
+data class ScheduledEvent(
+    val id: String,
+    val title: String,
+    val description: String? = null,
+    @SerialName("starts_at") val startsAt: String,
+    @SerialName("duration_minutes") val durationMinutes: Int,
+    @SerialName("created_by") val createdBy: String? = null,
+)
 
 @Serializable
 data class ParticipantRow(

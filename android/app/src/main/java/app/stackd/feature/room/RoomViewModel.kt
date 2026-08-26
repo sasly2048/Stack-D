@@ -59,6 +59,12 @@ data class RoomUiState(
     /** user_ids that have marked themselves ready in the lobby. */
     val readyIds: Set<String> = emptySet(),
     val isModerator: Boolean = false,
+    /** Banked focus seconds across all finished sessions in this room. */
+    val bankedFocusSeconds: Long = 0,
+    val moderatorIds: List<String> = emptyList(),
+    val schedule: List<app.stackd.data.room.ScheduledEvent> = emptyList(),
+    /** True while the header's edit form is saving. */
+    val savingMeta: Boolean = false,
 ) {
     val me: ParticipantRow? get() = participants.firstOrNull { it.userId == meId }
     val isHost: Boolean get() = room != null && meId != null && room.hostId == meId
@@ -161,6 +167,9 @@ class RoomViewModel(
             // list is itself the signal that this user can moderate.
             val joinRequests = runCatching { rooms.listJoinRequests(room.id) }.getOrDefault(emptyList())
             val workspace = runCatching { rooms.listWorkspace(room.id) }.getOrDefault(emptyList())
+            val banked = runCatching { rooms.sumRoomFocusSeconds(room.id) }.getOrDefault(0L)
+            val moderatorIds = runCatching { rooms.listModeratorIds(room.id) }.getOrDefault(emptyList())
+            val schedule = runCatching { rooms.listSchedule(room.id) }.getOrDefault(emptyList())
 
             _state.value = _state.value.copy(
                 phase = phaseFor(room),
@@ -171,6 +180,9 @@ class RoomViewModel(
                 milestones = milestones,
                 joinRequests = joinRequests,
                 workspace = workspace,
+                bankedFocusSeconds = banked,
+                moderatorIds = moderatorIds,
+                schedule = schedule,
                 readyIds = readyFromEvents(events),
                 isModerator = room.hostId == userId || joinRequests.isNotEmpty(),
                 meId = userId,
@@ -414,10 +426,13 @@ class RoomViewModel(
             runCatching { rooms.startSession(_state.value.room!!.id) }
                 .onFailure { err ->
                     // A swallowed failure here looks like "the start button does
-                    // nothing" — surface it and fall back to the lobby.
+                    // nothing" — surface it and fall back to the lobby. Raw
+                    // Postgres text leaks schema internals (web's db-error.ts
+                    // does the same scrubbing); full detail goes to logcat only.
+                    android.util.Log.e("StackdRoom", "start_focus_session failed", err)
                     _state.value = _state.value.copy(
                         phase = RoomPhase.LOBBY,
-                        error = "Couldn't start the session: ${err.message ?: "server refused"}",
+                        error = "Couldn't start the session. Check your connection and retry.",
                     )
                     return@launch
                 }
@@ -628,13 +643,70 @@ class RoomViewModel(
             readyIds = if (nowReady) s.readyIds + uid else s.readyIds - uid,
         )
         viewModelScope.launch {
+            // KNOWN GAP: migration 20260825010000 rejects `ready`/`unready`
+            // kinds for plain members (the web hits the same wall), so this
+            // event write fails until the allowlist migration lands. The local
+            // flip is kept — NOT rolled back — so the lobby UX still works on
+            // this device; cross-device ready sync resumes when the DB allows
+            // the kinds again.
             runCatching { rooms.recordRoomEvent(room.id, if (nowReady) "ready" else "unready") }
                 .onFailure {
-                    // Roll back the optimistic flip if the server rejected it.
-                    _state.value = _state.value.copy(
-                        readyIds = if (nowReady) _state.value.readyIds - uid else _state.value.readyIds + uid,
-                    )
+                    android.util.Log.w("StackdRoom", "ready event rejected (known DB allowlist gap)", it)
                 }
+        }
+    }
+
+    /** Host: save the header's edit form. Cosmetic columns only. */
+    fun saveRoomMeta(
+        title: String,
+        description: String,
+        pinnedMessage: String,
+        goalHours: Int,
+        visibility: String,
+    ) {
+        val room = _state.value.room ?: return
+        if (!_state.value.isHost) return
+        _state.value = _state.value.copy(savingMeta = true)
+        viewModelScope.launch {
+            runCatching {
+                rooms.updateRoomMeta(
+                    roomId = room.id,
+                    title = title,
+                    description = description,
+                    pinnedMessage = pinnedMessage,
+                    collectiveGoalSeconds = if (goalHours > 0) goalHours * 3600L else null,
+                    visibility = visibility,
+                )
+            }.onSuccess {
+                // Optimistic local copy; the rooms realtime UPDATE reconciles.
+                _state.value = _state.value.copy(
+                    savingMeta = false,
+                    room = _state.value.room?.copy(
+                        title = title.ifBlank { null },
+                        description = description.ifBlank { null },
+                        pinnedMessage = pinnedMessage.ifBlank { null },
+                        collectiveGoalSeconds = if (goalHours > 0) goalHours * 3600L else null,
+                        visibility = visibility,
+                    ),
+                )
+            }.onFailure {
+                _state.value = _state.value.copy(savingMeta = false)
+            }
+        }
+    }
+
+    /** Host: add a scheduled event, then reload the list. */
+    fun addScheduledEvent(title: String, startsAtIso: String, durationMinutes: Int) {
+        val room = _state.value.room ?: return
+        val uid = _state.value.meId ?: return
+        if (title.isBlank()) return
+        viewModelScope.launch {
+            runCatching {
+                rooms.createScheduledEvent(room.id, uid, title.trim(), startsAtIso, durationMinutes)
+            }.onSuccess {
+                val rows = runCatching { rooms.listSchedule(room.id) }.getOrDefault(emptyList())
+                _state.value = _state.value.copy(schedule = rows)
+            }
         }
     }
 

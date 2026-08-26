@@ -3,6 +3,11 @@ package app.stackd
 import android.app.Application
 import app.stackd.core.AppContainer
 import app.stackd.core.workmanager.FinalizeQueueWorker
+import io.github.jan.supabase.auth.status.SessionStatus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class StackdApplication : Application() {
 
@@ -15,10 +20,32 @@ class StackdApplication : Application() {
     lateinit var container: AppContainer
         private set
 
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
         wireFinalizeSubmitter()
+        reportTimezoneOnSignIn()
+    }
+
+    /**
+     * Mirrors the web's `reportTimezone` in use-auth: whenever a session is
+     * live, tell the server this device's IANA zone (deduped per user+zone) so
+     * streak / daily-reward day boundaries roll at local midnight, not UTC.
+     */
+    private fun reportTimezoneOnSignIn() {
+        appScope.launch {
+            container.auth.sessionStatus.collect { status ->
+                if (status !is SessionStatus.Authenticated) return@collect
+                val userId = container.auth.currentUserId ?: return@collect
+                val tz = java.util.TimeZone.getDefault().id ?: return@collect
+                if (container.settings.reportedTimezone(userId) == tz) return@collect
+                runCatching { container.profiles.setMyTimezone(tz) }
+                    .onSuccess { container.settings.markTimezoneReported(userId, tz) }
+                // Failure: retried on the next auth event; boundaries stay UTC.
+            }
+        }
     }
 
     /**

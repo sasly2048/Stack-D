@@ -5,6 +5,8 @@ import app.stackd.data.room.ProfileRow
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * Reads the caller's profile and recent sessions.
@@ -20,6 +22,18 @@ class ProfileRepository(private val client: SupabaseClient) {
         client.postgrest.from("profiles")
             .select { filter { eq("id", userId) } }
             .decodeSingleOrNull()
+
+    /**
+     * Reports the device's IANA timezone so streak / daily-reward / challenge
+     * day boundaries roll at the user's local midnight, not UTC — mirrors the
+     * web's `setMyTimezone`. The RPC validates against `pg_timezone_names`.
+     */
+    suspend fun setMyTimezone(tz: String) {
+        client.postgrest.rpc(
+            function = "set_my_timezone",
+            parameters = buildJsonObject { put("_tz", tz) },
+        )
+    }
 
     /**
      * Display name with the web's fallback chain: profile name, then the local
