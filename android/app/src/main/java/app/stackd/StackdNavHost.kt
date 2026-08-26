@@ -13,7 +13,9 @@ import app.stackd.feature.auth.AuthRoute
 import app.stackd.feature.dashboard.DashboardRoute
 import app.stackd.feature.achievements.AchievementsRoute
 import app.stackd.feature.insights.DnaRoute
+import app.stackd.feature.friends.FriendsRoute
 import app.stackd.feature.insights.InsightsRoute
+import app.stackd.feature.profile.ProfileRoute
 import app.stackd.feature.vault.CapsuleRoute
 import app.stackd.feature.vault.VaultRoute
 import app.stackd.feature.leaderboard.LeaderboardRoute
@@ -60,6 +62,8 @@ fun StackdNavHost(
                 onOpenDna = { navController.navigate(Dest.Dna.route) },
                 onOpenVault = { navController.navigate(Dest.Vault.route) },
                 onOpenCapsule = { navController.navigate(Dest.Capsule.route) },
+                onOpenFriends = { navController.navigate(Dest.Friends.route) },
+                onOpenProfile = { navController.navigate(Dest.Profile.route) },
             )
         }
         composable(Dest.Start.route) {
@@ -96,12 +100,24 @@ fun StackdNavHost(
         }
 
         // Identity & social
-        placeholder(Dest.Profile, "Profile")
+        composable(Dest.Profile.route) {
+            ProfileRoute(
+                onBack = { navController.popBackStack() },
+                onSignedOut = {
+                    navController.navigate(Dest.Auth.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onOpenPremium = { navController.navigate(Dest.Premium.route) },
+            )
+        }
         composable(
             route = Dest.ProfileDetail.route,
             arguments = listOf(navArgument(Dest.ProfileDetail.ARG_ID) { type = NavType.StringType }),
         ) { PlaceholderScreen(title = "Profile Detail") }
-        placeholder(Dest.Friends, "Friends")
+        composable(Dest.Friends.route) {
+            FriendsRoute(onBack = { navController.popBackStack() })
+        }
         placeholder(Dest.Feed, "Feed")
         placeholder(Dest.Timeline, "Timeline")
         placeholder(Dest.Partners, "Partners")

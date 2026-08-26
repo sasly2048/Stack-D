@@ -66,6 +66,8 @@ fun DashboardRoute(
     onOpenDna: () -> Unit = {},
     onOpenVault: () -> Unit = {},
     onOpenCapsule: () -> Unit = {},
+    onOpenFriends: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
     vm: DashboardViewModel = viewModel(
         factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles) },
     ),
@@ -82,6 +84,8 @@ fun DashboardRoute(
         onOpenDna = onOpenDna,
         onOpenVault = onOpenVault,
         onOpenCapsule = onOpenCapsule,
+        onOpenFriends = onOpenFriends,
+        onOpenProfile = onOpenProfile,
         onRetry = vm::load,
         onClaimReward = vm::claimReward,
     )
@@ -100,6 +104,8 @@ fun DashboardScreen(
     onOpenDna: () -> Unit = {},
     onOpenVault: () -> Unit = {},
     onOpenCapsule: () -> Unit = {},
+    onOpenFriends: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
     onClaimReward: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -151,6 +157,11 @@ fun DashboardScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GhostButton(text = "Vault", onClick = onOpenVault, modifier = Modifier.weight(1f))
             GhostButton(text = "Capsule", onClick = onOpenCapsule, modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GhostButton(text = "Friends", onClick = onOpenFriends, modifier = Modifier.weight(1f))
+            GhostButton(text = "Profile", onClick = onOpenProfile, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
         state.reward?.let { reward ->

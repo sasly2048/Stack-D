@@ -23,6 +23,18 @@ class ProfileRepository(private val client: SupabaseClient) {
             .select { filter { eq("id", userId) } }
             .decodeSingleOrNull()
 
+    /** Edits the cosmetic profile columns the DB still lets clients write. */
+    suspend fun updateProfile(userId: String, displayName: String?, bio: String?) {
+        client.postgrest.from("profiles").update(
+            {
+                displayName?.takeIf { it.isNotBlank() }?.let { set("display_name", it.take(60)) }
+                set("bio", bio?.takeIf { it.isNotBlank() }?.take(300))
+            },
+        ) {
+            filter { eq("id", userId) }
+        }
+    }
+
     /**
      * Daily-reward state, derived from the caller's `login_streaks` row exactly
      * like the web's `getRewardStatus` (same cycle table, same chaining rule).

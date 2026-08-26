@@ -132,6 +132,11 @@ data class ProfileRow(
     @SerialName("avatar_url") val avatarUrl: String? = null,
     @SerialName("lifetime_xp") val lifetimeXp: Long = 0,
     @SerialName("current_focus_streak") val currentFocusStreak: Int = 0,
+    val bio: String? = null,
+    val title: String? = null,
+    val username: String? = null,
+    @SerialName("best_streak") val bestStreak: Int = 0,
+    @SerialName("total_focus_seconds") val totalFocusSeconds: Long = 0,
 )
 
 /**
