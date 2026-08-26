@@ -113,6 +113,7 @@ class RoomRepository(private val client: SupabaseClient) {
         breachesCount: Int,
         tier: String,
         scoringVersion: Int,
+        abandonmentSeconds: Int = 0,
     ): String? =
         client.postgrest.rpc(
             function = "finalize_focus_session",
@@ -124,33 +125,38 @@ class RoomRepository(private val client: SupabaseClient) {
                 put("_breaches_count", breachesCount)
                 put("_tier", tier)
                 put("_scoring_version", scoringVersion)
+                // Since 20260825060000 the server derives score/duration/XP from
+                // its own timestamps and ignores the values above. Abandonment is
+                // the one term it can't reconstruct; it is clamped server-side so
+                // it can only lower the score, never inflate it.
+                put("_abandonment_seconds", abandonmentSeconds)
             },
         ).decodeAsOrNull<String>()
 
-    /** Host-only: closes the session. Guarded on `status = active` so a late tap is a no-op. */
-    suspend fun completeSession(roomId: String, endedAtIso: String) {
-        client.postgrest.from("rooms").update(
-            {
-                set("status", "complete")
-                set("ended_at", endedAtIso)
+    /**
+     * Host-only: closes the session via the `finish_focus_room` RPC. Direct
+     * writes to `rooms.status`/`ended_at` are revoked at the column level
+     * (20260824050000), so the RPC is the only sanctioned lifecycle exit —
+     * host-checked, idempotent, `ended_at` stamped from the server clock.
+     */
+    suspend fun completeSession(roomId: String) {
+        client.postgrest.rpc(
+            function = "finish_focus_room",
+            parameters = buildJsonObject {
+                put("_room_id", roomId)
+                put("_outcome", "complete")
             },
-        ) {
-            filter {
-                eq("id", roomId)
-                eq("status", "active")
-            }
-        }
+        )
     }
 
-    suspend fun abortSession(roomId: String, endedAtIso: String) {
-        client.postgrest.from("rooms").update(
-            {
-                set("status", "aborted")
-                set("ended_at", endedAtIso)
+    suspend fun abortSession(roomId: String) {
+        client.postgrest.rpc(
+            function = "finish_focus_room",
+            parameters = buildJsonObject {
+                put("_room_id", roomId)
+                put("_outcome", "aborted")
             },
-        ) {
-            filter { eq("id", roomId) }
-        }
+        )
     }
 
     suspend fun leaveRoom(roomId: String, userId: String) {
@@ -356,7 +362,10 @@ class RoomRepository(private val client: SupabaseClient) {
     /** Approve or deny a join request. Moderator-gated server-side. */
     suspend fun respondToJoinRequest(requestId: String, approve: Boolean) {
         client.postgrest.from("room_join_requests").update(
-            { set("status", if (approve) "approved" else "denied") },
+            {
+                set("status", if (approve) "approved" else "denied")
+                set("responded_at", nowIso())
+            },
         ) {
             filter { eq("id", requestId) }
         }

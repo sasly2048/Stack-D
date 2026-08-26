@@ -64,6 +64,8 @@ fun AuthScreen(
     onCancelIdentity: () -> Unit,
     onEntered: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Null hides the Google button (no server client ID configured yet). */
+    onGoogle: (() -> Unit)? = null,
 ) {
     LaunchedEffect(state.entered) {
         if (state.entered) onEntered()
@@ -163,6 +165,15 @@ fun AuthScreen(
                 enabled = !state.submitBlocked,
                 busy = state.pending,
             )
+
+            if (onGoogle != null) {
+                Spacer(Modifier.height(12.dp))
+                LinkButton(
+                    text = "Continue with Google",
+                    onClick = onGoogle,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
             state.notice?.let {
                 Spacer(Modifier.height(16.dp))

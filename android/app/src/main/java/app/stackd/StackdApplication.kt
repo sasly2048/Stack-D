@@ -44,6 +44,7 @@ class StackdApplication : Application() {
                 breachesCount = payload.breachesCount,
                 tier = payload.tier,
                 scoringVersion = payload.scoringVersion,
+                abandonmentSeconds = payload.abandonmentSeconds,
             ) != null
         }
     }

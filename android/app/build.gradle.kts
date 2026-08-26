@@ -24,6 +24,11 @@ val supabaseAnonKey: String = localProps.getProperty("SUPABASE_PUBLISHABLE_KEY")
 // because this stack has no edge functions — app server logic is server routes.
 val webBaseUrl: String = localProps.getProperty("WEB_BASE_URL") ?: ""
 
+// Google Cloud OAuth *web* client ID — the audience for Credential Manager ID
+// tokens. Empty until Google is fully configured on the Supabase project
+// (client ID + secret); the sign-in button stays hidden while empty.
+val googleServerClientId: String = localProps.getProperty("GOOGLE_SERVER_CLIENT_ID") ?: ""
+
 android {
     namespace = "app.stackd"
     compileSdk = 35
@@ -40,6 +45,7 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
         buildConfigField("String", "WEB_BASE_URL", "\"$webBaseUrl\"")
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
     }
 
     buildTypes {
@@ -111,6 +117,12 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.zxing.core)
+
+    // Google sign-in: Credential Manager + the Google ID helper. The Play
+    // Services interop artifact is what actually talks to the account sheet.
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

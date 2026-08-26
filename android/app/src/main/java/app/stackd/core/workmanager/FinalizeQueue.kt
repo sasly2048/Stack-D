@@ -38,6 +38,12 @@ data class FinalizePayload(
     val scoringVersion: Int,
     val owner: String,
     val queuedAt: Long,
+    /**
+     * Seconds the phone stayed down past a breach — the one scoring input the
+     * server can't derive from timestamps. Defaulted so payloads queued by
+     * older builds still decode.
+     */
+    val abandonmentSeconds: Int = 0,
 )
 
 /**

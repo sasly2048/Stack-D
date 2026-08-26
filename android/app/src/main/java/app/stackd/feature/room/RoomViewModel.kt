@@ -136,12 +136,20 @@ class RoomViewModel(
             // claim_room_seat looks up the room by code AND seats the caller in
             // one definer transaction, so the participant/break reads below pass
             // RLS. A plain lookup would fail for a non-member.
-            val room = runCatching { rooms.claimRoomSeat(code) }.getOrNull()
+            val claim = runCatching { rooms.claimRoomSeat(code) }
+            val room = claim.getOrNull()
             if (room == null) {
-                _state.value = _state.value.copy(
-                    phase = RoomPhase.ERROR,
-                    error = "Room not found, or it has already ended.",
-                )
+                // claim_room_seat raises named errors; map the ones a user can
+                // act on to real copy instead of a generic "not found".
+                val raw = claim.exceptionOrNull()?.message ?: ""
+                val message = when {
+                    "needs_approval" in raw ->
+                        "This room requires the host's approval to join. Ask the host to approve your request."
+                    "blocked" in raw ->
+                        "You can't join this room."
+                    else -> "Room not found, or it has already ended."
+                }
+                _state.value = _state.value.copy(phase = RoomPhase.ERROR, error = message)
                 return@launch
             }
 
@@ -404,6 +412,15 @@ class RoomViewModel(
             // The server sets started_at from its own clock — every score derives
             // from it, so it must never be a device timestamp.
             runCatching { rooms.startSession(_state.value.room!!.id) }
+                .onFailure { err ->
+                    // A swallowed failure here looks like "the start button does
+                    // nothing" — surface it and fall back to the lobby.
+                    _state.value = _state.value.copy(
+                        phase = RoomPhase.LOBBY,
+                        error = "Couldn't start the session: ${err.message ?: "server refused"}",
+                    )
+                    return@launch
+                }
             armIfNeeded()
         }
     }
@@ -417,7 +434,7 @@ class RoomViewModel(
         if (!_state.value.isHost) return
         val room = _state.value.room ?: return
         viewModelScope.launch {
-            runCatching { rooms.abortSession(room.id, nowIso()) }
+            runCatching { rooms.abortSession(room.id) }
         }
     }
 
@@ -426,9 +443,10 @@ class RoomViewModel(
         if (completionLock) return
         completionLock = true
         viewModelScope.launch {
-            // ended_at is the host client's clock, matching the web — the finalize
-            // split depends on this being the same source on both platforms.
-            runCatching { rooms.completeSession(room.id, nowIso()) }
+            // ended_at is stamped by the finish_focus_room RPC from the server
+            // clock — the same clock that wrote started_at, so the finalize
+            // split can never be skewed by a device clock.
+            runCatching { rooms.completeSession(room.id) }
                 .onFailure { completionLock = false }
         }
     }
@@ -519,6 +537,7 @@ class RoomViewModel(
             )
             _state.value = _state.value.copy(result = result, phase = RoomPhase.ENDED)
 
+            val abandonmentSeconds = (split.abandonmentMillis / 1000L).toInt().coerceAtLeast(0)
             val payload = FinalizePayload(
                 roomId = room.id,
                 score = result.score,
@@ -529,6 +548,7 @@ class RoomViewModel(
                 scoringVersion = result.scoringVersion,
                 owner = userId,
                 queuedAt = System.currentTimeMillis(),
+                abandonmentSeconds = abandonmentSeconds,
             )
 
             val submitted = runCatching {
@@ -540,6 +560,7 @@ class RoomViewModel(
                     breachesCount = myBreachCount,
                     tier = result.tier.key,
                     scoringVersion = result.scoringVersion,
+                    abandonmentSeconds = abandonmentSeconds,
                 ) != null
             }.getOrDefault(false)
 
