@@ -119,6 +119,28 @@ class ProfileRepository(private val client: SupabaseClient) {
             }
             .decodeList()
 
+    /**
+     * Raw history rows since a cutoff — the analytics/DNA screens derive every
+     * stat from these on-device, mirroring the web's getAnalytics /
+     * getProductivityDna server math (same columns, same caps).
+     */
+    suspend fun historySince(userId: String, sinceIso: String, limit: Long = 500): List<FocusHistoryRow> =
+        client.postgrest.from("focus_history")
+            .select(
+                io.github.jan.supabase.postgrest.query.Columns.list(
+                    "id", "room_id", "score", "xp_earned", "duration_seconds",
+                    "breaches_count", "tier", "created_at",
+                ),
+            ) {
+                filter {
+                    eq("profile_id", userId)
+                    gte("created_at", sinceIso)
+                }
+                order("created_at", Order.ASCENDING)
+                limit(limit)
+            }
+            .decodeList()
+
     suspend fun sessionForRoom(userId: String, roomId: String): FocusHistoryRow? =
         client.postgrest.from("focus_history")
             .select {

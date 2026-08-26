@@ -12,6 +12,8 @@ import app.stackd.core.ui.PlaceholderScreen
 import app.stackd.feature.auth.AuthRoute
 import app.stackd.feature.dashboard.DashboardRoute
 import app.stackd.feature.achievements.AchievementsRoute
+import app.stackd.feature.insights.DnaRoute
+import app.stackd.feature.insights.InsightsRoute
 import app.stackd.feature.leaderboard.LeaderboardRoute
 import app.stackd.feature.premium.PremiumRoute
 import app.stackd.feature.room.RoomRoute
@@ -52,6 +54,8 @@ fun StackdNavHost(
                 onOpenPremium = { navController.navigate(Dest.Premium.route) },
                 onOpenLeaderboard = { navController.navigate(Dest.Leaderboard.route) },
                 onOpenAchievements = { navController.navigate(Dest.Achievements.route) },
+                onOpenInsights = { navController.navigate(Dest.Insights.route) },
+                onOpenDna = { navController.navigate(Dest.Dna.route) },
             )
         }
         composable(Dest.Start.route) {
@@ -113,8 +117,15 @@ fun StackdNavHost(
         placeholder(Dest.Groups, "Groups")
 
         // Analytics & recall
-        placeholder(Dest.Insights, "Insights")
-        placeholder(Dest.Dna, "Productivity DNA")
+        composable(Dest.Insights.route) {
+            InsightsRoute(onBack = { navController.popBackStack() })
+        }
+        composable(Dest.Dna.route) {
+            DnaRoute(
+                onBack = { navController.popBackStack() },
+                onUpgrade = { navController.navigate(Dest.Premium.route) },
+            )
+        }
         placeholder(Dest.Replay, "Replay")
         placeholder(Dest.Wrapped, "Wrapped")
         placeholder(Dest.Vault, "Memory Vault")
