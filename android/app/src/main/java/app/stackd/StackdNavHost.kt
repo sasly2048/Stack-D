@@ -16,6 +16,8 @@ import app.stackd.feature.insights.DnaRoute
 import app.stackd.feature.friends.FriendsRoute
 import app.stackd.feature.insights.InsightsRoute
 import app.stackd.feature.profile.ProfileRoute
+import app.stackd.feature.progression.ChallengesRoute
+import app.stackd.feature.progression.SeasonsRoute
 import app.stackd.feature.vault.CapsuleRoute
 import app.stackd.feature.vault.VaultRoute
 import app.stackd.feature.leaderboard.LeaderboardRoute
@@ -64,6 +66,8 @@ fun StackdNavHost(
                 onOpenCapsule = { navController.navigate(Dest.Capsule.route) },
                 onOpenFriends = { navController.navigate(Dest.Friends.route) },
                 onOpenProfile = { navController.navigate(Dest.Profile.route) },
+                onOpenChallenges = { navController.navigate(Dest.Challenges.route) },
+                onOpenSeasons = { navController.navigate(Dest.Seasons.route) },
             )
         }
         composable(Dest.Start.route) {
@@ -129,8 +133,12 @@ fun StackdNavHost(
         composable(Dest.Achievements.route) {
             AchievementsRoute(onBack = { navController.popBackStack() })
         }
-        placeholder(Dest.Challenges, "Challenges")
-        placeholder(Dest.Seasons, "Seasons")
+        composable(Dest.Challenges.route) {
+            ChallengesRoute(onBack = { navController.popBackStack() })
+        }
+        composable(Dest.Seasons.route) {
+            SeasonsRoute(onBack = { navController.popBackStack() })
+        }
 
         // Groups
         placeholder(Dest.Circles, "Circles")

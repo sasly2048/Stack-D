@@ -45,6 +45,8 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.ErrorBanner
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.SectionLabel
+import androidx.compose.runtime.mutableStateOf
+import app.stackd.core.ui.NavMenuSheet
 import app.stackd.data.room.FocusHistoryRow
 import app.stackd.data.room.RoomRow
 import app.stackd.feature.room.session.FocusScore
@@ -68,6 +70,8 @@ fun DashboardRoute(
     onOpenCapsule: () -> Unit = {},
     onOpenFriends: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
+    onOpenChallenges: () -> Unit = {},
+    onOpenSeasons: () -> Unit = {},
     vm: DashboardViewModel = viewModel(
         factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles) },
     ),
@@ -86,6 +90,8 @@ fun DashboardRoute(
         onOpenCapsule = onOpenCapsule,
         onOpenFriends = onOpenFriends,
         onOpenProfile = onOpenProfile,
+        onOpenChallenges = onOpenChallenges,
+        onOpenSeasons = onOpenSeasons,
         onRetry = vm::load,
         onClaimReward = vm::claimReward,
     )
@@ -106,6 +112,8 @@ fun DashboardScreen(
     onOpenCapsule: () -> Unit = {},
     onOpenFriends: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
+    onOpenChallenges: () -> Unit = {},
+    onOpenSeasons: () -> Unit = {},
     onClaimReward: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -143,25 +151,27 @@ fun DashboardScreen(
         Spacer(Modifier.height(24.dp))
         EmberButton(text = "New Session", onClick = onStart)
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(text = "Premium", onClick = onOpenPremium, modifier = Modifier.weight(1f))
-            GhostButton(text = "Leaderboard", onClick = onOpenLeaderboard, modifier = Modifier.weight(1f))
-            GhostButton(text = "Marks", onClick = onOpenAchievements, modifier = Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(text = "Insights", onClick = onOpenInsights, modifier = Modifier.weight(1f))
-            GhostButton(text = "DNA", onClick = onOpenDna, modifier = Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(text = "Vault", onClick = onOpenVault, modifier = Modifier.weight(1f))
-            GhostButton(text = "Capsule", onClick = onOpenCapsule, modifier = Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(text = "Friends", onClick = onOpenFriends, modifier = Modifier.weight(1f))
-            GhostButton(text = "Profile", onClick = onOpenProfile, modifier = Modifier.weight(1f))
+        // The web's nav menu, folded into one sheet — the button stack was
+        // four rows deep and still growing.
+        var showMenu by remember { mutableStateOf(false) }
+        GhostButton(text = "Menu", onClick = { showMenu = true })
+        if (showMenu) {
+            NavMenuSheet(
+                onDismiss = { showMenu = false },
+                entries = listOf(
+                    "Premium" to onOpenPremium,
+                    "Leaderboard" to onOpenLeaderboard,
+                    "Achievements" to onOpenAchievements,
+                    "Insights" to onOpenInsights,
+                    "Focus DNA" to onOpenDna,
+                    "Challenges" to onOpenChallenges,
+                    "Seasons" to onOpenSeasons,
+                    "Memory Vault" to onOpenVault,
+                    "Time Capsule" to onOpenCapsule,
+                    "Friends" to onOpenFriends,
+                    "Profile" to onOpenProfile,
+                ),
+            )
         }
         Spacer(Modifier.height(12.dp))
         state.reward?.let { reward ->

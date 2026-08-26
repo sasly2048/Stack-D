@@ -8,6 +8,7 @@ import app.stackd.data.auth.AuthRepository
 import app.stackd.data.premium.PremiumRepository
 import app.stackd.data.profile.ProfileRepository
 import app.stackd.data.room.RoomRepository
+import app.stackd.data.progression.ProgressionRepository
 import app.stackd.data.social.FriendsRepository
 import app.stackd.data.social.LeaderboardRepository
 import app.stackd.data.vault.VaultRepository
@@ -47,4 +48,6 @@ class AppContainer(context: Context) {
     val vault: VaultRepository by lazy { VaultRepository(client) }
 
     val friends: FriendsRepository by lazy { FriendsRepository(client) }
+
+    val progression: ProgressionRepository by lazy { ProgressionRepository(client) }
 }
