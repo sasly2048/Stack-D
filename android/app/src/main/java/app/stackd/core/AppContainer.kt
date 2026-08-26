@@ -5,6 +5,7 @@ import app.stackd.core.settings.SettingsStore
 import app.stackd.core.supabase.SupabaseModule
 import app.stackd.core.workmanager.FinalizeQueue
 import app.stackd.data.auth.AuthRepository
+import app.stackd.data.premium.PremiumRepository
 import app.stackd.data.profile.ProfileRepository
 import app.stackd.data.room.RoomRepository
 import io.github.jan.supabase.SupabaseClient
@@ -35,4 +36,6 @@ class AppContainer(context: Context) {
     val profiles: ProfileRepository by lazy { ProfileRepository(client) }
 
     val rooms: RoomRepository by lazy { RoomRepository(client) }
+
+    val premium: PremiumRepository by lazy { PremiumRepository(client) }
 }

@@ -46,6 +46,9 @@ sealed class Dest(val route: String) {
     data object Circles : Dest("circles")
     data object Groups : Dest("groups")
 
+    // --- Monetization -----------------------------------------------------
+    data object Premium : Dest("premium")
+
     // --- Analytics & recall ----------------------------------------------
     data object Insights : Dest("insights")
     data object Dna : Dest("dna")

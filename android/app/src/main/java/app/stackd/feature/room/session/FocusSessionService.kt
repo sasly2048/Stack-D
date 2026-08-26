@@ -40,6 +40,7 @@ class FocusSessionService : Service() {
 
         val endsAtMillis = intent?.getLongExtra(EXTRA_ENDS_AT, 0L) ?: 0L
         val roomCode = intent?.getStringExtra(EXTRA_ROOM_CODE).orEmpty()
+        running.value = RunningSession(roomCode, endsAtMillis)
 
         createChannel()
         startForeground(NOTIFICATION_ID, buildNotification(roomCode, endsAtMillis))
@@ -103,12 +104,26 @@ class FocusSessionService : Service() {
         )
     }
 
+    override fun onDestroy() {
+        running.value = null
+        super.onDestroy()
+    }
+
+    /** What the in-app floating pill shows while a session runs. */
+    data class RunningSession(val roomCode: String, val endsAtMillis: Long)
+
     companion object {
         private const val CHANNEL_ID = "focus_session"
         private const val NOTIFICATION_ID = 1001
         private const val ACTION_STOP = "app.stackd.action.STOP_SESSION"
         private const val EXTRA_ENDS_AT = "ends_at"
         private const val EXTRA_ROOM_CODE = "room_code"
+
+        /**
+         * Process-wide mirror of the foreground timer, for the in-app floating
+         * pill (web's floating-timer). Null whenever no session is running.
+         */
+        val running = kotlinx.coroutines.flow.MutableStateFlow<RunningSession?>(null)
 
         /** @param endsAtMillis wall-clock epoch time the session is due to end. */
         fun start(context: Context, roomCode: String, endsAtMillis: Long) {

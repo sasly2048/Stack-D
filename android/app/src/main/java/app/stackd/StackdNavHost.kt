@@ -11,6 +11,7 @@ import androidx.navigation.navArgument
 import app.stackd.core.ui.PlaceholderScreen
 import app.stackd.feature.auth.AuthRoute
 import app.stackd.feature.dashboard.DashboardRoute
+import app.stackd.feature.premium.PremiumRoute
 import app.stackd.feature.room.RoomRoute
 import app.stackd.feature.start.StartRoute
 
@@ -46,6 +47,7 @@ fun StackdNavHost(
             DashboardRoute(
                 onStart = { navController.navigate(Dest.Start.route) },
                 onOpenRoom = { code -> navController.navigate(Dest.Room.of(code)) },
+                onOpenPremium = { navController.navigate(Dest.Premium.route) },
             )
         }
         composable(Dest.Start.route) {
@@ -74,6 +76,11 @@ fun StackdNavHost(
                     }
                 },
             )
+        }
+
+        // Monetization
+        composable(Dest.Premium.route) {
+            PremiumRoute(onBack = { navController.popBackStack() })
         }
 
         // Identity & social

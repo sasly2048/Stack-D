@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.stackd.data.auth.AuthRepository
 import app.stackd.data.profile.ProfileRepository
+import app.stackd.data.profile.RewardStatus
 import app.stackd.data.room.FocusHistoryRow
 import app.stackd.data.room.RoomRow
 import kotlinx.coroutines.async
@@ -30,6 +31,11 @@ data class DashboardUiState(
     val streak: Int = 0,
     val history: List<FocusHistoryRow> = emptyList(),
     val live: List<RoomRow> = emptyList(),
+    /** Daily login reward — null while loading or if the read failed. */
+    val reward: RewardStatus? = null,
+    val claiming: Boolean = false,
+    /** One-shot claim feedback line, e.g. "+40 XP · Day 3". */
+    val claimNotice: String? = null,
 ) {
     /** Lifetime focus, summed off the same rows the history table shows. */
     val totalSeconds: Int get() = history.sumOf { it.durationSeconds }
@@ -69,9 +75,10 @@ class DashboardViewModel(
                 val profileDef = async { profiles.getProfile(userId) }
                 val historyDef = async { profiles.recentSessions(userId) }
                 val liveDef = async { profiles.activeSessions() }
-                Triple(profileDef.await(), historyDef.await(), liveDef.await())
+                val rewardDef = async { runCatching { profiles.rewardStatus(userId) }.getOrNull() }
+                Quad(profileDef.await(), historyDef.await(), liveDef.await(), rewardDef.await())
             }.fold(
-                onSuccess = { (profile, history, live) ->
+                onSuccess = { (profile, history, live, reward) ->
                     _state.value = DashboardUiState(
                         loading = false,
                         name = profile?.displayName?.takeIf { it.isNotBlank() }
@@ -80,6 +87,7 @@ class DashboardViewModel(
                         streak = profile?.currentFocusStreak ?: 0,
                         history = history,
                         live = live,
+                        reward = reward,
                     )
                 },
                 onFailure = {
@@ -88,4 +96,31 @@ class DashboardViewModel(
             )
         }
     }
+
+    /** Claims today's login reward; the RPC owns streak math and the XP grant. */
+    fun claimReward() {
+        val current = _state.value
+        if (current.claiming || current.reward?.claimedToday != false) return
+        _state.value = current.copy(claiming = true, claimNotice = null)
+        viewModelScope.launch {
+            val result = runCatching { profiles.claimDailyReward() }.getOrNull()
+            if (result != null) {
+                _state.value = _state.value.copy(
+                    claiming = false,
+                    claimNotice = "+${result.rewardXp} XP · Day ${result.dayOfStreak}",
+                )
+                load()
+            } else {
+                _state.value = _state.value.copy(claiming = false, claimNotice = "Claim failed. Retry.")
+            }
+        }
+    }
 }
+
+/** Claim path + tiny tuple the fan-out load needs. */
+private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+
+private operator fun <A, B, C, D> Quad<A, B, C, D>.component1() = a
+private operator fun <A, B, C, D> Quad<A, B, C, D>.component2() = b
+private operator fun <A, B, C, D> Quad<A, B, C, D>.component3() = c
+private operator fun <A, B, C, D> Quad<A, B, C, D>.component4() = d

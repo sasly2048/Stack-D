@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
@@ -350,8 +351,26 @@ private fun Ended(state: RoomUiState, onExit: () -> Unit) {
     Spacer(Modifier.height(24.dp))
 
     if (result != null) {
+        // Ceremony beat: the score never snaps — it counts up with the same
+        // ease-out quartic the web's useCountUp applies, plus one haptic tick
+        // at the reveal.
+        val context = androidx.compose.ui.platform.LocalContext.current
+        var shown by remember(result) { androidx.compose.runtime.mutableIntStateOf(0) }
+        androidx.compose.runtime.LaunchedEffect(result) {
+            vibrate(context, 30)
+            val durationMs = 1800L
+            val start = System.currentTimeMillis()
+            while (true) {
+                val p = ((System.currentTimeMillis() - start).toFloat() / durationMs).coerceAtMost(1f)
+                val eased = 1f - (1f - p) * (1f - p) * (1f - p) * (1f - p)
+                shown = (result.score * eased).toInt()
+                if (p >= 1f) break
+                kotlinx.coroutines.delay(16)
+            }
+            shown = result.score
+        }
         Text(
-            result.score.toString(),
+            shown.toString(),
             style = MaterialTheme.typography.displayLarge,
             color = Color(result.tier.hex),
             fontWeight = FontWeight.ExtraBold,
@@ -363,6 +382,28 @@ private fun Ended(state: RoomUiState, onExit: () -> Unit) {
             Stat("FOCUS", formatDuration(result.focusSecondsInt))
             Stat("PENALTY", result.penalty.toString())
         }
+
+        // Recap card — the web's session-recap-card breakdown.
+        val myBreaks = state.breaks.filter { it.userId == state.meId }
+        val severe = myBreaks.count { it.isSevere }
+        val minor = myBreaks.size - severe
+        Spacer(Modifier.height(20.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.textPrimary.copy(alpha = 0.03f), app.stackd.core.theme.Radius2Xl)
+                .border(1.dp, colors.border, app.stackd.core.theme.Radius2Xl)
+                .padding(16.dp),
+        ) {
+            Text("RECAP", style = MonoLabelSmall, color = colors.textMuted)
+            Spacer(Modifier.height(8.dp))
+            RecapLine("Target", formatDuration((state.room?.targetDurationSeconds ?: 0L).toInt()))
+            RecapLine("Held for", formatDuration(result.focusSecondsInt))
+            RecapLine("Breaches", if (myBreaks.isEmpty()) "None — clean stack" else "$minor minor · $severe severe")
+            if (result.penalty > 0) RecapLine("Penalty", "-${result.penalty} pts")
+            RecapLine("Tier multiplier", "×${result.tier.multiplier}")
+        }
+
         if (state.resultQueuedOffline) {
             Spacer(Modifier.height(16.dp))
             NoticeBanner("Saved offline — it'll sync when you're back online.")
@@ -373,6 +414,18 @@ private fun Ended(state: RoomUiState, onExit: () -> Unit) {
 
     Spacer(Modifier.height(28.dp))
     EmberButton(text = "Back to Dashboard", onClick = onExit)
+}
+
+@Composable
+private fun RecapLine(label: String, value: String) {
+    val colors = Stackd.colors
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        Text(value, style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
+    }
 }
 
 @Composable

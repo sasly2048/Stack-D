@@ -43,6 +43,7 @@ import app.stackd.core.theme.RadiusMd
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.ErrorBanner
+import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.SectionLabel
 import app.stackd.data.room.FocusHistoryRow
 import app.stackd.data.room.RoomRow
@@ -58,6 +59,7 @@ import kotlinx.coroutines.delay
 fun DashboardRoute(
     onStart: () -> Unit,
     onOpenRoom: (String) -> Unit,
+    onOpenPremium: () -> Unit = {},
     vm: DashboardViewModel = viewModel(
         factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles) },
     ),
@@ -67,7 +69,9 @@ fun DashboardRoute(
         state = state,
         onStart = onStart,
         onOpenRoom = onOpenRoom,
+        onOpenPremium = onOpenPremium,
         onRetry = vm::load,
+        onClaimReward = vm::claimReward,
     )
 }
 
@@ -77,6 +81,8 @@ fun DashboardScreen(
     onStart: () -> Unit,
     onOpenRoom: (String) -> Unit,
     onRetry: () -> Unit,
+    onOpenPremium: () -> Unit = {},
+    onClaimReward: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -112,7 +118,19 @@ fun DashboardScreen(
         }
         Spacer(Modifier.height(24.dp))
         EmberButton(text = "New Session", onClick = onStart)
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(12.dp))
+        GhostButton(text = "Premium", onClick = onOpenPremium)
+        Spacer(Modifier.height(12.dp))
+        state.reward?.let { reward ->
+            DailyRewardCard(
+                reward = reward,
+                claiming = state.claiming,
+                notice = state.claimNotice,
+                onClaim = onClaimReward,
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+        Spacer(Modifier.height(12.dp))
 
         when {
             state.loading -> {
@@ -143,6 +161,8 @@ fun DashboardScreen(
                     Spacer(Modifier.height(20.dp))
                 }
                 if (!state.isEmpty) {
+                    ActivityHeatmap(state.history)
+                    Spacer(Modifier.height(20.dp))
                     SessionHistory(state.history, onOpenRoom)
                 }
             }
