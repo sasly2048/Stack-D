@@ -60,6 +60,8 @@ fun DashboardRoute(
     onStart: () -> Unit,
     onOpenRoom: (String) -> Unit,
     onOpenPremium: () -> Unit = {},
+    onOpenLeaderboard: () -> Unit = {},
+    onOpenAchievements: () -> Unit = {},
     vm: DashboardViewModel = viewModel(
         factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles) },
     ),
@@ -70,6 +72,8 @@ fun DashboardRoute(
         onStart = onStart,
         onOpenRoom = onOpenRoom,
         onOpenPremium = onOpenPremium,
+        onOpenLeaderboard = onOpenLeaderboard,
+        onOpenAchievements = onOpenAchievements,
         onRetry = vm::load,
         onClaimReward = vm::claimReward,
     )
@@ -82,6 +86,8 @@ fun DashboardScreen(
     onOpenRoom: (String) -> Unit,
     onRetry: () -> Unit,
     onOpenPremium: () -> Unit = {},
+    onOpenLeaderboard: () -> Unit = {},
+    onOpenAchievements: () -> Unit = {},
     onClaimReward: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -119,7 +125,11 @@ fun DashboardScreen(
         Spacer(Modifier.height(24.dp))
         EmberButton(text = "New Session", onClick = onStart)
         Spacer(Modifier.height(12.dp))
-        GhostButton(text = "Premium", onClick = onOpenPremium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GhostButton(text = "Premium", onClick = onOpenPremium, modifier = Modifier.weight(1f))
+            GhostButton(text = "Leaderboard", onClick = onOpenLeaderboard, modifier = Modifier.weight(1f))
+            GhostButton(text = "Marks", onClick = onOpenAchievements, modifier = Modifier.weight(1f))
+        }
         Spacer(Modifier.height(12.dp))
         state.reward?.let { reward ->
             DailyRewardCard(

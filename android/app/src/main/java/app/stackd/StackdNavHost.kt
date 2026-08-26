@@ -11,6 +11,8 @@ import androidx.navigation.navArgument
 import app.stackd.core.ui.PlaceholderScreen
 import app.stackd.feature.auth.AuthRoute
 import app.stackd.feature.dashboard.DashboardRoute
+import app.stackd.feature.achievements.AchievementsRoute
+import app.stackd.feature.leaderboard.LeaderboardRoute
 import app.stackd.feature.premium.PremiumRoute
 import app.stackd.feature.room.RoomRoute
 import app.stackd.feature.start.StartRoute
@@ -48,6 +50,8 @@ fun StackdNavHost(
                 onStart = { navController.navigate(Dest.Start.route) },
                 onOpenRoom = { code -> navController.navigate(Dest.Room.of(code)) },
                 onOpenPremium = { navController.navigate(Dest.Premium.route) },
+                onOpenLeaderboard = { navController.navigate(Dest.Leaderboard.route) },
+                onOpenAchievements = { navController.navigate(Dest.Achievements.route) },
             )
         }
         composable(Dest.Start.route) {
@@ -95,8 +99,12 @@ fun StackdNavHost(
         placeholder(Dest.Partners, "Partners")
 
         // Progression
-        placeholder(Dest.Leaderboard, "Leaderboard")
-        placeholder(Dest.Achievements, "Achievements")
+        composable(Dest.Leaderboard.route) {
+            LeaderboardRoute(onBack = { navController.popBackStack() })
+        }
+        composable(Dest.Achievements.route) {
+            AchievementsRoute(onBack = { navController.popBackStack() })
+        }
         placeholder(Dest.Challenges, "Challenges")
         placeholder(Dest.Seasons, "Seasons")
 
