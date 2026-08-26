@@ -1896,6 +1896,38 @@ export type Database = {
         }
         Returns: string
       }
+      finish_focus_room: {
+        Args: {
+          _outcome: Database["public"]["Enums"]["room_status"]
+          _room_id: string
+        }
+        Returns: {
+          banner_url: string | null
+          code: string
+          collective_goal_seconds: number | null
+          collective_seconds: number
+          created_at: string
+          description: string | null
+          ended_at: string | null
+          host_id: string
+          id: string
+          pinned_message: string | null
+          shared_goal_hours: number | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["room_status"]
+          target_duration_seconds: number
+          template_key: string | null
+          title: string | null
+          updated_at: string
+          visibility: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rooms"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_my_private_profile: {
         Args: never
         Returns: {
