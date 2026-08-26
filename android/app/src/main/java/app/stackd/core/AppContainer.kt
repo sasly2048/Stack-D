@@ -9,6 +9,7 @@ import app.stackd.data.premium.PremiumRepository
 import app.stackd.data.profile.ProfileRepository
 import app.stackd.data.room.RoomRepository
 import app.stackd.data.social.LeaderboardRepository
+import app.stackd.data.vault.VaultRepository
 import io.github.jan.supabase.SupabaseClient
 
 /**
@@ -41,4 +42,6 @@ class AppContainer(context: Context) {
     val premium: PremiumRepository by lazy { PremiumRepository(client) }
 
     val leaderboard: LeaderboardRepository by lazy { LeaderboardRepository(client) }
+
+    val vault: VaultRepository by lazy { VaultRepository(client) }
 }

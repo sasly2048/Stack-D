@@ -14,6 +14,8 @@ import app.stackd.feature.dashboard.DashboardRoute
 import app.stackd.feature.achievements.AchievementsRoute
 import app.stackd.feature.insights.DnaRoute
 import app.stackd.feature.insights.InsightsRoute
+import app.stackd.feature.vault.CapsuleRoute
+import app.stackd.feature.vault.VaultRoute
 import app.stackd.feature.leaderboard.LeaderboardRoute
 import app.stackd.feature.premium.PremiumRoute
 import app.stackd.feature.room.RoomRoute
@@ -56,6 +58,8 @@ fun StackdNavHost(
                 onOpenAchievements = { navController.navigate(Dest.Achievements.route) },
                 onOpenInsights = { navController.navigate(Dest.Insights.route) },
                 onOpenDna = { navController.navigate(Dest.Dna.route) },
+                onOpenVault = { navController.navigate(Dest.Vault.route) },
+                onOpenCapsule = { navController.navigate(Dest.Capsule.route) },
             )
         }
         composable(Dest.Start.route) {
@@ -128,8 +132,18 @@ fun StackdNavHost(
         }
         placeholder(Dest.Replay, "Replay")
         placeholder(Dest.Wrapped, "Wrapped")
-        placeholder(Dest.Vault, "Memory Vault")
-        placeholder(Dest.Capsule, "Time Capsule")
+        composable(Dest.Vault.route) {
+            VaultRoute(
+                onBack = { navController.popBackStack() },
+                onUpgrade = { navController.navigate(Dest.Premium.route) },
+            )
+        }
+        composable(Dest.Capsule.route) {
+            CapsuleRoute(
+                onBack = { navController.popBackStack() },
+                onUpgrade = { navController.navigate(Dest.Premium.route) },
+            )
+        }
 
         // Safety
         placeholder(Dest.Trust, "Trust")

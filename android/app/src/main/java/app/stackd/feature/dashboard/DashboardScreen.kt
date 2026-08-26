@@ -64,6 +64,8 @@ fun DashboardRoute(
     onOpenAchievements: () -> Unit = {},
     onOpenInsights: () -> Unit = {},
     onOpenDna: () -> Unit = {},
+    onOpenVault: () -> Unit = {},
+    onOpenCapsule: () -> Unit = {},
     vm: DashboardViewModel = viewModel(
         factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles) },
     ),
@@ -78,6 +80,8 @@ fun DashboardRoute(
         onOpenAchievements = onOpenAchievements,
         onOpenInsights = onOpenInsights,
         onOpenDna = onOpenDna,
+        onOpenVault = onOpenVault,
+        onOpenCapsule = onOpenCapsule,
         onRetry = vm::load,
         onClaimReward = vm::claimReward,
     )
@@ -94,6 +98,8 @@ fun DashboardScreen(
     onOpenAchievements: () -> Unit = {},
     onOpenInsights: () -> Unit = {},
     onOpenDna: () -> Unit = {},
+    onOpenVault: () -> Unit = {},
+    onOpenCapsule: () -> Unit = {},
     onClaimReward: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -140,6 +146,11 @@ fun DashboardScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GhostButton(text = "Insights", onClick = onOpenInsights, modifier = Modifier.weight(1f))
             GhostButton(text = "DNA", onClick = onOpenDna, modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GhostButton(text = "Vault", onClick = onOpenVault, modifier = Modifier.weight(1f))
+            GhostButton(text = "Capsule", onClick = onOpenCapsule, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
         state.reward?.let { reward ->
