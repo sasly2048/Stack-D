@@ -561,20 +561,23 @@ function Room() {
     if (!room || !isHost) return;
     if (completionLockRef.current) return;
     completionLockRef.current = true;
-    const { error } = await supabase
-      .from("rooms")
-      .update({ status: "complete", ended_at: new Date().toISOString() })
-      .eq("id", room.id)
-      .eq("status", "active");
-    if (error) completionLockRef.current = false;
+    const { error } = await supabase.rpc("finish_focus_room", {
+      _room_id: room.id,
+      _outcome: "complete",
+    });
+    if (error) {
+      completionLockRef.current = false;
+      toast.error("Couldn't end the session. Try again.");
+    }
   };
 
   const abortRitual = async () => {
     if (!room || !isHost) return;
-    await supabase
-      .from("rooms")
-      .update({ status: "aborted", ended_at: new Date().toISOString() })
-      .eq("id", room.id);
+    const { error } = await supabase.rpc("finish_focus_room", {
+      _room_id: room.id,
+      _outcome: "aborted",
+    });
+    if (error) toast.error("Couldn't cancel the session. Try again.");
   };
 
   const leaveRoom = async () => {
