@@ -25,7 +25,7 @@ export const equipTitle = createServerFn({ method: "POST" })
     // SECURITY DEFINER: it verifies ownership in user_titles, then sets the
     // title server-side. NULL clears it.
     const { data: name, error } = await context.supabase.rpc("equip_title", {
-      _title_id: data.titleId,
+      _title_id: data.titleId as unknown as string,
     });
     if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true, title: (name as string | null) ?? null };
