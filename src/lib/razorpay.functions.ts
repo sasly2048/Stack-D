@@ -111,22 +111,29 @@ export const createSubscription = createServerFn({ method: "POST" })
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        plan_id: razorpayPlanId,
-        total_count: totalCount,
-        customer_notify: 1,
-        notes: { user_id: context.userId },
-      }),
-    });
+        body: JSON.stringify({
+          plan_id: razorpayPlanId,
+          total_count: totalCount,
+          customer_notify: 1,
+          ...(startAtUnix ? { start_at: startAtUnix } : {}),
+          notes: { user_id: context.userId },
+        }),
+      });
 
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("razorpay_subscription_create_failed", res.status, body.slice(0, 500));
-      throw new Error("Couldn't start checkout. Please try again.");
-    }
+      if (!res.ok) {
+        const body = await res.text();
+        console.error("razorpay_subscription_create_failed", res.status, body.slice(0, 500));
+        throw new Error("Couldn't start checkout. Please try again.");
+      }
 
-    const sub = (await res.json()) as { id?: string };
-    if (!sub.id) throw new Error("Checkout unavailable. Please try again.");
+      const sub = (await res.json()) as { id?: string };
+      if (!sub.id) throw new Error("Checkout unavailable. Please try again.");
 
-    return { subscriptionId: sub.id, keyId };
-  });
+      return {
+        subscriptionId: sub.id,
+        keyId,
+        startsAt: startAtUnix ? new Date(startAtUnix * 1000).toISOString() : null,
+      };
+    },
+  );
+
