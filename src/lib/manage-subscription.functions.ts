@@ -5,6 +5,8 @@ import type { AccessTier } from "./subscription.functions";
 
 export interface SubscriptionDetail {
   tier: AccessTier;
+  /** The plan row the subscription is on (null for lifetime/admin/free). */
+  planId: string | null;
   /** 'none' | 'razorpay' | 'lifetime' | 'manual' | 'admin'. */
   source: string;
   /** null = non-expiring (lifetime/admin) or no paid sub. */
@@ -42,6 +44,7 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
     if (!s || !s.tier || s.tier === "free") {
       return {
         tier: "free",
+        planId: null,
         source: "none",
         currentPeriodEnd: null,
         interval: null,
@@ -67,6 +70,7 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
 
     return {
       tier: s.tier,
+      planId: s.plan_id ?? null,
       source: s.source ?? "none",
       currentPeriodEnd: s.current_period_end ?? null,
       interval: plan?.interval ?? null,
