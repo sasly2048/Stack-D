@@ -13,12 +13,18 @@ import { describe, expect, it } from "vitest";
 const fn = readFileSync(join(process.cwd(), "src", "lib", "razorpay.functions.ts"), "utf8");
 
 describe("razorpay duplicate-checkout guard", () => {
-  it("blocks a new checkout when an active subscription exists", () => {
+  it("blocks a repeat checkout of the plan the user is already on", () => {
     expect(fn).toMatch(/from\("subscriptions"\)[\s\S]*?\.eq\("user_id", context\.userId\)/);
     expect(fn).toMatch(/source === "lifetime"/);
-    expect(fn).toMatch(/current_period_end[\s\S]*?> new Date\(\)/);
-    expect(fn).toMatch(/already have an active subscription/i);
+    expect(fn).toMatch(/plan_id === data\.planId/);
+    expect(fn).toMatch(/already on this plan/i);
   });
+
+  it("schedules a different plan at the end of the paid period instead of blocking it", () => {
+    expect(fn).toMatch(/start_at: startAtUnix/);
+    expect(fn).toMatch(/startsAt:/);
+  });
+
 
   it("rate-limits checkout starts per user", () => {
     expect(fn).toMatch(/isRateLimited\(`checkout:\$\{context\.userId\}`/);
