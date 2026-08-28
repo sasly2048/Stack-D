@@ -81,36 +81,35 @@ export const createSubscription = createServerFn({ method: "POST" })
         throw new Error("Too many checkout attempts. Please wait a moment.");
       }
 
+      // Resolve the local plan -> Razorpay plan_id (provider_ref). Reading via
+      // the caller's client is fine: plans are world-readable, and we only need
+      // the mapping, not any privileged data.
+      const { data: plan, error } = await context.supabase
+        .from("plans" as never)
+        .select("provider_ref, interval")
+        .eq("id" as never, data.planId as never)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      const planRow = plan as { provider_ref?: string; interval?: string } | null;
+      const razorpayPlanId = planRow?.provider_ref;
+      if (!razorpayPlanId) {
+        throw new Error("This plan isn't available for checkout yet.");
+      }
 
-    // Resolve the local plan -> Razorpay plan_id (provider_ref). Reading via
-    // the caller's client is fine: plans are world-readable, and we only need
-    // the mapping, not any privileged data.
-    const { data: plan, error } = await context.supabase
-      .from("plans" as never)
-      .select("provider_ref, interval")
-      .eq("id" as never, data.planId as never)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    const planRow = plan as { provider_ref?: string; interval?: string } | null;
-    const razorpayPlanId = planRow?.provider_ref;
-    if (!razorpayPlanId) {
-      throw new Error("This plan isn't available for checkout yet.");
-    }
+      // total_count is the number of BILLING CYCLES, and a cycle is one plan
+      // interval — so it must scale with the interval, not be a flat 12. A flat 12
+      // on an annual plan meant 12 yearly charges (a 12-year commitment). Give
+      // each a ~5-year horizon: 60 monthly cycles, or 5 annual cycles. Razorpay
+      // auto-charges each cycle; the user cancels whenever they like.
+      const totalCount = planRow?.interval === "annual" ? 5 : 60;
 
-    // total_count is the number of BILLING CYCLES, and a cycle is one plan
-    // interval — so it must scale with the interval, not be a flat 12. A flat 12
-    // on an annual plan meant 12 yearly charges (a 12-year commitment). Give
-    // each a ~5-year horizon: 60 monthly cycles, or 5 annual cycles. Razorpay
-    // auto-charges each cycle; the user cancels whenever they like.
-    const totalCount = planRow?.interval === "annual" ? 5 : 60;
-
-    const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
-    const res = await fetch("https://api.razorpay.com/v1/subscriptions", {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/json",
-      },
+      const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+      const res = await fetch("https://api.razorpay.com/v1/subscriptions", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           plan_id: razorpayPlanId,
           total_count: totalCount,
@@ -136,4 +135,3 @@ export const createSubscription = createServerFn({ method: "POST" })
       };
     },
   );
-
