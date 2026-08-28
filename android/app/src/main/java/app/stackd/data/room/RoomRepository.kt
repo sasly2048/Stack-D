@@ -1,6 +1,7 @@
 package app.stackd.data.room
 
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.realtime.PostgresAction
@@ -475,9 +476,18 @@ class RoomRepository(private val client: SupabaseClient) {
         )
     }
 
-    /** This user's workspace items for the room/session, ordered as captured. */
+    /**
+     * This user's workspace items for the room, ordered as captured.
+     *
+     * The table is `session_workspace_items` — an earlier port wrote to a
+     * `workspace_items` that has never existed, so every call here failed.
+     * RLS (`workspace_own_all`) already scopes reads and writes to the caller,
+     * so no `user_id` filter is needed on the way out; the insert still has to
+     * name it because the column is NOT NULL with no default and the policy's
+     * WITH CHECK requires `user_id = auth.uid()`.
+     */
     suspend fun listWorkspace(roomId: String): List<WorkspaceItem> =
-        client.postgrest.from("workspace_items")
+        client.postgrest.from("session_workspace_items")
             .select {
                 filter { eq("room_id", roomId) }
                 order("position", Order.ASCENDING)
@@ -489,18 +499,21 @@ class RoomRepository(private val client: SupabaseClient) {
         kind: String,
         content: String,
         url: String? = null,
-    ): WorkspaceItem? =
-        client.postgrest.from("workspace_items").insert(
+    ): WorkspaceItem? {
+        val userId = client.auth.currentUserOrNull()?.id ?: return null
+        return client.postgrest.from("session_workspace_items").insert(
             buildJsonObject {
                 put("room_id", roomId)
+                put("user_id", userId)
                 put("kind", kind)
                 put("content", content)
                 url?.takeIf { it.isNotBlank() }?.let { put("url", it) }
             },
         ) { select() }.decodeSingleOrNull()
+    }
 
     suspend fun updateWorkspaceItem(id: String, done: Boolean) {
-        client.postgrest.from("workspace_items").update(
+        client.postgrest.from("session_workspace_items").update(
             { set("done", done) },
         ) {
             filter { eq("id", id) }
@@ -508,7 +521,7 @@ class RoomRepository(private val client: SupabaseClient) {
     }
 
     suspend fun deleteWorkspaceItem(id: String) {
-        client.postgrest.from("workspace_items").delete {
+        client.postgrest.from("session_workspace_items").delete {
             filter { eq("id", id) }
         }
     }

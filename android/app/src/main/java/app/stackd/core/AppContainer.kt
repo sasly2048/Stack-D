@@ -9,8 +9,10 @@ import app.stackd.data.premium.PremiumRepository
 import app.stackd.data.profile.ProfileRepository
 import app.stackd.data.room.RoomRepository
 import app.stackd.data.progression.ProgressionRepository
+import app.stackd.data.social.FeedRepository
 import app.stackd.data.social.FriendsRepository
 import app.stackd.data.social.LeaderboardRepository
+import app.stackd.data.timeline.TimelineRepository
 import app.stackd.data.vault.VaultRepository
 import io.github.jan.supabase.SupabaseClient
 
@@ -50,4 +52,8 @@ class AppContainer(context: Context) {
     val friends: FriendsRepository by lazy { FriendsRepository(client) }
 
     val progression: ProgressionRepository by lazy { ProgressionRepository(client) }
+
+    val feed: FeedRepository by lazy { FeedRepository(client) }
+
+    val timeline: TimelineRepository by lazy { TimelineRepository(client) }
 }

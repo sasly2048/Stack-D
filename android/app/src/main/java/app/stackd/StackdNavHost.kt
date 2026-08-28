@@ -13,7 +13,9 @@ import app.stackd.feature.auth.AuthRoute
 import app.stackd.feature.dashboard.DashboardRoute
 import app.stackd.feature.achievements.AchievementsRoute
 import app.stackd.feature.insights.DnaRoute
+import app.stackd.feature.feed.FeedRoute
 import app.stackd.feature.friends.FriendsRoute
+import app.stackd.feature.timeline.TimelineRoute
 import app.stackd.feature.insights.InsightsRoute
 import app.stackd.feature.profile.ProfileRoute
 import app.stackd.feature.progression.ChallengesRoute
@@ -57,17 +59,23 @@ fun StackdNavHost(
             DashboardRoute(
                 onStart = { navController.navigate(Dest.Start.route) },
                 onOpenRoom = { code -> navController.navigate(Dest.Room.of(code)) },
-                onOpenPremium = { navController.navigate(Dest.Premium.route) },
-                onOpenLeaderboard = { navController.navigate(Dest.Leaderboard.route) },
-                onOpenAchievements = { navController.navigate(Dest.Achievements.route) },
-                onOpenInsights = { navController.navigate(Dest.Insights.route) },
-                onOpenDna = { navController.navigate(Dest.Dna.route) },
-                onOpenVault = { navController.navigate(Dest.Vault.route) },
-                onOpenCapsule = { navController.navigate(Dest.Capsule.route) },
-                onOpenFriends = { navController.navigate(Dest.Friends.route) },
-                onOpenProfile = { navController.navigate(Dest.Profile.route) },
-                onOpenChallenges = { navController.navigate(Dest.Challenges.route) },
-                onOpenSeasons = { navController.navigate(Dest.Seasons.route) },
+                menuEntries = listOf(
+                    "Premium" to Dest.Premium,
+                    "Feed" to Dest.Feed,
+                    "Timeline" to Dest.Timeline,
+                    "Leaderboard" to Dest.Leaderboard,
+                    "Achievements" to Dest.Achievements,
+                    "Insights" to Dest.Insights,
+                    "Focus DNA" to Dest.Dna,
+                    "Challenges" to Dest.Challenges,
+                    "Seasons" to Dest.Seasons,
+                    "Memory Vault" to Dest.Vault,
+                    "Time Capsule" to Dest.Capsule,
+                    "Friends" to Dest.Friends,
+                    "Profile" to Dest.Profile,
+                ).map { (label, dest) ->
+                    label to { navController.navigate(dest.route); Unit }
+                },
             )
         }
         composable(Dest.Start.route) {
@@ -122,8 +130,16 @@ fun StackdNavHost(
         composable(Dest.Friends.route) {
             FriendsRoute(onBack = { navController.popBackStack() })
         }
-        placeholder(Dest.Feed, "Feed")
-        placeholder(Dest.Timeline, "Timeline")
+        composable(Dest.Feed.route) {
+            FeedRoute(
+                onBack = { navController.popBackStack() },
+                onStart = { navController.navigate(Dest.Start.route) },
+                onOpenFriends = { navController.navigate(Dest.Friends.route) },
+            )
+        }
+        composable(Dest.Timeline.route) {
+            TimelineRoute(onBack = { navController.popBackStack() })
+        }
         placeholder(Dest.Partners, "Partners")
 
         // Progression

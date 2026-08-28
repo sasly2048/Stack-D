@@ -211,7 +211,7 @@ data class JoinRequest(
     @SerialName("created_at") val createdAt: String,
 )
 
-/** A personal note/todo/link captured during a session (`workspace_items`). */
+/** A personal note/todo/link captured during a session (`session_workspace_items`). */
 @Serializable
 data class WorkspaceItem(
     val id: String,

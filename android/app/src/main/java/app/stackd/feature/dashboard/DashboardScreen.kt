@@ -61,17 +61,7 @@ import kotlinx.coroutines.delay
 fun DashboardRoute(
     onStart: () -> Unit,
     onOpenRoom: (String) -> Unit,
-    onOpenPremium: () -> Unit = {},
-    onOpenLeaderboard: () -> Unit = {},
-    onOpenAchievements: () -> Unit = {},
-    onOpenInsights: () -> Unit = {},
-    onOpenDna: () -> Unit = {},
-    onOpenVault: () -> Unit = {},
-    onOpenCapsule: () -> Unit = {},
-    onOpenFriends: () -> Unit = {},
-    onOpenProfile: () -> Unit = {},
-    onOpenChallenges: () -> Unit = {},
-    onOpenSeasons: () -> Unit = {},
+    menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
     vm: DashboardViewModel = viewModel(
         factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles) },
     ),
@@ -81,17 +71,7 @@ fun DashboardRoute(
         state = state,
         onStart = onStart,
         onOpenRoom = onOpenRoom,
-        onOpenPremium = onOpenPremium,
-        onOpenLeaderboard = onOpenLeaderboard,
-        onOpenAchievements = onOpenAchievements,
-        onOpenInsights = onOpenInsights,
-        onOpenDna = onOpenDna,
-        onOpenVault = onOpenVault,
-        onOpenCapsule = onOpenCapsule,
-        onOpenFriends = onOpenFriends,
-        onOpenProfile = onOpenProfile,
-        onOpenChallenges = onOpenChallenges,
-        onOpenSeasons = onOpenSeasons,
+        menuEntries = menuEntries,
         onRetry = vm::load,
         onClaimReward = vm::claimReward,
     )
@@ -103,17 +83,13 @@ fun DashboardScreen(
     onStart: () -> Unit,
     onOpenRoom: (String) -> Unit,
     onRetry: () -> Unit,
-    onOpenPremium: () -> Unit = {},
-    onOpenLeaderboard: () -> Unit = {},
-    onOpenAchievements: () -> Unit = {},
-    onOpenInsights: () -> Unit = {},
-    onOpenDna: () -> Unit = {},
-    onOpenVault: () -> Unit = {},
-    onOpenCapsule: () -> Unit = {},
-    onOpenFriends: () -> Unit = {},
-    onOpenProfile: () -> Unit = {},
-    onOpenChallenges: () -> Unit = {},
-    onOpenSeasons: () -> Unit = {},
+    /**
+     * Every destination the menu sheet offers, in order. Passed as one list
+     * rather than a callback per screen: the parameter stack had grown to
+     * eleven `onOpenX` lambdas that the dashboard only ever forwarded
+     * verbatim into [NavMenuSheet], so the nav graph now owns the list.
+     */
+    menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
     onClaimReward: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -156,22 +132,7 @@ fun DashboardScreen(
         var showMenu by remember { mutableStateOf(false) }
         GhostButton(text = "Menu", onClick = { showMenu = true })
         if (showMenu) {
-            NavMenuSheet(
-                onDismiss = { showMenu = false },
-                entries = listOf(
-                    "Premium" to onOpenPremium,
-                    "Leaderboard" to onOpenLeaderboard,
-                    "Achievements" to onOpenAchievements,
-                    "Insights" to onOpenInsights,
-                    "Focus DNA" to onOpenDna,
-                    "Challenges" to onOpenChallenges,
-                    "Seasons" to onOpenSeasons,
-                    "Memory Vault" to onOpenVault,
-                    "Time Capsule" to onOpenCapsule,
-                    "Friends" to onOpenFriends,
-                    "Profile" to onOpenProfile,
-                ),
-            )
+            NavMenuSheet(onDismiss = { showMenu = false }, entries = menuEntries)
         }
         Spacer(Modifier.height(12.dp))
         state.reward?.let { reward ->
