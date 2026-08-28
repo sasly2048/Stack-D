@@ -140,6 +140,21 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
         }
 
         const periodEnd = new Date(currentEnd * 1000).toISOString();
+
+        // Plan change: the user scheduled a different plan while an older
+        // Razorpay subscription was still running. Remember the old provider ref
+        // so we can retire it once the new one has taken over.
+        const { data: prevRow } = await supabase
+          .from("subscriptions")
+          .select("provider_ref, source")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const prev = prevRow as { provider_ref?: string | null; source?: string } | null;
+        const supersededRef =
+          prev?.source === "razorpay" && prev.provider_ref && prev.provider_ref !== subId
+            ? prev.provider_ref
+            : null;
+
         const { error: grantErr } = await supabase.rpc("grant_subscription", {
           _user_id: userId,
           _tier: localPlan.tier,
@@ -150,6 +165,33 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
         if (grantErr) {
           return failAndRetry("grant_failed", grantErr);
         }
+
+        // Retire the replaced subscription so the user is never billed twice.
+        // Best-effort: the grant above is what matters, and Razorpay ignores a
+        // cancel on an already-cancelled subscription.
+        if (supersededRef) {
+          const keyId = process.env.RAZORPAY_KEY_ID;
+          const keySecret = process.env.RAZORPAY_KEY_SECRET;
+          if (keyId && keySecret) {
+            try {
+              const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+              const cancelRes = await fetch(
+                `https://api.razorpay.com/v1/subscriptions/${supersededRef}/cancel`,
+                {
+                  method: "POST",
+                  headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ cancel_at_cycle_end: 0 }),
+                },
+              );
+              if (!cancelRes.ok) {
+                console.error("razorpay_supersede_cancel_failed", cancelRes.status, supersededRef);
+              }
+            } catch (e) {
+              console.error("razorpay_supersede_cancel_error", e);
+            }
+          }
+        }
+
 
         // Provisioning succeeded — NOW mark processed. If this mark itself fails,
         // a redelivery re-grants (grant_subscription is an idempotent upsert), so
