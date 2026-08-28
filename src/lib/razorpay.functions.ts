@@ -17,39 +17,70 @@ export const createSubscription = createServerFn({ method: "POST" })
   .inputValidator((d: { planId: string }) => ({
     planId: typeof d?.planId === "string" ? d.planId : "",
   }))
-  .handler(async ({ data, context }): Promise<{ subscriptionId: string; keyId: string }> => {
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    if (!keyId || !keySecret) {
-      throw new Error("Payments are not configured.");
-    }
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{
+      subscriptionId: string;
+      keyId: string;
+      /** Set when this is a plan change that starts at the end of the paid period. */
+      startsAt: string | null;
+    }> => {
+      const keyId = process.env.RAZORPAY_KEY_ID;
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      if (!keyId || !keySecret) {
+        throw new Error("Payments are not configured.");
+      }
 
-    // #23: don't spawn a new provider subscription if the user already has an
-    // active one — that's how rapid re-clicks create multiple Razorpay subs and
-    // double-charge. A lifetime or still-valid paid sub blocks a fresh checkout.
-    const { data: existing } = await context.supabase
-      .from("subscriptions")
-      .select("source, current_period_end")
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    const existingSub = existing as {
-      source?: string;
-      current_period_end?: string | null;
-    } | null;
-    if (existingSub) {
-      const active =
-        existingSub.source === "lifetime" ||
-        (existingSub.current_period_end != null &&
-          new Date(existingSub.current_period_end) > new Date());
-      if (active) throw new Error("You already have an active subscription.");
-    }
+      // #23: never spawn a second provider subscription for the SAME plan —
+      // that's how rapid re-clicks double-charge. A different plan, though, is a
+      // legitimate upgrade/downgrade: we schedule it to begin when the current
+      // paid period ends (no proration, no double charge), and the webhook
+      // cancels the superseded subscription once the new one activates.
+      const { data: existing } = await context.supabase
+        .from("subscriptions")
+        .select("source, current_period_end, plan_id")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      const existingSub = existing as {
+        source?: string;
+        current_period_end?: string | null;
+        plan_id?: string | null;
+      } | null;
 
-    // Rate-limit checkout starts so a burst of clicks can't each create a
-    // provider subscription before the first one settles.
-    const { isRateLimited } = await import("@/lib/rate-limit.server");
-    if (await isRateLimited(`checkout:${context.userId}`, 60, 3)) {
-      throw new Error("Too many checkout attempts. Please wait a moment.");
-    }
+      let startAtUnix: number | null = null;
+      if (existingSub) {
+        const periodEnd = existingSub.current_period_end
+          ? new Date(existingSub.current_period_end)
+          : null;
+        const stillPaid = periodEnd != null && periodEnd > new Date();
+        if (existingSub.source === "lifetime" || existingSub.source === "admin") {
+          throw new Error("You already have permanent access — there's nothing to upgrade.");
+        }
+        if (stillPaid) {
+          if (existingSub.plan_id === data.planId) {
+            throw new Error("You're already on this plan.");
+          }
+          if (existingSub.source !== "razorpay") {
+            throw new Error("Your current membership can't be changed here. Contact support.");
+          }
+          // Start the new plan the moment the paid period ends. Razorpay needs a
+          // little headroom, so never schedule inside the next 5 minutes.
+          startAtUnix = Math.max(
+            Math.floor(periodEnd!.getTime() / 1000),
+            Math.floor(Date.now() / 1000) + 300,
+          );
+        }
+      }
+
+      // Rate-limit checkout starts so a burst of clicks can't each create a
+      // provider subscription before the first one settles.
+      const { isRateLimited } = await import("@/lib/rate-limit.server");
+      if (await isRateLimited(`checkout:${context.userId}`, 60, 3)) {
+        throw new Error("Too many checkout attempts. Please wait a moment.");
+      }
+
 
     // Resolve the local plan -> Razorpay plan_id (provider_ref). Reading via
     // the caller's client is fine: plans are world-readable, and we only need
