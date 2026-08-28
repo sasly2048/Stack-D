@@ -5,6 +5,10 @@ import { Check } from "lucide-react";
 
 import { getEntitlement, getPlans, type Plan } from "@/lib/subscription.functions";
 import { createSubscription } from "@/lib/razorpay.functions";
+import {
+  getSubscriptionDetail,
+  type SubscriptionDetail,
+} from "@/lib/manage-subscription.functions";
 import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
 import { annualSavingsPct } from "@/lib/entitlement-rules";
 import { PREMIUM_FEATURES, STATUS_LABEL, TIER_TAGLINE } from "@/lib/premium-catalog";
@@ -35,6 +39,8 @@ export function UpgradeDialog({
   const loadPlans = useServerFn(getPlans);
   const loadEntitlement = useServerFn(getEntitlement);
   const startCheckout = useServerFn(createSubscription);
+  const loadSubscription = useServerFn(getSubscriptionDetail);
+  const [current, setCurrent] = useState<SubscriptionDetail | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [interval, setInterval] = useState<Interval>("annual");
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
@@ -44,7 +50,9 @@ export function UpgradeDialog({
     feedback("purchase"); // selecting a plan / starting checkout
     setCheckingOut(plan.id);
     try {
-      const { subscriptionId, keyId } = await startCheckout({ data: { planId: plan.id } });
+      const { subscriptionId, keyId, startsAt } = await startCheckout({
+        data: { planId: plan.id },
+      });
       const tier = plan.tier === "elite" ? "elite" : "pro";
       // Close our Radix dialog BEFORE opening Razorpay. Radix keeps a focus trap
       // and sets pointer-events on everything outside its content while open;
@@ -62,6 +70,13 @@ export function UpgradeDialog({
           // user wait on the webhook round-trip. Fired on the global bus so it
           // survives UpgradeCard unmounting when entitlement flips premium.
           triggerCelebration(tier);
+          if (startsAt) {
+            toast.success(
+              `Plan change confirmed. ${plan.displayName} starts ${new Date(
+                startsAt,
+              ).toLocaleDateString()} — you keep your current plan until then.`,
+            );
+          }
           // In the background, poll until the webhook has written the sub so the
           // gates/UI unlock server-authoritatively (no page refresh needed).
           void pollEntitlementUntilPremium(loadEntitlement);
@@ -85,7 +100,13 @@ export function UpgradeDialog({
     loadPlans()
       .then(setPlans)
       .catch(() => undefined);
-  }, [open, loadPlans]);
+    loadSubscription()
+      .then(setCurrent)
+      .catch(() => setCurrent(null));
+  }, [open, loadPlans, loadSubscription]);
+
+  // Lifetime/admin members have nothing to buy; everyone else can switch plans.
+  const permanent = current?.source === "lifetime" || current?.source === "admin";
 
   const byTier = useMemo(() => {
     const pick = (tier: string, iv: Interval) =>
@@ -159,6 +180,8 @@ export function UpgradeDialog({
             interval={interval}
             onCheckout={onCheckout}
             checkingOut={checkingOut}
+            currentPlanId={current?.planId ?? null}
+            permanent={permanent}
           />
           <TierColumn
             name="Elite"
@@ -170,6 +193,8 @@ export function UpgradeDialog({
             interval={interval}
             onCheckout={onCheckout}
             checkingOut={checkingOut}
+            currentPlanId={current?.planId ?? null}
+            permanent={permanent}
           />
         </div>
 
@@ -228,6 +253,8 @@ function TierColumn({
   best,
   onCheckout,
   checkingOut,
+  currentPlanId,
+  permanent,
 }: {
   name: string;
   tagline: string;
@@ -238,7 +265,11 @@ function TierColumn({
   best?: boolean;
   onCheckout: (plan: Plan) => void;
   checkingOut: string | null;
+  currentPlanId?: string | null;
+  permanent?: boolean;
 }) {
+  const isCurrent = Boolean(plan?.id && currentPlanId && plan.id === currentPlanId);
+  const hasPaidPlan = Boolean(currentPlanId);
   const savings = monthly && annual ? annualSavingsPct(monthly.priceInr, annual.priceInr) : 0;
   const perMonth =
     interval === "annual" && annual ? Math.round(annual.priceInr / 12) : plan?.priceInr;
@@ -273,11 +304,24 @@ function TierColumn({
 
       <button
         onClick={() => plan && onCheckout(plan)}
-        disabled={!plan?.id || checkingOut !== null}
+        disabled={!plan?.id || checkingOut !== null || isCurrent || permanent}
         className="mt-4 w-full rounded-full border border-ember/50 text-ember font-mono text-[11px] uppercase tracking-widest py-2 disabled:opacity-40 hover:bg-ember/10 transition"
       >
-        {checkingOut === plan?.id ? "Opening…" : `Choose ${name}`}
+        {checkingOut === plan?.id
+          ? "Opening…"
+          : isCurrent
+            ? "Current plan"
+            : permanent
+              ? "Included"
+              : hasPaidPlan
+                ? `Switch to ${name}`
+                : `Choose ${name}`}
       </button>
+      {!isCurrent && !permanent && hasPaidPlan && plan?.id && (
+        <p className="mt-2 text-center text-[10px] text-silver-dim">
+          Starts when your current period ends — no double charge.
+        </p>
+      )}
     </div>
   );
 }

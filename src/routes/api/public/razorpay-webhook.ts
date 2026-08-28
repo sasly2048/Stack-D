@@ -192,7 +192,6 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
           }
         }
 
-
         // Provisioning succeeded — NOW mark processed. If this mark itself fails,
         // a redelivery re-grants (grant_subscription is an idempotent upsert), so
         // it's safe.
