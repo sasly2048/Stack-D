@@ -51,6 +51,19 @@
                 android:value="Displays the remaining time of a focus session the user started, so it stays visible while the screen is off." />
         </service>
 
+        <!-- Shares the rendered Wrapped card as a content:// URI. The authority
+             uses ${applicationId} so debug builds (…app.stackd.debug) get their
+             own, never colliding with a release install on the same device. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>

@@ -17,6 +17,8 @@ import app.stackd.feature.feed.FeedRoute
 import app.stackd.feature.friends.FriendsRoute
 import app.stackd.feature.groups.CirclesRoute
 import app.stackd.feature.groups.GroupsRoute
+import app.stackd.feature.recap.ReplayRoute
+import app.stackd.feature.recap.WrappedRoute
 import app.stackd.feature.trust.ModerationRoute
 import app.stackd.feature.trust.TrustRoute
 import app.stackd.feature.timeline.TimelineRoute
@@ -73,6 +75,8 @@ fun StackdNavHost(
                     "Achievements" to Dest.Achievements,
                     "Insights" to Dest.Insights,
                     "Focus DNA" to Dest.Dna,
+                    "Wrapped" to Dest.Wrapped,
+                    "Replay" to Dest.Replay,
                     "Challenges" to Dest.Challenges,
                     "Seasons" to Dest.Seasons,
                     "Memory Vault" to Dest.Vault,
@@ -194,8 +198,12 @@ fun StackdNavHost(
                 onUpgrade = { navController.navigate(Dest.Premium.route) },
             )
         }
-        placeholder(Dest.Replay, "Replay")
-        placeholder(Dest.Wrapped, "Wrapped")
+        composable(Dest.Replay.route) {
+            ReplayRoute(onBack = { navController.popBackStack() })
+        }
+        composable(Dest.Wrapped.route) {
+            WrappedRoute(onBack = { navController.popBackStack() })
+        }
         composable(Dest.Vault.route) {
             VaultRoute(
                 onBack = { navController.popBackStack() },

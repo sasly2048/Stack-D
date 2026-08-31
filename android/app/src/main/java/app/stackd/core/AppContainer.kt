@@ -9,6 +9,7 @@ import app.stackd.data.premium.PremiumRepository
 import app.stackd.data.profile.ProfileRepository
 import app.stackd.data.room.RoomRepository
 import app.stackd.data.progression.ProgressionRepository
+import app.stackd.data.recap.RecapRepository
 import app.stackd.data.social.FeedRepository
 import app.stackd.data.social.FriendsRepository
 import app.stackd.data.social.GroupsRepository
@@ -62,4 +63,6 @@ class AppContainer(context: Context) {
     val groups: GroupsRepository by lazy { GroupsRepository(client) }
 
     val trust: TrustRepository by lazy { TrustRepository(client) }
+
+    val recap: RecapRepository by lazy { RecapRepository(client) }
 }
