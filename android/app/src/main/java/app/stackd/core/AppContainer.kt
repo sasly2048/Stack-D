@@ -11,6 +11,7 @@ import app.stackd.data.room.RoomRepository
 import app.stackd.data.progression.ProgressionRepository
 import app.stackd.data.social.FeedRepository
 import app.stackd.data.social.FriendsRepository
+import app.stackd.data.social.GroupsRepository
 import app.stackd.data.social.LeaderboardRepository
 import app.stackd.data.timeline.TimelineRepository
 import app.stackd.data.vault.VaultRepository
@@ -56,4 +57,6 @@ class AppContainer(context: Context) {
     val feed: FeedRepository by lazy { FeedRepository(client) }
 
     val timeline: TimelineRepository by lazy { TimelineRepository(client) }
+
+    val groups: GroupsRepository by lazy { GroupsRepository(client) }
 }

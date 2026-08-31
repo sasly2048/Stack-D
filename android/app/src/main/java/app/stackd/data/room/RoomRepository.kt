@@ -45,6 +45,25 @@ class RoomRepository(private val client: SupabaseClient) {
             .select { filter { eq("id", roomId) } }
             .decodeSingleOrNull()
 
+    /** The room's id for a code the caller already created — used by group sprints. */
+    suspend fun roomIdForCode(code: String): String? =
+        client.postgrest.from("rooms")
+            .select(io.github.jan.supabase.postgrest.query.Columns.list("id")) {
+                filter { eq("code", code.uppercase()) }
+                limit(1)
+            }
+            .decodeList<IdRow>()
+            .firstOrNull()?.id
+
+    /**
+     * Deletes a lobby the caller hosts. Only reached to roll back a room whose
+     * sprint dispatch was rate-limited before anyone else joined — RLS confines
+     * the delete to the host's own rooms.
+     */
+    suspend fun deleteRoom(roomId: String) {
+        client.postgrest.from("rooms").delete { filter { eq("id", roomId) } }
+    }
+
     suspend fun listParticipants(roomId: String): List<ParticipantRow> =
         client.postgrest.from("participants")
             .select {
@@ -422,6 +441,9 @@ class RoomRepository(private val client: SupabaseClient) {
     private data class DurationRow(
         @kotlinx.serialization.SerialName("duration_seconds") val durationSeconds: Long,
     )
+
+    @kotlinx.serialization.Serializable
+    private data class IdRow(val id: String)
 
     /** Moderator user ids for the header's "Mods · n" line. */
     suspend fun listModeratorIds(roomId: String): List<String> =

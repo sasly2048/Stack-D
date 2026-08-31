@@ -15,6 +15,8 @@ import app.stackd.feature.achievements.AchievementsRoute
 import app.stackd.feature.insights.DnaRoute
 import app.stackd.feature.feed.FeedRoute
 import app.stackd.feature.friends.FriendsRoute
+import app.stackd.feature.groups.CirclesRoute
+import app.stackd.feature.groups.GroupsRoute
 import app.stackd.feature.timeline.TimelineRoute
 import app.stackd.feature.insights.InsightsRoute
 import app.stackd.feature.profile.ProfileRoute
@@ -63,6 +65,8 @@ fun StackdNavHost(
                     "Premium" to Dest.Premium,
                     "Feed" to Dest.Feed,
                     "Timeline" to Dest.Timeline,
+                    "Circles" to Dest.Circles,
+                    "Groups" to Dest.Groups,
                     "Leaderboard" to Dest.Leaderboard,
                     "Achievements" to Dest.Achievements,
                     "Insights" to Dest.Insights,
@@ -157,8 +161,25 @@ fun StackdNavHost(
         }
 
         // Groups
-        placeholder(Dest.Circles, "Circles")
-        placeholder(Dest.Groups, "Groups")
+        composable(Dest.Circles.route) {
+            CirclesRoute(
+                onBack = { navController.popBackStack() },
+                onManage = { navController.navigate(Dest.Groups.route) },
+            )
+        }
+        composable(Dest.Groups.route) {
+            GroupsRoute(
+                onBack = { navController.popBackStack() },
+                onOpenRoom = { code ->
+                    navController.navigate(Dest.Room.of(code)) {
+                        // A dispatched sprint drops the host straight into the
+                        // lobby; Back should return to the dashboard, not the
+                        // groups form.
+                        popUpTo(Dest.Dashboard.route)
+                    }
+                },
+            )
+        }
 
         // Analytics & recall
         composable(Dest.Insights.route) {
