@@ -17,6 +17,8 @@ import app.stackd.feature.feed.FeedRoute
 import app.stackd.feature.friends.FriendsRoute
 import app.stackd.feature.groups.CirclesRoute
 import app.stackd.feature.groups.GroupsRoute
+import app.stackd.feature.trust.ModerationRoute
+import app.stackd.feature.trust.TrustRoute
 import app.stackd.feature.timeline.TimelineRoute
 import app.stackd.feature.insights.InsightsRoute
 import app.stackd.feature.profile.ProfileRoute
@@ -76,6 +78,7 @@ fun StackdNavHost(
                     "Memory Vault" to Dest.Vault,
                     "Time Capsule" to Dest.Capsule,
                     "Friends" to Dest.Friends,
+                    "Trust & Safety" to Dest.Trust,
                     "Profile" to Dest.Profile,
                 ).map { (label, dest) ->
                     label to { navController.navigate(dest.route); Unit }
@@ -207,8 +210,15 @@ fun StackdNavHost(
         }
 
         // Safety
-        placeholder(Dest.Trust, "Trust")
-        placeholder(Dest.TrustModeration, "Moderation")
+        composable(Dest.Trust.route) {
+            TrustRoute(
+                onBack = { navController.popBackStack() },
+                onOpenModeration = { navController.navigate(Dest.TrustModeration.route) },
+            )
+        }
+        composable(Dest.TrustModeration.route) {
+            ModerationRoute(onBack = { navController.popBackStack() })
+        }
 
         // Assistant — AI wiring deferred, shell ships first
         placeholder(Dest.Companion, "Companion", "AI wiring deferred.")

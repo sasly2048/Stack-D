@@ -14,6 +14,7 @@ import app.stackd.data.social.FriendsRepository
 import app.stackd.data.social.GroupsRepository
 import app.stackd.data.social.LeaderboardRepository
 import app.stackd.data.timeline.TimelineRepository
+import app.stackd.data.trust.TrustRepository
 import app.stackd.data.vault.VaultRepository
 import io.github.jan.supabase.SupabaseClient
 
@@ -59,4 +60,6 @@ class AppContainer(context: Context) {
     val timeline: TimelineRepository by lazy { TimelineRepository(client) }
 
     val groups: GroupsRepository by lazy { GroupsRepository(client) }
+
+    val trust: TrustRepository by lazy { TrustRepository(client) }
 }
