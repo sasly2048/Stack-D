@@ -154,6 +154,8 @@ data class FocusHistoryRow(
     @SerialName("breaches_count") val breachesCount: Int = 0,
     val tier: String,
     @SerialName("created_at") val createdAt: String? = null,
+    /** Freeform session tags; only selected by history queries that ask for it. */
+    val tags: List<String>? = null,
     /** Populated only when the query joins `rooms` — the dashboard row links by code. */
     val room: FocusHistoryRoomRef? = null,
 )

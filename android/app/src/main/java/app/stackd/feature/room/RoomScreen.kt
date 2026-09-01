@@ -177,6 +177,14 @@ fun RoomScreen(
             RoomPhase.ENDED -> Ended(state, onExit, onSaveSessionMeta)
         }
       }
+      // Celebration burst over a clean, high finish — not on aborted/compromised
+      // sessions, where confetti would read as mockery. One-shot; self-stops.
+      if (state.phase == RoomPhase.ENDED &&
+          state.room?.statusEnum?.wire != "aborted" &&
+          state.result?.tier?.key.let { it == "flow" || it == "pristine" }
+      ) {
+          app.stackd.core.ui.Confetti(modifier = Modifier.fillMaxSize())
+      }
     }
 }
 
@@ -216,6 +224,8 @@ private fun Lobby(
     )
     Spacer(Modifier.height(12.dp))
     CopyInviteButton(state.code)
+    Spacer(Modifier.height(8.dp))
+    QrInvite(state.code)
     Spacer(Modifier.height(24.dp))
     RoomHeaderPanel(state, onSaveMeta)
     Spacer(Modifier.height(16.dp))
@@ -263,6 +273,24 @@ private fun CopyInviteButton(code: String) {
             kotlinx.coroutines.delay(2000)
             copied = false
         }
+    }
+}
+
+/** Show-QR toggle → the web's inline invite QR. Collapsed by default so the
+ *  lobby stays compact; the link is the same one CopyInviteButton copies. */
+@Composable
+private fun QrInvite(code: String) {
+    var show by remember { androidx.compose.runtime.mutableStateOf(false) }
+    GhostButton(
+        text = if (show) "Hide QR" else "Show invite QR",
+        onClick = { show = !show },
+    )
+    if (show) {
+        Spacer(Modifier.height(12.dp))
+        app.stackd.core.ui.QrCode(
+            content = "${app.stackd.BuildConfig.WEB_BASE_URL}/room/$code",
+            size = 180.dp,
+        )
     }
 }
 

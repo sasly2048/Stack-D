@@ -78,6 +78,17 @@ data class InsightsUiState(
         }
 
     val forecast: Forecast get() = forecast(rows, lifetimeXp)
+
+    /** Top session tags by frequency — web's tag-distribution bars. */
+    val tagDistribution: List<Pair<String, Int>>
+        get() = rows.flatMap { it.tags.orEmpty() }
+            .filter { it.isNotBlank() }
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(8)
+            .map { it.key to it.value }
 }
 
 /** 120-day analytics — the web's `insights.tsx` over `getAnalytics`. */
@@ -214,6 +225,13 @@ fun InsightsScreen(
                     Spacer(Modifier.height(8.dp))
                     SignalCallout(state.bestHour, state.bestWeekday)
 
+                    if (state.tagDistribution.isNotEmpty()) {
+                        Spacer(Modifier.height(16.dp))
+                        SectionLabel("BY TAG")
+                        Spacer(Modifier.height(8.dp))
+                        TagBars(state.tagDistribution)
+                    }
+
                     Spacer(Modifier.height(16.dp))
                     SectionLabel("GOAL FORECAST")
                     Spacer(Modifier.height(8.dp))
@@ -279,6 +297,45 @@ private fun SignalCallout(bestHour: Int?, bestWeekday: String?) {
             .padding(16.dp),
     ) {
         Text(text, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+    }
+}
+
+/** Horizontal bars, one per top tag, scaled to the most-used tag. */
+@Composable
+private fun TagBars(dist: List<Pair<String, Int>>) {
+    val colors = Stackd.colors
+    val max = dist.maxOf { it.second }.coerceAtLeast(1)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(16.dp),
+    ) {
+        dist.forEachIndexed { i, (tag, n) ->
+            if (i > 0) Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("#$tag", style = MonoLabelSmall, color = colors.textPrimary)
+                Text("$n", style = MonoLabelSmall, color = colors.textMuted)
+            }
+            Spacer(Modifier.height(3.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(5.dp)
+                    .background(colors.textPrimary.copy(alpha = 0.05f), androidx.compose.foundation.shape.CircleShape),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(n.toFloat() / max)
+                        .height(5.dp)
+                        .background(colors.accent, androidx.compose.foundation.shape.CircleShape),
+                )
+            }
+        }
     }
 }
 

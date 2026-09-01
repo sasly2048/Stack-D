@@ -317,7 +317,7 @@ class ProfileRepository(private val client: SupabaseClient) {
             .select(
                 io.github.jan.supabase.postgrest.query.Columns.list(
                     "id", "room_id", "score", "xp_earned", "duration_seconds",
-                    "breaches_count", "tier", "created_at",
+                    "breaches_count", "tier", "created_at", "tags",
                 ),
             ) {
                 filter {
