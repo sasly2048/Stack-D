@@ -97,6 +97,108 @@ class ProfileRepository(private val client: SupabaseClient) {
         return PublicProfile(prof, sessionCount, achievements, friendship)
     }
 
+    /**
+     * The caller's whole focus history as a CSV string — web's
+     * `exportFocusHistoryCsv`. Same columns, same header, same minute rounding
+     * and `;`-joined tags, so a file exported from either client is identical.
+     */
+    suspend fun exportFocusHistoryCsv(userId: String): CsvExport {
+        val rows = client.postgrest.from("focus_history")
+            .select(
+                io.github.jan.supabase.postgrest.query.Columns.list(
+                    "created_at", "tier", "score", "xp_earned",
+                    "duration_seconds", "breaches_count", "notes", "tags", "room_id",
+                ),
+            ) {
+                filter { eq("profile_id", userId) }
+                order("created_at", Order.DESCENDING)
+                limit(5000)
+            }
+            .decodeList<ExportRow>()
+
+        val header = "date,tier,score,xp_earned,duration_minutes,breaches,notes,tags,room_id"
+        val body = rows.joinToString("\n") { r ->
+            listOf(
+                r.createdAt.orEmpty(),
+                r.tier,
+                r.score.toString(),
+                r.xpEarned.toString(),
+                Math.round(r.durationSeconds / 60.0).toString(),
+                r.breachesCount.toString(),
+                r.notes.orEmpty(),
+                r.tags.orEmpty().joinToString(";"),
+                r.roomId.orEmpty(),
+            ).joinToString(",") { escapeCsv(it) }
+        }
+        return CsvExport(
+            csv = if (body.isEmpty()) header else "$header\n$body",
+            rowCount = rows.size,
+        )
+    }
+
+    /**
+     * Claims or changes the caller's username — web's `setMyUsername`, minus
+     * the server-side moderation ruleset.
+     *
+     * The web screens against a DB-backed blocklist (`ruleset.server.ts`) and
+     * logs decisions via service_role; neither is reachable from the APK, so
+     * Android enforces only the *format* rules (length, leading letter, allowed
+     * chars) and the 24h cooldown here, then leans on the DB unique index on
+     * `username_canonical` for collisions. The blocklist gap is a known ceiling:
+     * an unusual handle the web would reject can slip through, but the column is
+     * cosmetic and the server can still reject on write if a trigger exists.
+     */
+    suspend fun setMyUsername(userId: String, raw: String): UsernameResult {
+        val username = raw.trim()
+        // ponytail: client format check only; server blocklist not portable.
+        if (username.length < 3) return UsernameResult.Rejected("Usernames are at least 3 characters.")
+        if (username.length > 20) return UsernameResult.Rejected("Usernames are at most 20 characters.")
+        if (!Regex("^[A-Za-z][A-Za-z0-9_-]{2,19}$").matches(username)) {
+            return UsernameResult.Rejected("Start with a letter; use letters, numbers, _ or - only.")
+        }
+        val canonical = username.lowercase()
+
+        val me = client.postgrest.from("profiles")
+            .select(
+                io.github.jan.supabase.postgrest.query.Columns.list(
+                    "username", "username_canonical", "username_changed_at",
+                ),
+            ) { filter { eq("id", userId) }; limit(1) }
+            .decodeList<UsernameRow>()
+            .firstOrNull()
+
+        // A no-op re-save of the same handle must not burn the cooldown.
+        if (me?.usernameCanonical == canonical && me.username == username) {
+            return UsernameResult.Ok(username)
+        }
+        me?.usernameChangedAt?.let { changedAt ->
+            val elapsed = System.currentTimeMillis() - (app.stackd.core.parseIsoMillis(changedAt) ?: 0)
+            val window = 24L * 3600_000
+            if (elapsed < window) {
+                val mins = Math.ceil((window - elapsed) / 60_000.0).toInt()
+                val human = if (mins >= 60) "${Math.ceil(mins / 60.0).toInt()}h" else "${mins}m"
+                return UsernameResult.Rejected("You can change your username again in $human.")
+            }
+        }
+
+        return runCatching {
+            client.postgrest.from("profiles").update(
+                {
+                    set("username", username)
+                    set("username_canonical", canonical)
+                    set("username_changed_at", java.time.Instant.now().toString())
+                },
+            ) { filter { eq("id", userId) } }
+            UsernameResult.Ok(username)
+        }.getOrElse { err ->
+            // 23505 = unique violation: taken between check and write.
+            if (err.message?.contains("23505") == true ||
+                err.message?.contains("duplicate", ignoreCase = true) == true
+            ) UsernameResult.Rejected("That username isn't available.")
+            else UsernameResult.Rejected("Couldn't set your username. Try again.")
+        }
+    }
+
     /** Edits the cosmetic profile columns the DB still lets clients write. */
     suspend fun updateProfile(userId: String, displayName: String?, bio: String?) {
         client.postgrest.from("profiles").update(
@@ -298,3 +400,40 @@ internal data class PublicFriendshipRow(
     @kotlinx.serialization.SerialName("addressee_id") val addresseeId: String,
     val status: String,
 )
+
+/* ------------------------------- Username -------------------------------- */
+
+sealed interface UsernameResult {
+    data class Ok(val username: String) : UsernameResult
+    data class Rejected(val message: String) : UsernameResult
+}
+
+@kotlinx.serialization.Serializable
+internal data class UsernameRow(
+    val username: String? = null,
+    @kotlinx.serialization.SerialName("username_canonical") val usernameCanonical: String? = null,
+    @kotlinx.serialization.SerialName("username_changed_at") val usernameChangedAt: String? = null,
+)
+
+/* ------------------------------ CSV export ------------------------------- */
+
+data class CsvExport(val csv: String, val rowCount: Int)
+
+@kotlinx.serialization.Serializable
+internal data class ExportRow(
+    @kotlinx.serialization.SerialName("created_at") val createdAt: String? = null,
+    val tier: String = "",
+    val score: Int = 0,
+    @kotlinx.serialization.SerialName("xp_earned") val xpEarned: Int = 0,
+    @kotlinx.serialization.SerialName("duration_seconds") val durationSeconds: Int = 0,
+    @kotlinx.serialization.SerialName("breaches_count") val breachesCount: Int = 0,
+    val notes: String? = null,
+    val tags: List<String>? = null,
+    @kotlinx.serialization.SerialName("room_id") val roomId: String? = null,
+)
+
+/** RFC-4180 quoting, matching the web's `escapeCsv`. */
+internal fun escapeCsv(v: String): String =
+    if (v.any { it == '"' || it == ',' || it == '\n' || it == '\r' }) {
+        "\"${v.replace("\"", "\"\"")}\""
+    } else v

@@ -47,6 +47,7 @@ import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.SectionLabel
 import androidx.compose.runtime.mutableStateOf
 import app.stackd.core.ui.NavMenuSheet
+import kotlinx.coroutines.launch
 import app.stackd.data.room.FocusHistoryRow
 import app.stackd.data.room.RoomRow
 import app.stackd.feature.room.session.FocusScore
@@ -67,6 +68,8 @@ fun DashboardRoute(
     ),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     DashboardScreen(
         state = state,
         onStart = onStart,
@@ -74,6 +77,15 @@ fun DashboardRoute(
         menuEntries = menuEntries,
         onRetry = vm::load,
         onClaimReward = vm::claimReward,
+        onExportCsv = {
+            scope.launch {
+                val export = vm.buildCsv()
+                if (export != null) {
+                    val stamp = java.time.LocalDate.now().toString()
+                    CsvShare.share(context, "stackd-focus-history-$stamp.csv", export.csv)
+                }
+            }
+        },
     )
 }
 
@@ -91,6 +103,7 @@ fun DashboardScreen(
      */
     menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
     onClaimReward: () -> Unit = {},
+    onExportCsv: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -131,6 +144,8 @@ fun DashboardScreen(
         // four rows deep and still growing.
         var showMenu by remember { mutableStateOf(false) }
         GhostButton(text = "Menu", onClick = { showMenu = true })
+        Spacer(Modifier.height(8.dp))
+        GhostButton(text = "Export focus history (CSV)", onClick = onExportCsv)
         if (showMenu) {
             NavMenuSheet(onDismiss = { showMenu = false }, entries = menuEntries)
         }

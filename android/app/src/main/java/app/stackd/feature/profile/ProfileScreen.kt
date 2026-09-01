@@ -50,6 +50,8 @@ data class ProfileUiState(
     val profile: ProfileRow? = null,
     val tier: String = "free",
     val saving: Boolean = false,
+    val usernameSaving: Boolean = false,
+    val usernameNotice: String? = null,
 )
 
 /** Own profile — web's `profile.tsx`: identity card, stats, edit, sign out. */
@@ -88,6 +90,21 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    fun saveUsername(username: String) {
+        val userId = container.auth.currentUserId ?: return
+        if (username.isBlank() || _state.value.usernameSaving) return
+        _state.value = _state.value.copy(usernameSaving = true, usernameNotice = null)
+        viewModelScope.launch {
+            val result = container.profiles.setMyUsername(userId, username)
+            val notice = when (result) {
+                is app.stackd.data.profile.UsernameResult.Ok -> "Username set to @${result.username}."
+                is app.stackd.data.profile.UsernameResult.Rejected -> result.message
+            }
+            _state.value = _state.value.copy(usernameSaving = false, usernameNotice = notice)
+            if (result is app.stackd.data.profile.UsernameResult.Ok) load()
+        }
+    }
+
     fun signOut(onDone: () -> Unit) {
         viewModelScope.launch {
             container.auth.signOut()
@@ -108,6 +125,7 @@ fun ProfileRoute(
     ProfileScreen(
         state = state,
         onSave = vm::save,
+        onSaveUsername = vm::saveUsername,
         onSignOut = { vm.signOut(onSignedOut) },
         onRetry = vm::load,
         onBack = onBack,
@@ -120,6 +138,7 @@ fun ProfileRoute(
 fun ProfileScreen(
     state: ProfileUiState,
     onSave: (String, String) -> Unit,
+    onSaveUsername: (String) -> Unit,
     onSignOut: () -> Unit,
     onRetry: () -> Unit,
     onBack: () -> Unit,
@@ -222,6 +241,29 @@ fun ProfileScreen(
                         onClick = { onSave(name, bio) },
                         enabled = name.isNotBlank(),
                         busy = state.saving,
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+                    SectionLabel("USERNAME")
+                    Spacer(Modifier.height(8.dp))
+                    var username by remember(p) { mutableStateOf(p.username.orEmpty()) }
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { if (it.length <= 20) username = it },
+                        label = { Text("Username (3–20, starts with a letter)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    state.usernameNotice?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text(it, style = MonoLabelSmall, color = colors.textMuted)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    EmberButton(
+                        text = if (state.usernameSaving) "Setting…" else "Set username",
+                        onClick = { onSaveUsername(username) },
+                        enabled = username.isNotBlank() && username != p.username,
+                        busy = state.usernameSaving,
                     )
 
                     Spacer(Modifier.height(20.dp))

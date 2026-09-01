@@ -97,6 +97,15 @@ class DashboardViewModel(
         }
     }
 
+    /**
+     * Builds the focus-history CSV off the main thread. Returns null if there's
+     * no session or the read fails; the caller (which owns a Context) shares it.
+     */
+    suspend fun buildCsv(): app.stackd.data.profile.CsvExport? {
+        val userId = auth.currentUserId ?: return null
+        return runCatching { profiles.exportFocusHistoryCsv(userId) }.getOrNull()
+    }
+
     /** Claims today's login reward; the RPC owns streak math and the XP grant. */
     fun claimReward() {
         val current = _state.value
