@@ -151,11 +151,7 @@ class ProfileRepository(private val client: SupabaseClient) {
     suspend fun setMyUsername(userId: String, raw: String): UsernameResult {
         val username = raw.trim()
         // ponytail: client format check only; server blocklist not portable.
-        if (username.length < 3) return UsernameResult.Rejected("Usernames are at least 3 characters.")
-        if (username.length > 20) return UsernameResult.Rejected("Usernames are at most 20 characters.")
-        if (!Regex("^[A-Za-z][A-Za-z0-9_-]{2,19}$").matches(username)) {
-            return UsernameResult.Rejected("Start with a letter; use letters, numbers, _ or - only.")
-        }
+        validateUsernameFormat(username)?.let { return it }
         val canonical = username.lowercase()
 
         val me = client.postgrest.from("profiles")
@@ -406,6 +402,21 @@ internal data class PublicFriendshipRow(
 sealed interface UsernameResult {
     data class Ok(val username: String) : UsernameResult
     data class Rejected(val message: String) : UsernameResult
+}
+
+private val USERNAME_PATTERN = Regex("^[A-Za-z][A-Za-z0-9_-]{2,19}$")
+
+/**
+ * The portable client-side username rules — web's format checks, without the
+ * server blocklist. Returns a [UsernameResult.Rejected] on the first failing
+ * rule, or null when the format is acceptable. [raw] must already be trimmed.
+ */
+internal fun validateUsernameFormat(raw: String): UsernameResult.Rejected? = when {
+    raw.length < 3 -> UsernameResult.Rejected("Usernames are at least 3 characters.")
+    raw.length > 20 -> UsernameResult.Rejected("Usernames are at most 20 characters.")
+    !USERNAME_PATTERN.matches(raw) ->
+        UsernameResult.Rejected("Start with a letter; use letters, numbers, _ or - only.")
+    else -> null
 }
 
 @kotlinx.serialization.Serializable
