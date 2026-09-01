@@ -29,13 +29,18 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ResponsiveColumn(
     modifier: Modifier = Modifier,
-    maxContentWidth: Dp = DEFAULT_MAX_CONTENT_WIDTH,
+    // Null → derive the ceiling from the live window (compact uses the whole
+    // screen, medium/expanded cap so foldables and tablets don't sprawl). A
+    // caller that needs an explicit measure (a wide analytics grid) still passes
+    // one and overrides the adaptive default.
+    maxContentWidth: Dp? = null,
     horizontalPadding: Dp = 20.dp,
     verticalPadding: Dp = 28.dp,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val cap = maxContentWidth ?: rememberWindowInfo().contentCap
     // Outer column fills and centers; inner column carries the width ceiling and
     // the real content. Centering the inner one is what keeps a wide screen from
     // left-aligning a narrow measure against the edge.
@@ -45,7 +50,7 @@ fun ResponsiveColumn(
     ) {
         Column(
             modifier = Modifier
-                .widthIn(max = maxContentWidth)
+                .widthIn(max = cap)
                 .fillMaxWidth()
                 .padding(horizontal = horizontalPadding, vertical = verticalPadding),
             horizontalAlignment = horizontalAlignment,
