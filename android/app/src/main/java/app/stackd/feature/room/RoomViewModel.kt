@@ -48,6 +48,10 @@ data class RoomUiState(
     /** Null until this user's result is computed at session end. */
     val result: FocusScore.Result? = null,
     val resultQueuedOffline: Boolean = false,
+    /** History row id from finalize — gates the post-session notes/tags form. */
+    val historyId: String? = null,
+    val savingSessionMeta: Boolean = false,
+    val sessionMetaSaved: Boolean = false,
     /** A device signal that isn't guarding the stack — surfaced as a warning. */
     val sensorWarning: String? = null,
 
@@ -566,7 +570,7 @@ class RoomViewModel(
                 abandonmentSeconds = abandonmentSeconds,
             )
 
-            val submitted = runCatching {
+            val historyId = runCatching {
                 rooms.finalizeSession(
                     roomId = room.id,
                     score = result.score,
@@ -576,10 +580,14 @@ class RoomViewModel(
                     tier = result.tier.key,
                     scoringVersion = result.scoringVersion,
                     abandonmentSeconds = abandonmentSeconds,
-                ) != null
-            }.getOrDefault(false)
+                )
+            }.getOrNull()
+            val submitted = historyId != null
 
             if (submitted) {
+                // Keep the id so the Ended screen's notes/tags form can attach
+                // metadata to this exact row.
+                _state.value = _state.value.copy(historyId = historyId)
                 // First finished session gates the Start-screen intro tip.
                 container.settings.markCompletedSession()
                 container.finalizeQueue // ensure init; drains on next flush
@@ -594,6 +602,18 @@ class RoomViewModel(
                 finalizeLock = false
                 _state.value = _state.value.copy(resultQueuedOffline = true)
             }
+        }
+    }
+
+    /** Attaches notes + tags to the just-finished session (Ended phase). */
+    fun saveSessionMeta(notes: String, tagsRaw: String) {
+        val historyId = _state.value.historyId ?: return
+        if (_state.value.savingSessionMeta) return
+        _state.value = _state.value.copy(savingSessionMeta = true)
+        val tags = tagsRaw.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        viewModelScope.launch {
+            val ok = runCatching { rooms.updateSessionMeta(historyId, notes, tags) }.isSuccess
+            _state.value = _state.value.copy(savingSessionMeta = false, sessionMetaSaved = ok)
         }
     }
 

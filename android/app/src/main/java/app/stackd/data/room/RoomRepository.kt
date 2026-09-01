@@ -534,6 +534,29 @@ class RoomRepository(private val client: SupabaseClient) {
         ) { select() }.decodeSingleOrNull()
     }
 
+    /**
+     * Attaches notes + tags to a finished session — web's `updateSessionMeta`.
+     * Routed through the `update_session_meta` RPC because the direct
+     * `focus_history` UPDATE is column-revoked; the RPC checks the row belongs
+     * to the caller and stamps only notes/tags.
+     */
+    suspend fun updateSessionMeta(historyId: String, notes: String, tags: List<String>) {
+        client.postgrest.rpc(
+            "update_session_meta",
+            buildJsonObject {
+                put("_history_id", historyId)
+                put("_notes", notes.take(2000))
+                put(
+                    "_tags",
+                    kotlinx.serialization.json.buildJsonArray {
+                        tags.map { it.trim().take(24) }.filter { it.isNotBlank() }.take(8)
+                            .forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) }
+                    },
+                )
+            },
+        )
+    }
+
     suspend fun updateWorkspaceItem(id: String, done: Boolean) {
         client.postgrest.from("session_workspace_items").update(
             { set("done", done) },

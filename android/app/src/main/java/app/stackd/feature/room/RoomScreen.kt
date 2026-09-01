@@ -128,6 +128,7 @@ fun RoomRoute(
         onDeleteWorkspace = vm::deleteWorkspaceItem,
         onSaveMeta = vm::saveRoomMeta,
         onAddSchedule = vm::addScheduledEvent,
+        onSaveSessionMeta = vm::saveSessionMeta,
     )
 }
 
@@ -145,6 +146,7 @@ fun RoomScreen(
     onDeleteWorkspace: (String) -> Unit = {},
     onSaveMeta: (String, String, String, Int, String) -> Unit = { _, _, _, _, _ -> },
     onAddSchedule: (String, String, Int) -> Unit = { _, _, _ -> },
+    onSaveSessionMeta: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -172,7 +174,7 @@ fun RoomScreen(
                 state, onEnd, onAbort,
                 onToggleReady, onAddWorkspace, onToggleWorkspace, onDeleteWorkspace,
             )
-            RoomPhase.ENDED -> Ended(state, onExit)
+            RoomPhase.ENDED -> Ended(state, onExit, onSaveSessionMeta)
         }
       }
     }
@@ -212,6 +214,8 @@ private fun Lobby(
         style = MonoLabelSmall,
         color = colors.textMuted,
     )
+    Spacer(Modifier.height(12.dp))
+    CopyInviteButton(state.code)
     Spacer(Modifier.height(24.dp))
     RoomHeaderPanel(state, onSaveMeta)
     Spacer(Modifier.height(16.dp))
@@ -237,6 +241,28 @@ private fun Lobby(
         NoticeBanner("Waiting for the host to start the session.")
         Spacer(Modifier.height(12.dp))
         GhostButton(text = "Leave", onClick = onExit)
+    }
+}
+
+/** Copies {WEB_BASE_URL}/room/{code} — the web's copyCode, minus the toast. */
+@Composable
+private fun CopyInviteButton(code: String) {
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    var copied by remember { androidx.compose.runtime.mutableStateOf(false) }
+    GhostButton(
+        text = if (copied) "Invite link copied ✓" else "Copy invite link",
+        onClick = {
+            val link = "${app.stackd.BuildConfig.WEB_BASE_URL}/room/$code"
+            clipboard.setText(androidx.compose.ui.text.AnnotatedString(link))
+            copied = true
+        },
+    )
+    // Reset the label a couple seconds after a copy, matching the web's 2s flip.
+    androidx.compose.runtime.LaunchedEffect(copied) {
+        if (copied) {
+            kotlinx.coroutines.delay(2000)
+            copied = false
+        }
     }
 }
 
@@ -344,7 +370,11 @@ private fun Active(
 }
 
 @Composable
-private fun Ended(state: RoomUiState, onExit: () -> Unit) {
+private fun Ended(
+    state: RoomUiState,
+    onExit: () -> Unit,
+    onSaveSessionMeta: (String, String) -> Unit,
+) {
     val colors = Stackd.colors
     val result = state.result
     SectionLabel(if (state.room?.statusEnum?.wire == "aborted") "ABORTED" else "SESSION COMPLETE")
@@ -408,12 +438,99 @@ private fun Ended(state: RoomUiState, onExit: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             NoticeBanner("Saved offline — it'll sync when you're back online.")
         }
+
+        // Breach log — every break this session, most recent first. Data is
+        // already in state; the web renders the same list under BREACH_LOG.
+        if (myBreaks.isNotEmpty()) {
+            Spacer(Modifier.height(20.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(colors.textPrimary.copy(alpha = 0.03f), app.stackd.core.theme.Radius2Xl)
+                    .border(1.dp, colors.border, app.stackd.core.theme.Radius2Xl)
+                    .padding(16.dp),
+            ) {
+                Text("BREACH LOG", style = MonoLabelSmall, color = colors.textMuted)
+                Spacer(Modifier.height(8.dp))
+                myBreaks.sortedByDescending { it.at }.forEach { b ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            b.reason,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (b.isSevere) colors.breach else colors.textMuted,
+                        )
+                        Text(
+                            if (b.isSevere) "SEVERE" else "MINOR",
+                            style = MonoLabelSmall,
+                            color = if (b.isSevere) colors.breach else colors.textMuted,
+                        )
+                    }
+                }
+            }
+        }
+
+        // Post-session notes + tags, attached to this history row. Only after
+        // finalize returns an id — the RPC needs a real row to stamp.
+        if (state.historyId != null) {
+            Spacer(Modifier.height(20.dp))
+            SessionMetaForm(
+                saving = state.savingSessionMeta,
+                saved = state.sessionMetaSaved,
+                onSave = onSaveSessionMeta,
+            )
+        }
     } else {
         Text("Tallying your session…", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
     }
 
     Spacer(Modifier.height(28.dp))
     EmberButton(text = "Back to Dashboard", onClick = onExit)
+}
+
+/** Notes + comma-tags for the finished session — web's SessionMetaForm. */
+@Composable
+private fun SessionMetaForm(
+    saving: Boolean,
+    saved: Boolean,
+    onSave: (String, String) -> Unit,
+) {
+    val colors = Stackd.colors
+    var notes by remember { androidx.compose.runtime.mutableStateOf("") }
+    var tags by remember { androidx.compose.runtime.mutableStateOf("") }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), app.stackd.core.theme.Radius2Xl)
+            .border(1.dp, colors.border, app.stackd.core.theme.Radius2Xl)
+            .padding(16.dp),
+    ) {
+        Text("MARK THIS SESSION", style = MonoLabelSmall, color = colors.textMuted)
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.material3.OutlinedTextField(
+            value = notes,
+            onValueChange = { if (it.length <= 2000) notes = it },
+            label = { Text("Notes") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.material3.OutlinedTextField(
+            value = tags,
+            onValueChange = { tags = it },
+            label = { Text("Tags, comma-separated") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(10.dp))
+        EmberButton(
+            text = if (saving) "Marking…" else if (saved) "Marked ✓" else "Mark it",
+            onClick = { onSave(notes, tags) },
+            enabled = !saving && (notes.isNotBlank() || tags.isNotBlank()),
+            busy = saving,
+        )
+    }
 }
 
 @Composable
