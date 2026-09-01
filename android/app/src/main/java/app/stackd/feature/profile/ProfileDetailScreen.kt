@@ -156,19 +156,11 @@ fun ProfileDetailScreen(
                 else -> {
                     val p = state.profile.profile
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape)
-                                .border(1.dp, colors.accent.copy(alpha = 0.3f), CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                (p.displayName ?: "?").take(1).uppercase(),
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = colors.accent,
-                            )
-                        }
+                        app.stackd.core.ui.Avatar(
+                            url = p.avatarUrl,
+                            name = p.displayName,
+                            size = 72.dp,
+                        )
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
                             Text(

@@ -278,15 +278,7 @@ private fun FeedRow(item: FeedItem, now: Long) {
             .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape)
-                .border(1.dp, colors.border, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(name.take(1).uppercase(), style = MonoLabelSmall, color = colors.accent)
-        }
+        app.stackd.core.ui.Avatar(url = item.avatarUrl, name = name, size = 36.dp)
         Column(Modifier.weight(1f)) {
             Text(
                 name,

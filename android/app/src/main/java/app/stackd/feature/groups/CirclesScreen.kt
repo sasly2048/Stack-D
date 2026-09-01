@@ -260,21 +260,11 @@ private fun CircleBoard(detail: CircleDetail) {
                 color = if (i < 3) colors.accent else colors.textMuted,
                 modifier = Modifier.size(20.dp),
             )
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape)
-                    .border(1.dp, colors.border, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    (m.displayName ?: "?").take(2).uppercase(),
-                    style = MonoLabelSmall, color = colors.accent,
-                )
+            Box(contentAlignment = Alignment.BottomEnd) {
+                app.stackd.core.ui.Avatar(url = m.avatarUrl, name = m.displayName, size = 34.dp)
                 if (m.isOnline) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomEnd)
                             .size(9.dp)
                             .background(colors.accent, CircleShape)
                             .border(2.dp, colors.background, CircleShape),
