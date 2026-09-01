@@ -17,6 +17,9 @@ import app.stackd.feature.feed.FeedRoute
 import app.stackd.feature.friends.FriendsRoute
 import app.stackd.feature.groups.CirclesRoute
 import app.stackd.feature.groups.GroupsRoute
+import app.stackd.feature.integrations.IntegrationsRoute
+import app.stackd.feature.partners.PartnersRoute
+import app.stackd.feature.profile.ProfileDetailRoute
 import app.stackd.feature.recap.ReplayRoute
 import app.stackd.feature.recap.WrappedRoute
 import app.stackd.feature.trust.ModerationRoute
@@ -82,7 +85,9 @@ fun StackdNavHost(
                     "Memory Vault" to Dest.Vault,
                     "Time Capsule" to Dest.Capsule,
                     "Friends" to Dest.Friends,
+                    "Partners" to Dest.Partners,
                     "Trust & Safety" to Dest.Trust,
+                    "Integrations" to Dest.Integrations,
                     "Profile" to Dest.Profile,
                 ).map { (label, dest) ->
                     label to { navController.navigate(dest.route); Unit }
@@ -137,7 +142,10 @@ fun StackdNavHost(
         composable(
             route = Dest.ProfileDetail.route,
             arguments = listOf(navArgument(Dest.ProfileDetail.ARG_ID) { type = NavType.StringType }),
-        ) { PlaceholderScreen(title = "Profile Detail") }
+        ) { entry ->
+            val id = entry.arguments?.getString(Dest.ProfileDetail.ARG_ID).orEmpty()
+            ProfileDetailRoute(userId = id, onBack = { navController.popBackStack() })
+        }
         composable(Dest.Friends.route) {
             FriendsRoute(onBack = { navController.popBackStack() })
         }
@@ -151,7 +159,9 @@ fun StackdNavHost(
         composable(Dest.Timeline.route) {
             TimelineRoute(onBack = { navController.popBackStack() })
         }
-        placeholder(Dest.Partners, "Partners")
+        composable(Dest.Partners.route) {
+            PartnersRoute(onBack = { navController.popBackStack() })
+        }
 
         // Progression
         composable(Dest.Leaderboard.route) {
@@ -232,7 +242,9 @@ fun StackdNavHost(
         placeholder(Dest.Companion, "Companion", "AI wiring deferred.")
 
         // Misc
-        placeholder(Dest.Integrations, "Integrations")
+        composable(Dest.Integrations.route) {
+            IntegrationsRoute(onBack = { navController.popBackStack() })
+        }
         placeholder(Dest.Settings, "Settings")
 
         // Developer surfaces — reachable only while the Settings toggle is on

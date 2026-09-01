@@ -23,6 +23,80 @@ class ProfileRepository(private val client: SupabaseClient) {
             .select { filter { eq("id", userId) } }
             .decodeSingleOrNull()
 
+    /**
+     * Another witness's public profile — web's `getProfile` for `profile/$id`.
+     * Bundles the profile row, session count, unlocked achievements, and the
+     * viewer's friendship edge (null when viewing self). All owner/world reads
+     * under RLS; the friendship row is the canonical pair either direction.
+     */
+    suspend fun publicProfile(targetId: String, viewerId: String): PublicProfile? {
+        val prof = getProfile(targetId) ?: return null
+
+        val sessionCount = client.postgrest.from("focus_history")
+            .select(io.github.jan.supabase.postgrest.query.Columns.list("id")) {
+                count(io.github.jan.supabase.postgrest.query.Count.EXACT)
+                head = true
+                filter { eq("profile_id", targetId) }
+            }
+            .countOrNull() ?: 0
+
+        val achievements = client.postgrest.from("user_achievements")
+            .select(
+                io.github.jan.supabase.postgrest.query.Columns.raw(
+                    "achievement_id, unlocked_at, achievements(name, tier)",
+                ),
+            ) {
+                filter { eq("user_id", targetId) }
+                order("unlocked_at", Order.DESCENDING)
+            }
+            .decodeList<PublicUnlockRow>()
+            .map {
+                PublicAchievement(
+                    id = it.achievementId,
+                    name = it.achievements?.name ?: it.achievementId,
+                    tier = it.achievements?.tier ?: "bronze",
+                )
+            }
+
+        // Friendship edge only matters when viewing someone else.
+        val friendship = if (targetId == viewerId) null else {
+            client.postgrest.from("friendships")
+                .select(
+                    io.github.jan.supabase.postgrest.query.Columns.list(
+                        "id", "requester_id", "addressee_id", "status",
+                    ),
+                ) {
+                    filter {
+                        or {
+                            and {
+                                eq("requester_id", viewerId)
+                                eq("addressee_id", targetId)
+                            }
+                            and {
+                                eq("requester_id", targetId)
+                                eq("addressee_id", viewerId)
+                            }
+                        }
+                    }
+                    limit(1)
+                }
+                .decodeList<PublicFriendshipRow>()
+                .firstOrNull()
+                ?.let { row ->
+                    PublicFriendship(
+                        id = row.id,
+                        direction = when {
+                            row.status == "accepted" -> "friend"
+                            row.requesterId == viewerId -> "outgoing"
+                            else -> "incoming"
+                        },
+                    )
+                }
+        }
+
+        return PublicProfile(prof, sessionCount, achievements, friendship)
+    }
+
     /** Edits the cosmetic profile columns the DB still lets clients write. */
     suspend fun updateProfile(userId: String, displayName: String?, bio: String?) {
         client.postgrest.from("profiles").update(
@@ -187,4 +261,40 @@ internal data class LoginStreakRow(
     val streak: Int = 0,
     @kotlinx.serialization.SerialName("last_claim_date") val lastClaimDate: String? = null,
     @kotlinx.serialization.SerialName("total_claims") val totalClaims: Int = 0,
+)
+
+/* ---------------------- Public (other-user) profile ---------------------- */
+
+data class PublicAchievement(val id: String, val name: String, val tier: String)
+
+/** The viewer's tie to the profile owner; null when viewing self. */
+data class PublicFriendship(
+    val id: String,
+    /** friend | outgoing | incoming */
+    val direction: String,
+)
+
+/** Web's `PublicProfile` — the owner's row plus derived social context. */
+data class PublicProfile(
+    val profile: ProfileRow,
+    val sessionCount: Long,
+    val achievements: List<PublicAchievement>,
+    val friendship: PublicFriendship?,
+)
+
+@kotlinx.serialization.Serializable
+internal data class PublicUnlockRow(
+    @kotlinx.serialization.SerialName("achievement_id") val achievementId: String,
+    val achievements: EmbeddedAchievement? = null,
+) {
+    @kotlinx.serialization.Serializable
+    data class EmbeddedAchievement(val name: String? = null, val tier: String? = null)
+}
+
+@kotlinx.serialization.Serializable
+internal data class PublicFriendshipRow(
+    val id: String,
+    @kotlinx.serialization.SerialName("requester_id") val requesterId: String,
+    @kotlinx.serialization.SerialName("addressee_id") val addresseeId: String,
+    val status: String,
 )

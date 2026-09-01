@@ -14,6 +14,7 @@ import app.stackd.data.social.FeedRepository
 import app.stackd.data.social.FriendsRepository
 import app.stackd.data.social.GroupsRepository
 import app.stackd.data.social.LeaderboardRepository
+import app.stackd.data.social.PartnersRepository
 import app.stackd.data.timeline.TimelineRepository
 import app.stackd.data.trust.TrustRepository
 import app.stackd.data.vault.VaultRepository
@@ -65,4 +66,6 @@ class AppContainer(context: Context) {
     val trust: TrustRepository by lazy { TrustRepository(client) }
 
     val recap: RecapRepository by lazy { RecapRepository(client) }
+
+    val partners: PartnersRepository by lazy { PartnersRepository(client) }
 }
