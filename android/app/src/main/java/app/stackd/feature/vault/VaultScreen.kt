@@ -213,13 +213,38 @@ fun VaultScreen(
                     }
 
                     Spacer(Modifier.height(16.dp))
+                    // Web searches title/notes/summary server-side with ilike;
+                    // Android already holds the full page (limit 200), so the
+                    // same match runs in memory with no extra round-trip.
+                    var query by remember { mutableStateOf("") }
+                    if (state.items.isNotEmpty()) {
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            label = { Text("Search title, notes, summary") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    val q = query.trim().lowercase()
+                    val shown = if (q.isEmpty()) state.items else state.items.filter {
+                        it.title.lowercase().contains(q) ||
+                            it.body?.lowercase()?.contains(q) == true ||
+                            it.aiSummary?.lowercase()?.contains(q) == true
+                    }
                     if (state.items.isEmpty()) {
                         Text(
                             "Nothing stored yet.",
                             style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                         )
+                    } else if (shown.isEmpty()) {
+                        Text(
+                            "No entries match “$query”.",
+                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        )
                     }
-                    state.items.forEach { item ->
+                    shown.forEach { item ->
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()

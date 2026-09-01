@@ -44,16 +44,40 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.Instant
 
+private val WEEKDAY_NAMES = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+
 data class InsightsUiState(
     val loading: Boolean = true,
     val error: Boolean = false,
     val rows: List<FocusHistoryRow> = emptyList(),
     val streak: Int = 0,
     val bestStreak: Int = 0,
+    val lifetimeXp: Long = 0,
 ) {
     val totals: AnalyticsEngine.Totals get() = AnalyticsEngine.totals(rows)
     val hourBuckets: List<AnalyticsEngine.HourBucket> get() = AnalyticsEngine.hourBuckets(rows)
     val dna: AnalyticsEngine.Dna get() = AnalyticsEngine.dna(rows)
+
+    /** Best focus hour by seconds held — the web's "Signal" callout. */
+    val bestHour: Int?
+        get() = hourBuckets.filter { it.seconds > 0 }.maxByOrNull { it.seconds }?.hour
+
+    /** Best weekday by seconds held (local zone), or null when empty. */
+    val bestWeekday: String?
+        get() {
+            if (rows.isEmpty()) return null
+            val byDay = LongArray(7)
+            rows.forEach { r ->
+                val millis = app.stackd.core.parseIsoMillis(r.createdAt) ?: return@forEach
+                val dow = java.time.Instant.ofEpochMilli(millis)
+                    .atZone(java.time.ZoneId.systemDefault()).dayOfWeek.value % 7
+                byDay[dow] += r.durationSeconds.toLong()
+            }
+            val top = byDay.indices.maxByOrNull { byDay[it] } ?: return null
+            return if (byDay[top] > 0) WEEKDAY_NAMES[top] else null
+        }
+
+    val forecast: Forecast get() = forecast(rows, lifetimeXp)
 }
 
 /** 120-day analytics — the web's `insights.tsx` over `getAnalytics`. */
@@ -73,11 +97,11 @@ class InsightsViewModel(private val container: AppContainer) : ViewModel() {
                 val since = Instant.now().minusSeconds(120L * 24 * 3600).toString()
                 val rows = container.profiles.historySince(userId, since, limit = 1000)
                 val profile = container.profiles.getProfile(userId)
-                Triple(rows, profile?.currentFocusStreak ?: 0, 0)
+                Triple(rows, profile?.currentFocusStreak ?: 0, profile?.lifetimeXp ?: 0)
             }.fold(
-                onSuccess = { (rows, streak, _) ->
+                onSuccess = { (rows, streak, lifetimeXp) ->
                     _state.value = InsightsUiState(
-                        loading = false, rows = rows, streak = streak,
+                        loading = false, rows = rows, streak = streak, lifetimeXp = lifetimeXp,
                     )
                 },
                 onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
@@ -184,6 +208,16 @@ fun InsightsScreen(
                     SectionLabel("HEATMAP · 120 DAYS")
                     Spacer(Modifier.height(8.dp))
                     ActivityHeatmap(state.rows, weeks = 17)
+
+                    Spacer(Modifier.height(16.dp))
+                    SectionLabel("SIGNAL")
+                    Spacer(Modifier.height(8.dp))
+                    SignalCallout(state.bestHour, state.bestWeekday)
+
+                    Spacer(Modifier.height(16.dp))
+                    SectionLabel("GOAL FORECAST")
+                    Spacer(Modifier.height(8.dp))
+                    ForecastCard(state.forecast)
                 }
             }
 
@@ -221,6 +255,71 @@ private fun HourBars(buckets: List<AnalyticsEngine.HourBucket>) {
         ) {
             listOf("00", "06", "12", "18", "23").forEach {
                 Text(it, style = MonoLabelSmall, color = colors.textMuted)
+            }
+        }
+    }
+}
+
+/** "You hold best around HH:00, on {weekday}s." — web's Signal card. */
+@Composable
+private fun SignalCallout(bestHour: Int?, bestWeekday: String?) {
+    val colors = Stackd.colors
+    val text = when {
+        bestHour != null && bestWeekday != null ->
+            "You hold best around ${bestHour.toString().padStart(2, '0')}:00, on ${bestWeekday}s."
+        bestHour != null ->
+            "You hold best around ${bestHour.toString().padStart(2, '0')}:00."
+        else -> "Hold a few more sessions and a pattern will surface here."
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(16.dp),
+    ) {
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+    }
+}
+
+/** 30-day pace and the next three XP milestones — web's GoalForecast. */
+@Composable
+private fun ForecastCard(f: Forecast) {
+    val colors = Stackd.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(16.dp),
+    ) {
+        Text(
+            "~${f.avgDailyMinutes} min/day · ~${f.avgDailyXp} XP/day",
+            style = MonoLabelSmall, color = colors.accent,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "About ${f.weeklyForecastMinutes} min this week, ${f.monthlyForecastMinutes} this month.",
+            style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
+        )
+        if (f.projections.isEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Hold sessions and milestone ETAs appear here.",
+                style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
+            )
+        }
+        f.projections.forEach { pr ->
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(pr.label, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                Text(
+                    if (pr.daysNeeded >= 9999) "—" else "~${pr.daysNeeded}d",
+                    style = MonoLabelSmall, color = colors.textMuted,
+                )
             }
         }
     }

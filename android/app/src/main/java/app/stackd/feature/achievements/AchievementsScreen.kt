@@ -3,6 +3,7 @@ package app.stackd.feature.achievements
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -70,6 +71,7 @@ data class AchievementsUiState(
     val error: Boolean = false,
     val rows: List<Achievement> = emptyList(),
     val unlocked: Int = 0,
+    val lifetimeXp: Long = 0,
 ) {
     val total: Int get() = rows.size
 }
@@ -102,11 +104,12 @@ class AchievementsViewModel(private val container: AppContainer) : ViewModel() {
                     .decodeList<UnlockRow>()
                 val byId = unlocks.associate { it.achievementId to it.unlockedAt }
                 catalog.forEach { it.unlockedAt = byId[it.id] }
-                catalog to byId.size
+                val xp = container.profiles.getProfile(userId)?.lifetimeXp ?: 0
+                Triple(catalog, byId.size, xp)
             }.fold(
-                onSuccess = { (rows, unlocked) ->
+                onSuccess = { (rows, unlocked, xp) ->
                     _state.value = AchievementsUiState(
-                        loading = false, rows = rows, unlocked = unlocked,
+                        loading = false, rows = rows, unlocked = unlocked, lifetimeXp = xp,
                     )
                 },
                 onFailure = {
@@ -160,6 +163,10 @@ fun AchievementsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textMuted,
             )
+            if (!state.loading && !state.error) {
+                Spacer(Modifier.height(16.dp))
+                ChapterCard(state.lifetimeXp)
+            }
             Spacer(Modifier.height(16.dp))
 
             when {
@@ -226,6 +233,58 @@ fun AchievementsScreen(
             Spacer(Modifier.height(24.dp))
             GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
+        }
+    }
+}
+
+/**
+ * Narrative "Chapter" progress — web's chapter card over `chapterForXp`. Pure
+ * client math on lifetime XP; shows the current chapter, its subtitle, and a
+ * bar toward the next chapter's XP floor.
+ */
+@Composable
+private fun ChapterCard(lifetimeXp: Long) {
+    val colors = Stackd.colors
+    val chapter = app.stackd.feature.insights.chapterForXp(lifetimeXp)
+    val next = app.stackd.feature.insights.nextChapter(lifetimeXp)
+    val index = app.stackd.feature.insights.NARRATIVE_CHAPTERS.indexOfFirst { it.title == chapter.title }
+    val progress = app.stackd.feature.insights.chapterProgress(lifetimeXp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.3f), Radius2Xl)
+            .padding(16.dp),
+    ) {
+        Text("CHAPTER ${index + 1}", style = MonoLabelSmall, color = colors.accent)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            chapter.title,
+            style = MaterialTheme.typography.titleLarge,
+            color = colors.textPrimary,
+            fontWeight = FontWeight.ExtraBold,
+        )
+        Text(chapter.subtitle, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        if (next != null) {
+            Spacer(Modifier.height(10.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(5.dp)
+                    .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(progress)
+                        .height(5.dp)
+                        .background(colors.accent, CircleShape),
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "${lifetimeXp} / ${next.minXp} XP · next: ${next.title}",
+                style = MonoLabelSmall, color = colors.textMuted,
+            )
         }
     }
 }
