@@ -107,6 +107,9 @@ export function UpgradeDialog({
 
   // Lifetime/admin members have nothing to buy; everyone else can switch plans.
   const permanent = current?.source === "lifetime" || current?.source === "admin";
+  // A lapsed/cancelled membership must not gate anything: the old plan should be
+  // buyable again and no "starts at period end" promise applies.
+  const activePlanId = current?.active ? (current.planId ?? null) : null;
 
   const byTier = useMemo(() => {
     const pick = (tier: string, iv: Interval) =>
@@ -180,7 +183,7 @@ export function UpgradeDialog({
             interval={interval}
             onCheckout={onCheckout}
             checkingOut={checkingOut}
-            currentPlanId={current?.planId ?? null}
+            currentPlanId={activePlanId}
             permanent={permanent}
           />
           <TierColumn
@@ -193,7 +196,7 @@ export function UpgradeDialog({
             interval={interval}
             onCheckout={onCheckout}
             checkingOut={checkingOut}
-            currentPlanId={current?.planId ?? null}
+            currentPlanId={activePlanId}
             permanent={permanent}
           />
         </div>
