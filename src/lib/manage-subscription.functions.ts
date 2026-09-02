@@ -16,6 +16,11 @@ export interface SubscriptionDetail {
   displayName: string | null;
   /** True only for a live Razorpay subscription the user can cancel. */
   cancellable: boolean;
+  /**
+   * False when a paid row has lapsed (current_period_end in the past). Lifetime
+   * and admin access never expires, so it stays true for them.
+   */
+  active: boolean;
 }
 
 /**
@@ -51,6 +56,7 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
         priceInr: null,
         displayName: null,
         cancellable: false,
+        active: false,
       };
     }
 
@@ -67,6 +73,11 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
     }
 
     const isRazorpay = s.source === "razorpay" && Boolean(s.provider_ref);
+    // A paid row keeps its tier/plan_id after expiry (only my_entitlement()
+    // collapses it), so derive liveness from the period end here.
+    const periodEnd = s.current_period_end ? new Date(s.current_period_end) : null;
+    const permanentSource = s.source === "lifetime" || s.source === "admin";
+    const active = permanentSource || (periodEnd != null && periodEnd.getTime() > Date.now());
 
     return {
       tier: s.tier,
@@ -76,7 +87,8 @@ export const getSubscriptionDetail = createServerFn({ method: "GET" })
       interval: plan?.interval ?? null,
       priceInr: plan?.price_inr ?? null,
       displayName: plan?.display_name ?? null,
-      cancellable: isRazorpay,
+      cancellable: isRazorpay && active,
+      active,
     };
   });
 
