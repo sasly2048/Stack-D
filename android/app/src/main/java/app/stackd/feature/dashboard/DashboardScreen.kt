@@ -173,7 +173,28 @@ fun DashboardScreen(
             }
 
             state.error -> {
-                ErrorBanner("Couldn't load your analytics.", onRetry = onRetry)
+                // Degrade intentionally: the user IS signed in (the header
+                // greets them by name from the token), New Session above still
+                // works, and the ledger just couldn't sync. A calm inline notice
+                // reads as "temporarily unavailable", not "the app is broken".
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+                        .border(1.dp, colors.border, Radius2Xl)
+                        .padding(20.dp),
+                ) {
+                    SectionLabel("LEDGER UNAVAILABLE")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Your history couldn't load right now. You can still start " +
+                            "a session — your stats will appear once it syncs.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textMuted,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    GhostButton(text = "Retry", onClick = onRetry)
+                }
             }
 
             state.isEmpty && state.live.isEmpty() -> {
