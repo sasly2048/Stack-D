@@ -8,6 +8,7 @@ import app.stackd.data.profile.RewardStatus
 import app.stackd.data.room.FocusHistoryRow
 import app.stackd.data.room.RoomRow
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,11 +73,20 @@ class DashboardViewModel(
             runCatching {
                 // Three independent reads — fan them out, mirroring the web's
                 // Promise.all, so the slowest one bounds the wait, not the sum.
-                val profileDef = async { profiles.getProfile(userId) }
-                val historyDef = async { profiles.recentSessions(userId) }
-                val liveDef = async { profiles.activeSessions() }
-                val rewardDef = async { runCatching { profiles.rewardStatus(userId) }.getOrNull() }
-                Quad(profileDef.await(), historyDef.await(), liveDef.await(), rewardDef.await())
+                //
+                // coroutineScope is load-bearing: an `async` launched straight
+                // into viewModelScope propagates its failure to the PARENT scope,
+                // not to the await() call site, so a throwing read (e.g. an RLS
+                // denial on profiles) would escape this runCatching and crash the
+                // app. Nesting the asyncs in coroutineScope makes them its
+                // children, so the failure surfaces here where runCatching sees it.
+                coroutineScope {
+                    val profileDef = async { profiles.getProfile(userId) }
+                    val historyDef = async { profiles.recentSessions(userId) }
+                    val liveDef = async { profiles.activeSessions() }
+                    val rewardDef = async { runCatching { profiles.rewardStatus(userId) }.getOrNull() }
+                    Quad(profileDef.await(), historyDef.await(), liveDef.await(), rewardDef.await())
+                }
             }.fold(
                 onSuccess = { (profile, history, live, reward) ->
                     _state.value = DashboardUiState(
