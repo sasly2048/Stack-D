@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -45,7 +46,14 @@ fun ResponsiveColumn(
     // the real content. Centering the inner one is what keeps a wide screen from
     // left-aligning a narrow measure against the edge.
     Column(
-        modifier = modifier.fillMaxWidth(),
+        // safeDrawingPadding keeps content clear of the status bar, nav bar,
+        // display cutout, and IME — the app draws edge-to-edge, so without this
+        // the first heading sits under the clock (and the last control under
+        // the gesture bar). Applied at this shared chokepoint so every screen
+        // routing through ResponsiveColumn is inset once, correctly.
+        modifier = modifier
+            .fillMaxWidth()
+            .safeDrawingPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(
