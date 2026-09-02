@@ -201,7 +201,11 @@ fun AchievementsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            a.icon.ifBlank { "◆" },
+                            // The `icon` column holds Lucide icon *names* the web
+                            // renders as components; Android has no Lucide set, so
+                            // the raw name ("sparkles") was printing as text and
+                            // wrapping mid-word. Map the known names to a glyph.
+                            achievementGlyph(a.icon),
                             style = MaterialTheme.typography.titleLarge,
                             modifier = Modifier.width(40.dp),
                         )
@@ -287,4 +291,22 @@ private fun ChapterCard(lifetimeXp: Long) {
             )
         }
     }
+}
+
+/**
+ * Maps the catalog's Lucide icon names to a glyph. The web renders these as
+ * Lucide components; Android has no Lucide set, so each known name gets an
+ * emoji that carries the same meaning, with a diamond fallback for anything
+ * new so a future catalog addition degrades to a mark, never to raw text.
+ */
+private fun achievementGlyph(icon: String): String = when (icon) {
+    "sparkles" -> "✨"   // ✨
+    "flame" -> "🔥" // 🔥
+    "clock" -> "⏱"       // ⏱
+    "shield" -> "🛡" // 🛡
+    "zap" -> "⚡"         // ⚡
+    "users" -> "👥" // 👥
+    "moon" -> "🌒"  // 🌒
+    "sunrise" -> "🌅" // 🌅
+    else -> "◆"          // ◆
 }
