@@ -34,6 +34,7 @@ import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
@@ -124,11 +125,14 @@ class InsightsViewModel(private val container: AppContainer) : ViewModel() {
 @Composable
 fun InsightsRoute(
     onBack: () -> Unit,
+    onStart: () -> Unit = {},
     modifier: Modifier = Modifier,
     vm: InsightsViewModel = viewModel(factory = stackdViewModel { InsightsViewModel(it) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    InsightsScreen(state = state, onRetry = vm::load, onBack = onBack, modifier = modifier)
+    InsightsScreen(
+        state = state, onRetry = vm::load, onBack = onBack, onStart = onStart, modifier = modifier,
+    )
 }
 
 @Composable
@@ -136,6 +140,7 @@ fun InsightsScreen(
     state: InsightsUiState,
     onRetry: () -> Unit,
     onBack: () -> Unit,
+    onStart: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -164,10 +169,30 @@ fun InsightsScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                state.rows.isEmpty() -> Text(
-                    "No sessions yet — your patterns appear after the first stack.",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.rows.isEmpty() -> Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+                        .border(1.dp, colors.border, Radius2Xl)
+                        .padding(24.dp),
+                ) {
+                    SectionLabel("NOTHING TO CHART YET")
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Your focus radar, hourly rhythm and 120-day heatmap",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "They draw themselves from your sessions. Hold your first " +
+                            "stack and the patterns start appearing here.",
+                        style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    EmberButton(text = "Start your first session", onClick = onStart)
+                }
                 else -> {
                     val t = state.totals
                     // Stat tiles, two per row like the web's grid.

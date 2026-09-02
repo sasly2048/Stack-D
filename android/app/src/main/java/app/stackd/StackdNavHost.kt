@@ -200,7 +200,10 @@ fun StackdNavHost(
 
         // Analytics & recall
         composable(Dest.Insights.route) {
-            InsightsRoute(onBack = { navController.popBackStack() })
+            InsightsRoute(
+                onBack = { navController.popBackStack() },
+                onStart = { navController.navigate(Dest.Start.route) },
+            )
         }
         composable(Dest.Dna.route) {
             DnaRoute(
