@@ -169,16 +169,23 @@ fun StartScreen(
             }
         }
         Spacer(Modifier.height(12.dp))
+        // Continuous, not stepped. The stepped slider drew 47 tick dots and an
+        // oversized thumb that sat in its own left gutter, detached from the
+        // track — it read as two broken components. A continuous slider gives a
+        // clean thumb riding the track; onDurationChange still rounds to whole
+        // minutes, and the quick-pick chips below cover the common discrete
+        // values, so nothing is lost.
         Slider(
             value = state.duration.toFloat(),
-            onValueChange = { onDurationChange(it.toInt()) },
+            onValueChange = {
+                val stepped = (it / StartUiState.STEP_MINUTES).toInt() * StartUiState.STEP_MINUTES
+                onDurationChange(stepped.coerceAtLeast(StartUiState.MIN_MINUTES))
+            },
             valueRange = StartUiState.MIN_MINUTES.toFloat()..StartUiState.MAX_MINUTES.toFloat(),
-            // (240-5)/5 = 47 stops between ends; step count is stops minus one.
-            steps = (StartUiState.MAX_MINUTES - StartUiState.MIN_MINUTES) / StartUiState.STEP_MINUTES - 1,
             enabled = !state.durationLocked,
             colors = SliderDefaults.colors(
-                thumbColor = colors.textPrimary,
-                activeTrackColor = colors.textPrimary,
+                thumbColor = colors.accent,
+                activeTrackColor = colors.accent,
                 inactiveTrackColor = colors.textPrimary.copy(alpha = 0.15f),
                 disabledThumbColor = colors.textMuted,
                 disabledActiveTrackColor = colors.textMuted,
