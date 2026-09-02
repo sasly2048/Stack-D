@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -88,6 +89,10 @@ fun AuthScreen(
             .fillMaxSize()
             .background(colors.background)
             .verticalScroll(rememberScrollState())
+            // Edge-to-edge draw: clear the status bar / nav bar / cutout so the
+            // eyebrow isn't tucked under the clock. safeDrawingPadding before the
+            // content padding so both stack.
+            .safeDrawingPadding()
             .padding(horizontal = 24.dp, vertical = 32.dp),
     ) {
         Text(
@@ -220,6 +225,7 @@ private fun ConfirmIdentity(
             .fillMaxSize()
             .background(colors.background)
             .verticalScroll(rememberScrollState())
+            .safeDrawingPadding()
             .padding(horizontal = 24.dp, vertical = 32.dp),
     ) {
         Text("STACK'D / VERIFY", style = MonoLabel, color = colors.textMuted)
