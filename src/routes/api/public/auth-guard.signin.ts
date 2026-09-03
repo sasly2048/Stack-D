@@ -74,9 +74,30 @@ export const Route = createFileRoute("/api/public/auth-guard/signin")({
             ip,
             user_agent: userAgent,
           });
+
+          // Alert on server-verified failure spikes only.
+          if (!success) {
+            const { FAILURE_SPIKE_WINDOW_SEC, FAILURE_SPIKE_THRESHOLD, maybeDispatchAuthAlert } =
+              await import("@/lib/security-alerts.server");
+            const { data: failures } = await supabaseAdmin.rpc("recent_auth_failures", {
+              _provider: "email",
+              _email: email,
+              _window_seconds: FAILURE_SPIKE_WINDOW_SEC,
+            } as never);
+            if (((failures as number | null) ?? 0) >= FAILURE_SPIKE_THRESHOLD) {
+              await maybeDispatchAuthAlert({
+                kind: "email_failure_spike",
+                email,
+                failureCount: (failures as number | null) ?? 0,
+                ip,
+                userAgent,
+              });
+            }
+          }
         } catch (e) {
           console.error("auth_guard_signin_log_failed", e);
         }
+
 
         if (!success) return json(INVALID, 401);
 
