@@ -91,6 +91,7 @@ class FocusSessionService : Service() {
             onCapability = { cap -> capabilities.tryEmit(cap) }
             start()
         }
+        android.util.Log.i("StackdBreach", "service detector started (mode=$modeWire)")
     }
 
     private fun buildNotification(roomCode: String, endsAtMillis: Long): Notification {

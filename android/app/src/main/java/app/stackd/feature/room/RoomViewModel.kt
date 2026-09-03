@@ -564,6 +564,7 @@ class RoomViewModel(
      * own detection. Exactly the web's `handleBreach`.
      */
     fun onBreach(reason: BreachReason, severity: BreachSeverity) {
+        android.util.Log.i("StackdBreach", "breach: ${reason.wire}/${severity.wire}")
         val s = _state.value
         val room = s.room ?: return
         val me = s.me ?: return
