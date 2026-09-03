@@ -342,11 +342,44 @@ class RoomViewModel(
         val started = app.stackd.core.parseIsoMillis(room.startedAt) ?: return
         if (foregroundTimerRunning) return
         foregroundTimerRunning = true
+        observeServiceSignals()
         FocusSessionService.start(
             context = container.appContextForWork,
             roomCode = room.code,
             endsAtMillis = SessionClock.endsAtMillis(started, room.targetDurationSeconds),
+            modeWire = mode.wire,
         )
+    }
+
+    /**
+     * Bridges the foreground service's sensor loop to this ViewModel. The
+     * service owns the [app.stackd.feature.room.session.BreachDetector] so it
+     * keeps guarding with the screen off; here we just collect what it detects
+     * and route it through the same handlers the old in-Composable detector
+     * used. Attached once — repeat ACTIVE rows are idempotent.
+     */
+    private var serviceObserved = false
+    private fun observeServiceSignals() {
+        if (serviceObserved) return
+        serviceObserved = true
+        FocusSessionService.breachEvents
+            .onEach { onBreach(it.reason, it.severity) }
+            .launchIn(viewModelScope)
+        FocusSessionService.calibrated
+            .onEach { onCalibrated() }
+            .launchIn(viewModelScope)
+        FocusSessionService.capabilities
+            .onEach { cap ->
+                onSensorWarning(
+                    when {
+                        !cap.anyMotionGuard -> "No motion sensors — this device can't detect tilt or shake."
+                        !cap.tiltAvailable -> "No orientation sensor — tilt and lift won't be detected."
+                        !cap.shakeAvailable -> "No accelerometer — shaking won't be detected."
+                        else -> null
+                    },
+                )
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun stopForegroundTimer() {
@@ -523,8 +556,6 @@ class RoomViewModel(
     fun onSensorWarning(message: String?) {
         _state.value = _state.value.copy(sensorWarning = message)
     }
-
-    val enforcementMode: EnforcementMode get() = mode
 
     /**
      * A detected breach. Records it server-side and disarms this user locally —

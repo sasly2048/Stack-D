@@ -137,15 +137,12 @@ class BreachDetector(
         accelWindow = emptyList()
     }
 
-    /**
-     * The app left the foreground. Covers both the web's `tab-hidden` and its
-     * `wake-lost` — Android reports no distinct wake-lock release, and either
-     * way the phone is no longer sitting untouched on the table.
-     */
-    fun onAppBackgrounded() {
-        if (!running) return
-        fireSevere(BreachReason.TAB_HIDDEN)
-    }
+    // Note: there is deliberately no "app backgrounded → breach" path. The
+    // detector now runs inside the foreground service, so screen-off is the
+    // NORMAL guarded state (phone face-down on the stack). Firing a breach when
+    // the app leaves the foreground would end every session the instant the
+    // screen locks — the exact bug this architecture fixes. TAB_HIDDEN/WAKE_LOST
+    // remain in the enum only because the shared breach column accepts them.
 
     fun fireManual() = fireSevere(BreachReason.MANUAL)
 

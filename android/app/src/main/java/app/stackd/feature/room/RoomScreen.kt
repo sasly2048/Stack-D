@@ -1,7 +1,6 @@
 package app.stackd.feature.room
 
 import android.content.Context
-import android.hardware.SensorManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -53,14 +52,14 @@ import app.stackd.core.ui.ErrorBanner
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.NoticeBanner
 import app.stackd.core.ui.SectionLabel
-import app.stackd.feature.room.session.BreachDetector
 import app.stackd.feature.room.session.FocusScore
 
 /**
- * The room screen. The [RoomViewModel] owns all session state and realtime; this
- * composable renders the current phase and bridges the two things a ViewModel
- * can't hold: the live sensor loop (via [BreachDetector]) and the Android
- * lifecycle (leaving the app is itself a breach).
+ * The room screen. The [RoomViewModel] owns all session state, realtime, and
+ * (via the foreground service) the live sensor loop; this composable just
+ * renders the current phase. Breach detection deliberately does NOT live here
+ * anymore — a Composable-bound detector dies when the screen locks, which is
+ * precisely when a face-down stack needs watching.
  */
 @Composable
 fun RoomRoute(
@@ -71,48 +70,20 @@ fun RoomRoute(
     ),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Sensor + lifecycle bridge. Bound only while this user is armed — the
-    // detector's own listeners are the battery cost, so they exist exactly when
-    // detection should. Rebinding on every timer tick is avoided by keying the
-    // effect on `armed` alone, matching the web hook's "Optim 01".
-    DisposableEffect(state.armed) {
-        if (!state.armed) return@DisposableEffect onDispose { }
-
-        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val detector = BreachDetector(
-            sensorManager = sensorManager,
-            vibrate = { ms -> vibrate(context, ms) },
-        ).apply {
-            mode = vm.enforcementMode
-            onBreach = vm::onBreach
-            onCalibrated = vm::onCalibrated
-            onCapability = { cap ->
-                vm.onSensorWarning(
-                    when {
-                        !cap.anyMotionGuard -> "No motion sensors — this device can't detect tilt or shake."
-                        !cap.tiltAvailable -> "No orientation sensor — tilt and lift won't be detected."
-                        !cap.shakeAvailable -> "No accelerometer — shaking won't be detected."
-                        else -> null
-                    },
-                )
-            }
-        }
-        detector.start()
-
-        // Leaving the app foreground breaks the stack — the web's tab-hidden.
+    // Breach detection lives in FocusSessionService now, so it keeps guarding
+    // with the screen off — the phone-stacking model: lock the phone face-down
+    // and lifting it is a breach. That means locking the screen is NO LONGER a
+    // breach (the old ON_STOP → onAppBackgrounded path is gone). The only
+    // lifecycle concern left here is correcting timer drift after the OS froze
+    // the app in the background.
+    DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) detector.onAppBackgrounded()
             if (event == Lifecycle.Event.ON_RESUME) vm.reconcile()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            detector.stop()
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     RoomScreen(
