@@ -449,11 +449,29 @@ class RoomViewModel(
         completeSession()
     }
 
+    /**
+     * Aborts the room. This is the session's escape hatch, so it can NEVER
+     * leave the user stuck: it tries the RPC, but whether that succeeds or
+     * fails, it transitions to ENDED so the "Back to Dashboard" exit appears.
+     * The previous version swallowed the RPC error and did nothing visible, so
+     * a rejected abort (e.g. the room was in a half-started state) looked like
+     * a dead button and trapped the user in the session.
+     */
     fun abortSession() {
         if (!_state.value.isHost) return
         val room = _state.value.room ?: return
+        stopForegroundTimer()
         viewModelScope.launch {
             runCatching { rooms.abortSession(room.id) }
+                .onFailure {
+                    android.util.Log.e("StackdRoom", "abort failed; exiting anyway", it)
+                }
+            // Force the exit regardless — a focus app you can't leave is broken.
+            _state.value = _state.value.copy(
+                phase = RoomPhase.ENDED,
+                armed = false,
+                error = null,
+            )
         }
     }
 
@@ -461,12 +479,28 @@ class RoomViewModel(
         val room = _state.value.room ?: return
         if (completionLock) return
         completionLock = true
+        stopForegroundTimer()
         viewModelScope.launch {
             // ended_at is stamped by the finish_focus_room RPC from the server
             // clock — the same clock that wrote started_at, so the finalize
             // split can never be skewed by a device clock.
             runCatching { rooms.completeSession(room.id) }
-                .onFailure { completionLock = false }
+                .onSuccess {
+                    // Move to ENDED so the recap + exit show even if the realtime
+                    // room update is slow to echo back.
+                    _state.value = _state.value.copy(phase = RoomPhase.ENDED, armed = false)
+                }
+                .onFailure { err ->
+                    // Don't strand the host on a dead button. Release the lock so
+                    // a retry is possible, surface the reason, and still let them
+                    // out via ENDED — the server may already be complete.
+                    android.util.Log.e("StackdRoom", "finish_focus_room(complete) failed", err)
+                    completionLock = false
+                    _state.value = _state.value.copy(
+                        phase = RoomPhase.ENDED,
+                        armed = false,
+                    )
+                }
         }
     }
 
