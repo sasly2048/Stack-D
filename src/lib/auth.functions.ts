@@ -177,8 +177,13 @@ export const logAuthAttempt = createServerFn({ method: "POST" })
       });
       if (limited) return { logged: false };
 
+      // SECURITY: outcomes reported by the browser are unverified — anyone can
+      // POST "this email just failed". They are recorded for telemetry only,
+      // under a `client:` provider namespace so they can never feed the
+      // lockout/alert counters, which query the server-verified providers
+      // written by /api/public/auth-guard/signin.
       await supabaseAdmin.from("auth_attempts").insert({
-        provider: data.provider,
+        provider: `client:${data.provider}`,
         email: data.email,
         success: data.success,
         reason: data.reason,
@@ -186,32 +191,10 @@ export const logAuthAttempt = createServerFn({ method: "POST" })
         user_agent: ua,
       });
 
-      // Alert on suspicious patterns: per-email failure spike.
-      let alerted = false;
-      if (!data.success && data.provider === "email" && data.email) {
-        const { FAILURE_SPIKE_WINDOW_SEC, FAILURE_SPIKE_THRESHOLD, maybeDispatchAuthAlert } =
-          await import("@/lib/security-alerts.server");
-        const { data: failuresAcrossIps } = await supabaseAdmin.rpc("recent_auth_failures", {
-          _provider: "email",
-          _email: data.email,
-          _window_seconds: FAILURE_SPIKE_WINDOW_SEC,
-        } as never);
-        const count = failuresAcrossIps ?? 0;
-        if (count >= FAILURE_SPIKE_THRESHOLD) {
-          const res = await maybeDispatchAuthAlert({
-            kind: "email_failure_spike",
-            email: data.email,
-            failureCount: count,
-            ip,
-            userAgent: ua,
-          });
-          alerted = res.dispatched;
-        }
-      }
-
-      return { logged: true, alerted };
+      return { logged: true };
     } catch (e) {
       console.error("log_auth_attempt_failed", e);
       return { logged: false };
     }
   });
+
