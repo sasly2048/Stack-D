@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Wrapped share cards are written to cacheDir/shared/ and handed to the
+         share sheet as content:// URIs. Cache so the OS can reclaim them. -->
+    <cache-path name="shared" path="shared/" />
+</paths>
