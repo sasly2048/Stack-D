@@ -61,13 +61,18 @@ class DnaViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    private fun cacheKey(userId: String) = "dna:$userId"
+
     fun load() {
         val userId = container.auth.currentUserId ?: return
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: DnaUiState? = container.cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             val ent = runCatching { container.premium.myEntitlement() }.getOrNull()
             if (ent == null) {
-                _state.value = _state.value.copy(loading = false, error = true)
+                _state.value = _state.value.copy(loading = false, error = cached == null)
                 return@launch
             }
             if (!ent.isPro && !ent.isAdmin) {
@@ -78,8 +83,12 @@ class DnaViewModel(private val container: AppContainer) : ViewModel() {
                 val since = Instant.now().minusSeconds(60L * 24 * 3600).toString()
                 AnalyticsEngine.dna(container.profiles.historySince(userId, since, limit = 500))
             }.fold(
-                onSuccess = { _state.value = DnaUiState(loading = false, hasAccess = true, dna = it) },
-                onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
+                onSuccess = {
+                    val fresh = DnaUiState(loading = false, hasAccess = true, dna = it)
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
+                },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
         }
     }

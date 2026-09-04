@@ -82,21 +82,29 @@ class GroupsViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    private fun cacheKey(userId: String) = "groups:$userId"
+
     fun load() {
         val userId = container.auth.currentUserId ?: return
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: GroupsUiState? = container.cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching { container.groups.snapshot(userId) }.fold(
                 onSuccess = { snap ->
-                    _state.value = _state.value.copy(
+                    val fresh = _state.value.copy(
                         loading = false,
+                        error = false,
                         meId = snap.meId,
                         groups = snap.groups,
                         circleBoard = snap.circleBoard,
                         personalBoard = snap.personalBoard,
                     )
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
                 },
-                onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
         }
     }

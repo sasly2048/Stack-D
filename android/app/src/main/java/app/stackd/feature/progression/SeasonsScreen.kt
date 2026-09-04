@@ -62,8 +62,15 @@ class SeasonsViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    // Plain key: the season + standings are global, and userId isn't read at the
+    // top of load() (only meId inside onSuccess, for row highlighting).
+    private val cacheKey = "seasons"
+
     fun load() {
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: SeasonsUiState? = container.cache.get(cacheKey)
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching {
                 val season = container.progression.activeSeason()
@@ -73,14 +80,16 @@ class SeasonsViewModel(private val container: AppContainer) : ViewModel() {
                 season to standings
             }.fold(
                 onSuccess = { (season, standings) ->
-                    _state.value = SeasonsUiState(
+                    val fresh = SeasonsUiState(
                         loading = false,
                         season = season,
                         standings = standings,
                         meId = container.auth.currentUserId,
                     )
+                    _state.value = fresh
+                    container.cache.put(cacheKey, fresh)
                 },
-                onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
         }
     }

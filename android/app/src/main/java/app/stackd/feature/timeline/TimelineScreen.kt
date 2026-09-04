@@ -79,9 +79,14 @@ class TimelineViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    private fun cacheKey(userId: String) = "timeline:$userId"
+
     fun load() {
         val userId = container.auth.currentUserId ?: return
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: TimelineUiState? = container.cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching {
                 val rows = container.timeline.listTimeline(userId, PAGE)
@@ -94,14 +99,16 @@ class TimelineViewModel(private val container: AppContainer) : ViewModel() {
                 rows to proactiveInsights(history)
             }.fold(
                 onSuccess = { (rows, insight) ->
-                    _state.value = TimelineUiState(
+                    val fresh = TimelineUiState(
                         loading = false,
                         items = rows,
                         hasMore = rows.size == PAGE,
                         insight = insight,
                     )
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
                 },
-                onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
         }
     }

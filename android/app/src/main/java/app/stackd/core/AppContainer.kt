@@ -39,6 +39,14 @@ class AppContainer(context: Context) {
 
     val settings: SettingsStore = SettingsStore(appContext)
 
+    /**
+     * Process-wide stale-while-revalidate cache shared by all feature
+     * ViewModels, so navigating back to a screen shows its last data instantly
+     * instead of blanking to a spinner. Lives here because the container
+     * outlives the per-destination ViewModels.
+     */
+    val cache: app.stackd.core.cache.MemoryCache = app.stackd.core.cache.MemoryCache()
+
     val finalizeQueue: FinalizeQueue = FinalizeQueue(appContext)
 
     val auth: AuthRepository by lazy { AuthRepository(settings) }

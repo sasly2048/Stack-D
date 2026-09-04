@@ -65,13 +65,23 @@ class ProfileDetailViewModel(
         load()
     }
 
+    // Keyed by the profile being viewed, not the viewer.
+    private val cacheKey = "profileDetail:$targetId"
+
     fun load() {
         val viewerId = container.auth.currentUserId ?: return
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: ProfileDetailUiState? = container.cache.get(cacheKey)
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching { container.profiles.publicProfile(targetId, viewerId) }.fold(
-                onSuccess = { _state.value = ProfileDetailUiState(loading = false, profile = it) },
-                onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
+                onSuccess = {
+                    val fresh = ProfileDetailUiState(loading = false, profile = it)
+                    _state.value = fresh
+                    container.cache.put(cacheKey, fresh)
+                },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
         }
     }

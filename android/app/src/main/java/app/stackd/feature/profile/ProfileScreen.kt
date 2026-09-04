@@ -63,9 +63,14 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    private fun cacheKey(userId: String) = "profile:$userId"
+
     fun load() {
         val userId = container.auth.currentUserId ?: return
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: ProfileUiState? = container.cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching {
                 val profile = container.profiles.getProfile(userId)
@@ -73,9 +78,11 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
                 profile to tier
             }.fold(
                 onSuccess = { (profile, tier) ->
-                    _state.value = ProfileUiState(loading = false, profile = profile, tier = tier)
+                    val fresh = ProfileUiState(loading = false, profile = profile, tier = tier)
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
                 },
-                onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
         }
     }
@@ -108,6 +115,8 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
     fun signOut(onDone: () -> Unit) {
         viewModelScope.launch {
             container.auth.signOut()
+            // Drop cached screen state so the next user never sees this one's data.
+            container.cache.clear()
             onDone()
         }
     }

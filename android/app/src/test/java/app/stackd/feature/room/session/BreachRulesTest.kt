@@ -231,4 +231,16 @@ class BreachRulesTest {
         assertEquals(40f, BreachRules.delta(current = -20f, baseline = 20f), 0.0001f)
         assertEquals(40f, BreachRules.delta(current = 20f, baseline = -20f), 0.0001f)
     }
+
+    @Test
+    fun `delta wraps across the plus-minus 180 seam`() {
+        // Face-down roll sits on the ±180 seam. +178° vs -178° is a 4° wobble,
+        // not a 356° flip — the bug that fired an instant LIFT breach at start.
+        assertEquals(4f, BreachRules.delta(current = -178f, baseline = 178f), 0.0001f)
+        assertEquals(4f, BreachRules.delta(current = 178f, baseline = -178f), 0.0001f)
+        // A genuine 90° lift from a seam baseline still reads as 90°, not 270°.
+        assertEquals(90f, BreachRules.delta(current = -92f, baseline = 178f), 0.0001f)
+        // Distance never exceeds 180° (the far side is always the short way round).
+        assertEquals(180f, BreachRules.delta(current = 0f, baseline = 180f), 0.0001f)
+    }
 }

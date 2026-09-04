@@ -51,6 +51,7 @@ data class DashboardUiState(
 class DashboardViewModel(
     private val auth: AuthRepository,
     private val profiles: ProfileRepository,
+    private val cache: app.stackd.core.cache.MemoryCache,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardUiState())
@@ -60,6 +61,8 @@ class DashboardViewModel(
         load()
     }
 
+    private fun cacheKey(userId: String) = "dashboard:$userId"
+
     fun load() {
         val userId = auth.currentUserId
         if (userId == null) {
@@ -68,7 +71,10 @@ class DashboardViewModel(
             _state.value = DashboardUiState(loading = false)
             return
         }
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so a re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: DashboardUiState? = cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching {
                 // Three independent reads — fan them out, mirroring the web's
@@ -89,7 +95,7 @@ class DashboardViewModel(
                 }
             }.fold(
                 onSuccess = { (profile, history, live, reward) ->
-                    _state.value = DashboardUiState(
+                    val fresh = DashboardUiState(
                         loading = false,
                         name = profile?.displayName?.takeIf { it.isNotBlank() }
                             ?: auth.currentEmail?.substringBefore("@") ?: "You",
@@ -99,9 +105,16 @@ class DashboardViewModel(
                         live = live,
                         reward = reward,
                     )
+                    _state.value = fresh
+                    cache.put(cacheKey(userId), fresh)
                 },
                 onFailure = {
-                    _state.value = _state.value.copy(loading = false, error = true)
+                    // Keep showing stale data if we have it; only surface the
+                    // error card when there was nothing cached to fall back on.
+                    _state.value = _state.value.copy(
+                        loading = false,
+                        error = cached == null,
+                    )
                 },
             )
         }

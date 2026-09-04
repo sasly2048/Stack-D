@@ -31,7 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -100,6 +100,7 @@ fun RoomRoute(
         onSaveMeta = vm::saveRoomMeta,
         onAddSchedule = vm::addScheduledEvent,
         onSaveSessionMeta = vm::saveSessionMeta,
+        onInteraction = vm::onInteraction,
     )
 }
 
@@ -118,6 +119,7 @@ fun RoomScreen(
     onSaveMeta: (String, String, String, Int, String) -> Unit = { _, _, _, _, _ -> },
     onAddSchedule: (String, String, Int) -> Unit = { _, _, _ -> },
     onSaveSessionMeta: (String, String) -> Unit = { _, _ -> },
+    onInteraction: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -144,6 +146,7 @@ fun RoomScreen(
             RoomPhase.ACTIVE -> Active(
                 state, onEnd, onAbort,
                 onToggleReady, onAddWorkspace, onToggleWorkspace, onDeleteWorkspace,
+                onInteraction = onInteraction,
             )
             RoomPhase.ENDED -> Ended(state, onExit, onSaveSessionMeta)
         }
@@ -289,6 +292,7 @@ private fun Active(
     onAddWorkspace: (String, String, String?) -> Unit,
     onToggleWorkspace: (String) -> Unit,
     onDeleteWorkspace: (String) -> Unit,
+    onInteraction: () -> Unit = {},
 ) {
     val colors = Stackd.colors
 
@@ -297,6 +301,30 @@ private fun Active(
         (state.elapsedSeconds.toFloat() / state.room!!.targetDurationSeconds).coerceIn(0f, 1f)
     } else 0f
 
+    // Touch-breach: while armed, ANY touch inside this content column breaks the
+    // stack — a stacked phone is meant to be untouched. The listener sits on the
+    // Initial pointer pass so it fires before children (scroll, workspace
+    // checkboxes, roster) can consume the event. The host's End/Abort controls
+    // are rendered OUTSIDE this column, so a clean finish never trips the breach.
+    // Keyed on `armed` so pre-calibration placement taps are ignored and it
+    // activates the moment calibration completes.
+    val interactionGuard = if (state.armed && !state.iBreached) {
+        Modifier.pointerInput(state.armed) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    onInteraction()
+                }
+            }
+        }
+    } else {
+        Modifier
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().then(interactionGuard),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
     Box(
         modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(24.dp),
         contentAlignment = Alignment.Center,
@@ -360,7 +388,10 @@ private fun Active(
         MilestoneTimeline(state.milestones)
         Spacer(Modifier.height(16.dp))
     }
+    } // end interaction-guarded content column
 
+    // End/Abort live OUTSIDE the guarded column so the host can finish cleanly
+    // without the tap registering as a stack-breaking interaction.
     if (state.isHost) {
         EmberButton(text = "End Now", onClick = onEnd)
         Spacer(Modifier.height(12.dp))

@@ -54,13 +54,22 @@ class ChallengesViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    private fun cacheKey(userId: String) = "challenges:$userId"
+
     fun load() {
         val userId = container.auth.currentUserId ?: return
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: ChallengesUiState? = container.cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching { container.progression.listChallenges(userId) }.fold(
-                onSuccess = { _state.value = ChallengesUiState(loading = false, rows = it) },
-                onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
+                onSuccess = {
+                    val fresh = ChallengesUiState(loading = false, rows = it)
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
+                },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
         }
     }

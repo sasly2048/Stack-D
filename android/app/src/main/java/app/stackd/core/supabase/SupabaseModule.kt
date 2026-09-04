@@ -7,6 +7,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * The app talks to the same Supabase project as the web build, with the same
@@ -37,6 +38,14 @@ object SupabaseModule {
             install(Postgrest)
             install(Realtime)
             install(Functions)
+
+            // Without a ceiling, a stalled request hangs the calling screen's
+            // spinner forever with no error. A hard timeout turns that into a
+            // clean failure the existing runCatching paths surface (the lobby's
+            // error state, a retry button) instead of an infinite "Loading…".
+            // `requestTimeout` is supabase-kt's public per-request ceiling; it
+            // does not apply to Realtime's own long-lived socket.
+            requestTimeout = 15.seconds
         }
     }
 }

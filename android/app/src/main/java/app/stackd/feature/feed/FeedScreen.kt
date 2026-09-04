@@ -96,23 +96,31 @@ class FeedViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    private fun cacheKey(userId: String) = "feed:$userId"
+
     fun load(silent: Boolean = false) {
         val userId = container.auth.currentUserId ?: return
-        if (!silent) _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate on the visible (non-silent) load only — seed
+        // from the last cached state so re-entry shows data instantly instead of
+        // a spinner. The 30s poll revalidates silently and must not reseed.
+        val cached: FeedUiState? = container.cache.get(cacheKey(userId))
+        if (!silent) _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             runCatching {
                 container.feed.listFeed(userId) to container.feed.friendsPresence(userId, now)
             }.fold(
                 onSuccess = { (rows, circle) ->
-                    _state.value = FeedUiState(
+                    val fresh = FeedUiState(
                         loading = false, rows = rows, circle = circle, nowMillis = now,
                     )
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
                 },
                 onFailure = {
                     // A failed background refresh must not blank a feed that is
                     // already on screen — only the first load can show the error.
-                    if (!silent) _state.value = _state.value.copy(loading = false, error = true)
+                    if (!silent) _state.value = _state.value.copy(loading = false, error = cached == null)
                 },
             )
         }

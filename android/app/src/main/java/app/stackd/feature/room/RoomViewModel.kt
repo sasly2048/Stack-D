@@ -17,6 +17,7 @@ import app.stackd.feature.room.session.FocusSessionService
 import app.stackd.feature.room.session.SessionClock
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -163,17 +164,47 @@ class RoomViewModel(
                 return@launch
             }
 
-            val participants = runCatching { rooms.listParticipants(room.id) }.getOrDefault(emptyList())
-            val breaks = runCatching { rooms.listBreaks(room.id) }.getOrDefault(emptyList())
-            val events = runCatching { rooms.listRoomEvents(room.id) }.getOrDefault(emptyList())
-            val milestones = runCatching { rooms.listMilestones(room.id) }.getOrDefault(emptyList())
-            // Join requests only return rows to a moderator (RLS); a non-empty
-            // list is itself the signal that this user can moderate.
-            val joinRequests = runCatching { rooms.listJoinRequests(room.id) }.getOrDefault(emptyList())
-            val workspace = runCatching { rooms.listWorkspace(room.id) }.getOrDefault(emptyList())
-            val banked = runCatching { rooms.sumRoomFocusSeconds(room.id) }.getOrDefault(0L)
-            val moderatorIds = runCatching { rooms.listModeratorIds(room.id) }.getOrDefault(emptyList())
-            val schedule = runCatching { rooms.listSchedule(room.id) }.getOrDefault(emptyList())
+            // These nine reads share no data dependency — they only need
+            // room.id, which claimRoomSeat just gave us. Running them serially
+            // made the lobby wait on the SUM of ten round-trips; fanning out
+            // with async gates it on the slowest single read instead.
+            //
+            // The runCatching MUST live INSIDE each async: `runCatching {
+            // async{}.await() }` does NOT catch — an async failure propagates to
+            // the parent (this coroutineScope) and cancels the whole batch. With
+            // the catch inside, a failed read resolves to its default and the
+            // scope never sees a thrown child.
+            val participants: List<ParticipantRow>
+            val breaks: List<BreakRow>
+            val events: List<app.stackd.data.room.RoomEvent>
+            val milestones: List<app.stackd.data.room.Milestone>
+            val joinRequests: List<app.stackd.data.room.JoinRequest>
+            val workspace: List<app.stackd.data.room.WorkspaceItem>
+            val banked: Long
+            val moderatorIds: List<String>
+            val schedule: List<app.stackd.data.room.ScheduledEvent>
+            kotlinx.coroutines.coroutineScope {
+                val pP = async { runCatching { rooms.listParticipants(room.id) }.getOrDefault(emptyList()) }
+                val pB = async { runCatching { rooms.listBreaks(room.id) }.getOrDefault(emptyList()) }
+                val pE = async { runCatching { rooms.listRoomEvents(room.id) }.getOrDefault(emptyList()) }
+                val pM = async { runCatching { rooms.listMilestones(room.id) }.getOrDefault(emptyList()) }
+                // Join requests only return rows to a moderator (RLS); a non-empty
+                // list is itself the signal that this user can moderate.
+                val pJ = async { runCatching { rooms.listJoinRequests(room.id) }.getOrDefault(emptyList()) }
+                val pW = async { runCatching { rooms.listWorkspace(room.id) }.getOrDefault(emptyList()) }
+                val pBanked = async { runCatching { rooms.sumRoomFocusSeconds(room.id) }.getOrDefault(0L) }
+                val pMod = async { runCatching { rooms.listModeratorIds(room.id) }.getOrDefault(emptyList()) }
+                val pS = async { runCatching { rooms.listSchedule(room.id) }.getOrDefault(emptyList()) }
+                participants = pP.await()
+                breaks = pB.await()
+                events = pE.await()
+                milestones = pM.await()
+                joinRequests = pJ.await()
+                workspace = pW.await()
+                banked = pBanked.await()
+                moderatorIds = pMod.await()
+                schedule = pS.await()
+            }
 
             _state.value = _state.value.copy(
                 phase = phaseFor(room),
@@ -473,6 +504,12 @@ class RoomViewModel(
                     )
                     return@launch
                 }
+            // Don't wait for the realtime UPDATE echo to flip ACTIVE — that's a
+            // second serial network wait after the RPC and it's what made "Start"
+            // feel laggy. Re-read the row now (authoritative status + server
+            // started_at) and apply it; the later echo reconciles harmlessly via
+            // applyRoom's updatedAt guard.
+            runCatching { rooms.getRoom(_state.value.room!!.id) }.getOrNull()?.let { applyRoom(it) }
             armIfNeeded()
         }
     }
@@ -522,6 +559,10 @@ class RoomViewModel(
                     // Move to ENDED so the recap + exit show even if the realtime
                     // room update is slow to echo back.
                     _state.value = _state.value.copy(phase = RoomPhase.ENDED, armed = false)
+                    // Re-read the now-COMPLETE row so applyRoom → maybeFinalize
+                    // computes the recap immediately, instead of the stats sitting
+                    // on "Tallying…" until the realtime echo lands.
+                    runCatching { rooms.getRoom(room.id) }.getOrNull()?.let { applyRoom(it) }
                 }
                 .onFailure { err ->
                     // Don't strand the host on a dead button. Release the lock so
@@ -555,6 +596,20 @@ class RoomViewModel(
 
     fun onSensorWarning(message: String?) {
         _state.value = _state.value.copy(sensorWarning = message)
+    }
+
+    /**
+     * The user touched the room screen while armed. A stacked phone shouldn't be
+     * touched, so this is a severe breach — routed through the same [onBreach]
+     * funnel as a sensor breach (server record + local disarm). Gated so it only
+     * fires during a live, armed, not-yet-breached session; the UI further
+     * excludes the End/Abort controls from the touch surface so a clean finish
+     * stays possible.
+     */
+    fun onInteraction() {
+        val s = _state.value
+        if (!s.armed || s.phase != RoomPhase.ACTIVE || s.iBreached) return
+        onBreach(BreachReason.INTERACTION, BreachSeverity.SEVERE)
     }
 
     /**

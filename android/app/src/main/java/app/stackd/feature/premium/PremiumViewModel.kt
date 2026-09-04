@@ -44,7 +44,13 @@ class PremiumViewModel(private val container: AppContainer) : ViewModel() {
         refresh()
     }
 
+    private val cacheKey = "premium:${container.auth.currentUserId ?: "anon"}"
+
     fun refresh() {
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: PremiumUiState? = container.cache.get(cacheKey)
+        _state.value = (cached ?: _state.value).copy(loading = cached == null)
         viewModelScope.launch {
             val premium = container.premium
             val ent = runCatching { premium.myEntitlement() }.getOrDefault(Entitlement())
@@ -52,7 +58,7 @@ class PremiumViewModel(private val container: AppContainer) : ViewModel() {
             val promo = runCatching { premium.lifetimePromoStatus() }.getOrDefault(LifetimePromoStatus())
             val usage = runCatching { premium.aiUsage() }.getOrDefault(AiUsage())
             val sub = runCatching { premium.mySubscription() }.getOrNull()
-            _state.value = _state.value.copy(
+            val fresh = _state.value.copy(
                 loading = false,
                 entitlement = ent,
                 plans = plans,
@@ -60,6 +66,8 @@ class PremiumViewModel(private val container: AppContainer) : ViewModel() {
                 aiUsage = usage,
                 subscription = sub,
             )
+            _state.value = fresh
+            container.cache.put(cacheKey, fresh)
         }
     }
 

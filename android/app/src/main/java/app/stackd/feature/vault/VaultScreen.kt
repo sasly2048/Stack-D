@@ -62,13 +62,18 @@ class VaultViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    private fun cacheKey(userId: String) = "vault:$userId"
+
     fun load() {
         val userId = container.auth.currentUserId ?: return
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: VaultUiState? = container.cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             val ent = runCatching { container.premium.myEntitlement() }.getOrNull()
             if (ent == null) {
-                _state.value = _state.value.copy(loading = false, error = true)
+                _state.value = _state.value.copy(loading = false, error = cached == null)
                 return@launch
             }
             if (!ent.isElite && !ent.isAdmin) {
@@ -76,8 +81,12 @@ class VaultViewModel(private val container: AppContainer) : ViewModel() {
                 return@launch
             }
             runCatching { container.vault.listVault(userId) }.fold(
-                onSuccess = { _state.value = VaultUiState(loading = false, hasAccess = true, items = it) },
-                onFailure = { _state.value = _state.value.copy(loading = false, error = true) },
+                onSuccess = {
+                    val fresh = VaultUiState(loading = false, hasAccess = true, items = it)
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
+                },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
         }
     }

@@ -64,7 +64,7 @@ fun DashboardRoute(
     onOpenRoom: (String) -> Unit,
     menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
     vm: DashboardViewModel = viewModel(
-        factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles) },
+        factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles, it.cache) },
     ),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()

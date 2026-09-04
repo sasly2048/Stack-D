@@ -133,5 +133,20 @@ object BreachRules {
     fun degreesFromRadians(radians: Float): Float =
         Math.toDegrees(radians.toDouble()).toFloat()
 
-    fun delta(current: Float, baseline: Float): Float = abs(current - baseline)
+    /**
+     * Shortest angular distance between two headings, in [0, 180].
+     *
+     * These angles live on a circle: Android's `getOrientation` roll (gamma)
+     * spans -180..180, so a phone resting face-down sits right on the ±180 seam.
+     * A plain `abs(current - baseline)` reads +178° vs -178° as 356° apart when
+     * they are really 4° apart — which fired an instant LIFT/severe breach the
+     * moment calibration locked a baseline near the seam (the web hook never hit
+     * this because its DeviceOrientation gamma is only -90..90). Wrapping the
+     * difference into [-180, 180] measures the real rotation.
+     */
+    fun delta(current: Float, baseline: Float): Float {
+        val raw = (current - baseline) % 360f
+        val wrapped = (raw + 540f) % 360f - 180f
+        return abs(wrapped)
+    }
 }

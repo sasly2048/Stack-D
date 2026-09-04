@@ -11,6 +11,16 @@ enum class BreachReason(val wire: String) {
     SHAKE("shake"),
 
     /**
+     * The user touched the app while a session was armed. A stacked phone is
+     * meant to be untouched, so any interaction with the room screen (except the
+     * host's End/Abort controls) breaks the stack. New to Android — the web has
+     * no touch-breach; its equivalent is `tab-hidden` (visibility loss). The
+     * shared breach `reason` column is plain TEXT (no CHECK), so this wire value
+     * inserts without a migration.
+     */
+    INTERACTION("interaction"),
+
+    /**
      * The app left the foreground. Named for the web app's `visibilitychange`
      * origin so the value stays comparable across platforms in analytics.
      */

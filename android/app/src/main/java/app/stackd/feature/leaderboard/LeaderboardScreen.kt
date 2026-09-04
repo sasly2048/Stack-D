@@ -63,22 +63,29 @@ class LeaderboardViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    private val cacheKey = "leaderboard"
+
     fun load() {
-        _state.value = _state.value.copy(loading = true, error = false)
+        // Rankings tolerate seconds of staleness — show the last set instantly,
+        // then revalidate. No spinner on re-entry.
+        val cached: LeaderboardUiState? = container.cache.get(cacheKey)
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching {
                 container.leaderboard.topIndividuals() to container.leaderboard.topGroups()
             }.fold(
                 onSuccess = { (people, groups) ->
-                    _state.value = LeaderboardUiState(
+                    val fresh = LeaderboardUiState(
                         loading = false,
                         individuals = people,
                         groups = groups,
                         meId = container.auth.currentUserId,
                     )
+                    _state.value = fresh
+                    container.cache.put(cacheKey, fresh)
                 },
                 onFailure = {
-                    _state.value = _state.value.copy(loading = false, error = true)
+                    _state.value = _state.value.copy(loading = false, error = cached == null)
                 },
             )
         }
