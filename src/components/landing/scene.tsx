@@ -119,20 +119,25 @@ export function Scene({
         />
       )}
 
-      {/* Chapter marker — same position, same type, every scene. */}
-      <div className="pointer-events-none absolute left-6 top-20 z-10 flex items-center gap-3 sm:left-10">
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">{index}</span>
-        <span aria-hidden className="h-px w-8 bg-white/15" />
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          {label}
-        </span>
-      </div>
+      {/*
+        Chapter marker — in the flow, not floating. Absolutely positioning it
+        at a fixed offset meant that on short or dense viewports the
+        vertically-centred content rose underneath it and the two collided.
+        As the first row of the same centred column it can never overlap:
+        the marker's own margin owns the gap to the content below it.
+      */}
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col">
+        <div className="mb-8 flex items-center gap-3 sm:mb-10">
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">{index}</span>
+          <span aria-hidden className="h-px w-8 bg-white/15" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            {label}
+          </span>
+        </div>
 
-      <div
-        ref={contentRef}
-        className={`relative z-10 mx-auto w-full max-w-6xl ${contentClassName}`}
-      >
-        {children}
+        <div ref={contentRef} className={`w-full ${contentClassName}`}>
+          {children}
+        </div>
       </div>
 
       {/* Hand-off — a short descending rule that says "this act is finished". */}
