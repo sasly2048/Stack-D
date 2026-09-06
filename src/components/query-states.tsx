@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/empty-state";
+import { Button } from "@/components/ui/button";
 
 /**
  * The four states every data screen owes the user: loading, error, empty, and
@@ -82,7 +83,7 @@ export function ErrorPanel({
   return (
     <div
       role="alert"
-      className={`glass rounded-2xl border border-breach/20 p-8 text-center ${className}`}
+      className={`glass rounded-lg border border-breach/20 px-5 py-8 text-center sm:p-8 ${className}`}
     >
       <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-breach">
         Signal lost
@@ -90,13 +91,14 @@ export function ErrorPanel({
       <p className="mt-3 text-sm text-silver">{title}</p>
       {message && <p className="mt-2 text-xs text-muted-foreground">{message}</p>}
       {onRetry && (
-        <button
+        <Button
           type="button"
           onClick={onRetry}
-          className="mt-6 cursor-pointer rounded-lg border border-silver/25 px-5 py-2 font-mono text-[10px] uppercase tracking-widest text-silver transition-colors hover:bg-white/5"
+          variant="outline"
+          className="mt-6 min-h-11 border-silver/25 font-mono text-[10px] uppercase tracking-widest text-silver hover:bg-white/5"
         >
           Retry
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -40,6 +40,11 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
 
+  /* Shared surface geometry. Pages may vary in density, but equivalent
+     controls and panels should always feel cut from the same system. */
+  --shadow-panel: 0 18px 60px -32px color-mix(in oklab, var(--color-obsidian) 86%, transparent);
+  --shadow-overlay: 0 24px 80px -24px color-mix(in oklab, var(--color-obsidian) 92%, transparent);
+
   /* ============================================================
      Spacing scale — 4px baseline. Use across mobile/tablet/desktop
      so section rhythm stays proportional at every breakpoint.
@@ -533,6 +538,41 @@
   padding-top: calc(clamp(5.25rem, 8vh, 8rem) + env(safe-area-inset-top));
 }
 
+/* Product-page foundations. Keeping these as utilities lets focused and
+   data-dense routes choose their own max-width without drifting on gutters,
+   nav clearance, or vertical rhythm. */
+@utility app-page {
+  width: 100%;
+  margin-inline: auto;
+  padding-top: calc(clamp(5.5rem, 9vh, 7rem) + env(safe-area-inset-top));
+  padding-right: clamp(1rem, 3vw, 2rem);
+  padding-bottom: clamp(4rem, 8vh, 6rem);
+  padding-left: clamp(1rem, 3vw, 2rem);
+}
+
+@utility page-title {
+  font-size: clamp(2.25rem, 7vw, 3.75rem);
+  line-height: 0.96;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+@utility ritual-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  line-height: 1.5;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+@utility panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--color-card) 78%, transparent);
+  box-shadow: var(--shadow-panel);
+}
+
 @utility animate-breathing {
   animation: breathing 4s var(--ease-ritual) infinite;
 }
@@ -729,6 +769,14 @@
     /* Reserve room for hardware cutouts at the page edges. */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+    min-width: 0;
+    overflow-x: clip;
+  }
+  h1,
+  h2,
+  h3,
+  p {
+    overflow-wrap: break-word;
   }
   ::selection {
     background: var(--color-ember);
