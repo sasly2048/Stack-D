@@ -637,11 +637,11 @@ function Room() {
 
   if (countdown !== null) {
     return (
-      <div className="fixed inset-0 z-[60] bg-black flex flex-col items-center justify-center">
+      <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-obsidian px-4 text-center">
         <div className="font-mono text-[10px] tracking-[0.4em] uppercase text-muted-foreground mb-8 animate-breathing">
           Prepare the offering
         </div>
-        <div className="text-[12rem] font-extrabold tracking-tighter leading-none animate-breathing">
+        <div className="animate-breathing text-[clamp(5rem,34vw,12rem)] font-extrabold leading-none">
           {countdown === 0 ? "STACK" : countdown}
         </div>
       </div>
@@ -674,8 +674,8 @@ function Room() {
       className={`min-h-screen ${oledMode ? "bg-black" : "bg-obsidian"} text-silver transition-colors`}
     >
       <Nav />
-      <main className="pt-24 pb-20 px-6 max-w-2xl mx-auto">
-        <div className="mb-10 flex justify-between items-center font-mono text-[10px] tracking-tighter text-muted-foreground">
+      <main className="app-page max-w-2xl">
+        <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 font-mono text-[10px] text-muted-foreground sm:mb-10">
           <button
             type="button"
             onClick={copyCode}
@@ -697,7 +697,7 @@ function Room() {
               Copied
             </span>
           )}
-          <span className="flex items-center gap-3">
+          <span className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
             {/* Connection health sits next to the session status because the two
                 are read together: "LIVE SESSION" while the channel is down
                 means the screen is lying about being live. */}
@@ -747,7 +747,7 @@ function Room() {
                 <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase mb-3">
                   Target
                 </div>
-                <div className="text-6xl sm:text-7xl font-mono tracking-tighter mb-3">
+                <div className="mb-3 font-mono text-5xl leading-none sm:text-7xl">
                   {formatDuration(room.target_duration_seconds)}
                 </div>
                 <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
@@ -758,7 +758,7 @@ function Room() {
             {active && (
               <>
                 <div
-                  className={`text-7xl sm:text-8xl font-mono tracking-tighter mb-3 ${myPart?.breached ? "text-breach" : ""}`}
+                  className={`mb-3 font-mono text-5xl leading-none sm:text-8xl ${myPart?.breached ? "text-breach" : ""}`}
                 >
                   {formatDuration(remaining)}
                 </div>
@@ -769,7 +769,7 @@ function Room() {
             )}
             {complete && (
               <>
-                <div className="text-7xl sm:text-8xl font-mono tracking-tighter mb-3 text-pulse">
+                <div className="mb-3 font-mono text-5xl leading-none text-pulse sm:text-8xl">
                   {formatDuration(elapsed)}
                 </div>
                 <div className="text-[10px] font-mono tracking-[0.4em] text-pulse uppercase">
@@ -779,7 +779,7 @@ function Room() {
             )}
             {aborted && (
               <>
-                <div className="text-6xl font-mono tracking-tighter mb-3 text-breach">ABORT</div>
+                <div className="mb-3 font-mono text-5xl leading-none text-breach sm:text-6xl">ABORT</div>
                 <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
                   Session terminated by host
                 </div>
@@ -792,17 +792,17 @@ function Room() {
           <>
             <RoomHeader roomId={room.id} isHost={isHost} />
             <JoinRequestsPanel roomId={room.id} isModerator={isHost} />
-            <div className="mb-10 glass rounded-md p-5 flex items-center gap-5">
+            <div className="mb-10 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 rounded-md p-4 glass sm:gap-5 sm:p-5">
               <QRCode
                 text={`${typeof window !== "undefined" ? window.location.origin : ""}/room/${room.code}`}
-                size={128}
+                size={112}
               />
               <div>
                 <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">
                   Invite
                 </p>
                 <p className="mt-2 text-sm text-silver-dim">Scan to join room</p>
-                <p className="mt-1 font-mono text-2xl tracking-[0.3em] text-silver">{room.code}</p>
+                <p className="mt-1 break-all font-mono text-xl tracking-[0.2em] text-silver sm:text-2xl sm:tracking-[0.3em]">{room.code}</p>
               </div>
             </div>
             <div className="mb-10 grid md:grid-cols-2 gap-4">
@@ -994,7 +994,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-32 pb-20 px-6 max-w-2xl mx-auto">{children}</main>
+      <main className="app-page max-w-2xl">{children}</main>
     </div>
   );
 }
