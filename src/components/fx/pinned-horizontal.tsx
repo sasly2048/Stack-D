@@ -19,8 +19,12 @@ if (typeof window !== "undefined") {
  *     </div>
  *   </PinnedHorizontal>
  */
-/** Below this width the pin is replaced by native horizontal scrolling (Tailwind `md`). */
-const PIN_MIN_WIDTH = 768;
+/**
+ * The pinned scroll now runs at every width — a phone gets the same intended
+ * interaction as tablet and desktop, only scaled down. Only a
+ * prefers-reduced-motion user falls back to a native swipe.
+ */
+const PIN_MIN_WIDTH = 0;
 
 export function PinnedHorizontal({
   children,
@@ -57,12 +61,8 @@ export function PinnedHorizontal({
     if (!wrap || !pin || !track || typeof window === "undefined") return;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    // Scroll-jacking a phone is the worst version of this effect: the track is
-    // several viewports wide, so the user loses vertical control for a long
-    // stretch and can't flick past it. Below `md` we hand back a plain swipe.
-    const narrow = window.innerWidth < PIN_MIN_WIDTH;
 
-    if (reduced || narrow) {
+    if (reduced) {
       // Native swipe fallback. The overflow lives on the pin box (the track is
       // a flex row sized by its children, so it has nothing to overflow), and
       // touch-action keeps vertical page scroll gestures working over the
@@ -88,6 +88,7 @@ export function PinnedHorizontal({
       const setSize = () => {
         const distance = Math.max(0, track.scrollWidth - window.innerWidth);
         wrap.style.height = `${window.innerHeight + distance + window.innerHeight * extraPin}px`;
+        pin.style.height = `${window.innerHeight}px`;
         return distance;
       };
 
@@ -106,7 +107,13 @@ export function PinnedHorizontal({
         },
       });
 
+      // On touch devices the URL bar collapsing fires a resize with an
+      // unchanged width. Refreshing there re-measures mid-scroll and makes the
+      // track jump, so only a real width change re-derives the pin length.
+      let lastWidth = window.innerWidth;
       const onResize = () => {
+        if (window.innerWidth === lastWidth) return;
+        lastWidth = window.innerWidth;
         distance = setSize();
         tween.scrollTrigger?.refresh();
       };
@@ -125,7 +132,7 @@ export function PinnedHorizontal({
     <div ref={wrapRef} className={`relative ${className}`}>
       <div
         ref={pinRef}
-        className="w-full flex items-center overflow-x-auto md:overflow-x-hidden md:h-screen md:overflow-hidden"
+        className="flex h-screen w-full items-center overflow-hidden"
       >
 
         <div ref={trackRef} className={`flex will-change-transform ${trackClassName}`}>
