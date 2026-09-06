@@ -257,11 +257,11 @@ function GroupsPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-nav pb-20 px-6 max-w-5xl mx-auto">
-        <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2">
+      <main className="app-page max-w-5xl">
+        <div className="ritual-label mb-2 text-muted-foreground">
           CIRCLES / LEADERBOARDS
         </div>
-        <h1 className="text-5xl font-extrabold tracking-tighter mb-12">Focus circles.</h1>
+        <h1 className="page-title mb-10 sm:mb-12">Focus circles.</h1>
 
         <section className="mb-14">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
@@ -272,7 +272,7 @@ function GroupsPage() {
             </span>
             <span className="sr-only"> (required)</span>
           </h2>
-          <div className="flex gap-3">
+          <div className="grid gap-3 min-[400px]:grid-cols-[minmax(0,1fr)_auto]">
             <input
               id="circle-name-input"
               value={name}
@@ -283,7 +283,7 @@ function GroupsPage() {
               aria-describedby={nameInvalid ? "circle-name-hint" : "circle-name-count"}
               placeholder="Circle name (e.g. Dev Team)"
               maxLength={80}
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-silver/50"
+              className="min-w-0 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-silver/50"
             />
             <button
               onClick={create}

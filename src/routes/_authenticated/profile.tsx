@@ -106,7 +106,7 @@ function MyProfile() {
     return (
       <div className="min-h-screen bg-obsidian text-silver">
         <Nav />
-        <main className="mx-auto max-w-3xl px-6 pt-28">
+        <main className="app-page max-w-3xl">
           <QueryBoundary
             isPending={profileQuery.isPending || (!p && !profileQuery.isError)}
             isError={profileQuery.isError}
@@ -145,20 +145,20 @@ function MyProfile() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-3xl mx-auto px-6 pt-28 pb-24 space-y-12">
-        <header className="flex items-center gap-6">
-          <div className="size-20 rounded-full border border-ember/30 bg-white/5 flex items-center justify-center overflow-hidden">
+      <main className="app-page max-w-3xl space-y-10 sm:space-y-12">
+        <header className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 sm:gap-6">
+          <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-ember/30 bg-white/5 sm:size-20">
             {p.avatar_url ? (
               <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
             ) : (
               <span className="font-serif text-3xl text-ember">{initial}</span>
             )}
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">
               Your record
             </p>
-            <h1 className="mt-1 flex flex-wrap items-center gap-3 text-3xl md:text-4xl font-serif">
+            <h1 className="mt-1 flex min-w-0 flex-wrap items-center gap-2 font-serif text-2xl sm:gap-3 md:text-4xl">
               {p.display_name ?? "Anonymous"}
               {currentTier && (
                 <BadgeHint tone="accent" title="Highest achievement tier you have unlocked">
