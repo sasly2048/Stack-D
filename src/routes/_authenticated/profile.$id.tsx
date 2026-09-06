@@ -9,7 +9,7 @@ import { getProfile, type PublicProfile } from "@/lib/profile.functions";
 import { sendFriendRequest, respondFriendRequest, removeFriend } from "@/lib/friends.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { QueryError, Skeleton } from "@/components/query-states";
+import { ErrorPanel, Skeleton } from "@/components/query-states";
 
 export const Route = createFileRoute("/_authenticated/profile/$id")({
   head: () => ({
@@ -71,7 +71,7 @@ function PublicProfileView() {
   }
 
   if (error || !p) {
-    return <div className="min-h-screen bg-obsidian text-silver"><Nav /><main className="app-page max-w-3xl"><QueryError title="Profile unavailable" message={error ?? "This profile could not be found."} onRetry={() => void refresh()} /></main></div>;
+    return <div className="min-h-screen bg-obsidian text-silver"><Nav /><main className="app-page max-w-3xl"><ErrorPanel title="Profile unavailable" message={error ?? "This profile could not be found."} onRetry={() => void refresh()} /></main></div>;
   }
 
   const hours = Math.floor(p.total_focus_seconds / 3600);
