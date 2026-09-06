@@ -21,6 +21,7 @@ import { AtlasWhisper } from "@/components/atlas-whisper";
 import { PrestigeCeremony } from "@/components/profile/prestige-ceremony";
 import { EmptyState, Skeleton, LoadingAnnouncer } from "@/components/query-states";
 import { BadgeHint } from "@/components/ui/badge-hint";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -229,34 +230,28 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-nav pb-20 px-6 max-w-7xl mx-auto">
+      <main className="app-page max-w-7xl">
         <div className="mb-8">
           <DynamicGreeting />
         </div>
         <div className="mb-8">
           <AtlasWhisper context="dashboard" />
         </div>
-        <div className="flex items-end justify-between mb-12">
-          <div>
-            <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2">
+        <div className="mb-10 grid grid-cols-1 items-end gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-8 lg:mb-12">
+          <div className="min-w-0">
+            <div className="ritual-label mb-2 text-muted-foreground">
               ANALYTICS / {me?.name?.toUpperCase()}
             </div>
-            <h1 className="text-5xl font-extrabold tracking-tighter">Your discipline.</h1>
+            <h1 className="page-title">Your discipline.</h1>
           </div>
-          <div className="hidden sm:flex gap-3 items-center">
+          <div className="hidden shrink-0 items-center gap-3 sm:flex">
             <CsvExportButton />
-            <Link
-              to="/leaderboard"
-              className="px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold border border-white/15 text-silver hover:bg-white/5 hover:border-white/30 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
-            >
-              Leaderboard
-            </Link>
-            <Link
-              to="/start"
-              className="bg-silver text-obsidian px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
-            >
-              New Session
-            </Link>
+            <Button asChild variant="outline" className="font-mono text-xs font-bold uppercase tracking-widest">
+              <Link to="/leaderboard">Leaderboard</Link>
+            </Button>
+            <Button asChild className="bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90">
+              <Link to="/start">New Session</Link>
+            </Button>
           </div>
         </div>
 
@@ -307,19 +302,19 @@ function Dashboard() {
                 </div>
               ) : (
                 <>
-                  <div className="md:col-span-4 lg:col-span-4 p-10 bg-white/5 border border-white/10 rounded-2xl flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 ease-[var(--ease-ritual)]">
+                  <div className="panel flex flex-col justify-between p-5 transition-colors hover:border-white/20 hover:bg-white/[0.07] sm:p-8 lg:p-10 md:col-span-4 lg:col-span-4">
                     <div>
                       <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-12">
                         LIFETIME_PRESENCE
                       </h3>
-                      <div className="text-7xl md:text-8xl font-extrabold tracking-tighter">
+                      <div className="flex flex-wrap items-baseline gap-x-3 text-5xl font-extrabold leading-none sm:text-7xl md:text-8xl">
                         {formatHours(totalSeconds).replace(/[a-z]/g, "")}
-                        <span className="text-2xl font-mono text-muted-foreground ml-4 tracking-normal font-normal uppercase">
+                        <span className="font-mono text-base font-normal uppercase text-muted-foreground sm:text-2xl">
                           Hours
                         </span>
                       </div>
                     </div>
-                    <div className="mt-12 flex items-end justify-between gap-6">
+                    <div className="mt-10 grid grid-cols-[auto_minmax(0,1fr)] items-end gap-4 sm:gap-6">
                       <div>
                         <div className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-2">
                           LIFETIME_XP

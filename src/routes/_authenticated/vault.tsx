@@ -112,7 +112,7 @@ function VaultPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <div className="mx-auto max-w-4xl px-4 py-10">
+      <main className="app-page max-w-4xl">
         <div className="mb-8">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
             Memory Vault
@@ -156,12 +156,12 @@ function VaultPage() {
             </button>
           </form>
 
-          <div className="mb-4 flex gap-2">
+          <div className="mb-4 grid gap-2 min-[380px]:grid-cols-[minmax(0,1fr)_auto]">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search titles, notes, summaries…"
-              className="flex-1 bg-transparent border border-white/10 rounded px-3 py-2 text-sm outline-none focus:border-ember"
+              className="min-w-0 bg-transparent border border-white/10 rounded px-3 py-2 text-sm outline-none focus:border-ember"
             />
             <button
               onClick={() => setSubmittedQ(q)}
@@ -250,7 +250,7 @@ function VaultPage() {
             </ul>
           </QueryBoundary>
         </PremiumGate>
-      </div>
+      </main>
     </div>
   );
 }

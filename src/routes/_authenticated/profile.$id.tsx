@@ -8,6 +8,8 @@ import { Nav } from "@/components/nav";
 import { getProfile, type PublicProfile } from "@/lib/profile.functions";
 import { sendFriendRequest, respondFriendRequest, removeFriend } from "@/lib/friends.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
+import { ErrorPanel, Skeleton } from "@/components/query-states";
 
 export const Route = createFileRoute("/_authenticated/profile/$id")({
   head: () => ({
@@ -31,26 +33,45 @@ function PublicProfileView() {
 
   const [p, setP] = useState<PublicProfile | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
-    const res = await fetchProfile({ data: { userId: id } });
-    setP(res);
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetchProfile({ data: { userId: id } });
+      if (!res) throw new Error("This profile could not be found.");
+      setP(res);
+    } catch (cause) {
+      setP(null);
+      setError(cause instanceof Error ? cause.message : "This profile could not be found.");
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     // Wait for the Supabase session, else the serverFn call has no bearer token.
     if (!user?.id) return;
-    refresh().catch(() => toast.error("Profile not found"));
+    void refresh();
   }, [id, user?.id]);
 
-  if (!p) {
+  if (loading || !user?.id) {
     return (
       <div className="min-h-screen bg-obsidian text-silver">
         <Nav />
-        <div className="pt-32 text-center font-mono text-xs text-silver-dim tracking-[0.3em] uppercase">
-          Loading…
-        </div>
+        <main className="app-page max-w-4xl" aria-busy="true" aria-label="Loading profile">
+          <div className="flex items-center gap-5">
+            <Skeleton className="size-20 shrink-0 rounded-full sm:size-24" />
+            <div className="w-full max-w-sm space-y-3"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /><Skeleton className="h-4 w-40" /></div>
+          </div>
+        </main>
       </div>
     );
+  }
+
+  if (error || !p) {
+    return <div className="min-h-screen bg-obsidian text-silver"><Nav /><main className="app-page max-w-3xl"><ErrorPanel title="Profile unavailable" message={error ?? "This profile could not be found."} onRetry={() => void refresh()} /></main></div>;
   }
 
   const hours = Math.floor(p.total_focus_seconds / 3600);
@@ -88,9 +109,9 @@ function PublicProfileView() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-4xl mx-auto px-6 pt-28 pb-24 space-y-12">
-        <header className="flex items-start gap-6">
-          <div className="size-24 rounded-full border border-ember/30 bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
+      <main className="app-page max-w-4xl space-y-10 sm:space-y-12">
+        <header className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-6">
+          <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-ember/30 bg-white/5 sm:size-24">
             {p.avatar_url ? (
               <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -114,13 +135,14 @@ function PublicProfileView() {
               })}
             </p>
           </div>
-          <button
+          <Button
             onClick={action}
             disabled={busy || p.friendship?.direction === "outgoing"}
-            className="font-mono text-[10px] tracking-[0.2em] uppercase px-4 py-2 border border-ember/40 text-ember hover:bg-ember/10 rounded-full transition-colors disabled:opacity-50"
+            variant="outline"
+            className="col-span-2 w-full border-ember/40 font-mono text-[10px] uppercase tracking-[0.2em] text-ember hover:bg-ember/10 sm:col-span-1 sm:w-auto"
           >
             {busy ? "…" : buttonLabel}
-          </button>
+          </Button>
         </header>
 
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">

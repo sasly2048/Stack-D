@@ -79,7 +79,7 @@ function CapsulePage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-3xl mx-auto px-6 pt-28 pb-24 space-y-12">
+      <main className="app-page max-w-3xl space-y-12">
         <header>
           <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">
             Vault of Selves
@@ -103,7 +103,7 @@ function CapsulePage() {
               placeholder="Dear future me,"
               className="mt-3 w-full bg-black/50 border border-white/10 rounded p-3 text-silver text-sm resize-none focus:outline-none focus:border-ember/40"
             />
-            <div className="mt-4 flex items-center gap-4">
+            <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 min-[400px]:grid-cols-[auto_auto_auto_minmax(0,1fr)]">
               <label className="text-xs text-silver-dim">Opens in</label>
               <input
                 type="number"
@@ -111,13 +111,13 @@ function CapsulePage() {
                 max={365}
                 value={days}
                 onChange={(e) => setDays(e.target.value)}
-                className="w-20 bg-black/50 border border-white/10 rounded px-3 py-1 text-sm text-silver"
+                className="min-w-0 bg-black/50 border border-white/10 rounded px-3 py-2 text-sm text-silver"
               />
               <span className="text-xs text-silver-dim">days</span>
               <button
                 onClick={send}
                 disabled={writeMutation.isPending || !msg.trim()}
-                className="ml-auto px-5 py-2 rounded-full border border-ember text-ember font-mono text-xs uppercase tracking-widest disabled:opacity-40 hover:bg-ember/10"
+                className="col-span-3 w-full rounded-full border border-ember px-5 py-2 font-mono text-xs uppercase tracking-widest text-ember disabled:opacity-40 hover:bg-ember/10 min-[400px]:col-span-1 min-[400px]:ml-auto min-[400px]:w-auto"
               >
                 {writeMutation.isPending ? "Sealing…" : "Seal capsule"}
               </button>

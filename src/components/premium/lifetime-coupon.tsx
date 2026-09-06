@@ -47,13 +47,13 @@ export function LifetimeCoupon() {
       <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
         Redeem a code
       </h2>
-      <div className="flex gap-2">
+      <div className="grid gap-2 min-[380px]:grid-cols-[minmax(0,1fr)_auto]">
         <input
           value={code}
           onChange={(e) => setCode(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onRedeem()}
           placeholder="Coupon code"
-          className="flex-1 rounded-md border border-white/10 bg-black/50 px-3 py-2 text-sm text-silver placeholder:text-silver-dim focus:outline-none focus:border-ember/40"
+          className="min-w-0 rounded-md border border-white/10 bg-black/50 px-3 py-2 text-sm text-silver placeholder:text-silver-dim focus:outline-none focus:border-ember/40"
         />
         <button
           onClick={onRedeem}
