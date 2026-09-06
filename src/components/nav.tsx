@@ -91,7 +91,7 @@ export function Nav() {
 
   return (
     <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-obsidian/80 backdrop-blur-md safe-top">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6 sm:gap-10 lg:gap-12">
+      <div className="mx-auto grid h-16 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 sm:gap-8 sm:px-6 lg:px-8">
         <Link to={user ? "/dashboard" : "/"} className="mr-auto flex min-w-0 items-center gap-2 sm:gap-3">
           <Logo className="size-7 shrink-0" />
           <span className="whitespace-nowrap font-mono text-xs tracking-[0.3em] uppercase">
@@ -99,7 +99,7 @@ export function Nav() {
             <span className="hidden text-muted-foreground sm:inline">/ Protocol.01</span>
           </span>
         </Link>
-        <div className="flex shrink-0 items-center gap-4 lg:gap-6 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground sm:gap-4 lg:gap-6">
           {user ? (
             <>
               {AUTHED_ITEMS.map((item) => {
@@ -183,7 +183,7 @@ export function Nav() {
               </Link>
               <Link
                 to="/auth"
-                className="btn-ember px-5 py-1.5 border border-silver/30 rounded-full text-silver"
+                className="btn-ember min-h-9 px-4 py-1.5 border border-silver/30 rounded-full text-silver sm:px-5"
               >
                 Enter
               </Link>

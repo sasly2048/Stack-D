@@ -54,7 +54,7 @@ export function QueueBadge() {
     <button
       onClick={retry}
       disabled={busy}
-      className="fixed bottom-4 left-4 z-40 glass rounded-full pl-3 pr-4 py-2 flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-silver hover:border-ember/60 border border-white/10 disabled:opacity-50"
+      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] z-40 flex min-h-11 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-white/10 glass py-2 pl-3 pr-4 font-mono text-[11px] uppercase tracking-widest text-silver transition-colors hover:border-ember/60 disabled:cursor-not-allowed disabled:opacity-50"
       aria-live="polite"
     >
       <span className={`size-2 rounded-full ${busy ? "bg-silver animate-pulse" : "bg-ember"}`} />

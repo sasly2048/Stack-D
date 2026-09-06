@@ -14,7 +14,7 @@ export function EmptyState({
   return (
     // role="status" so a screen reader hears "no results" rather than silence
     // after a list finishes loading with nothing in it.
-    <div role="status" className="glass rounded-2xl p-10 text-center">
+    <div role="status" className="glass rounded-lg px-5 py-8 text-center sm:p-10">
       <div aria-hidden="true" className="text-4xl mb-3">
         {icon}
       </div>
