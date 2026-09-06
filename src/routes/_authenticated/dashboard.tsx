@@ -237,7 +237,7 @@ function Dashboard() {
         <div className="mb-8">
           <AtlasWhisper context="dashboard" />
         </div>
-        <div className="mb-10 grid grid-cols-1 items-end gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-8 lg:mb-12">
+        <div className="mb-10 grid grid-cols-1 items-end gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-8 lg:mb-12">
           <div className="min-w-0">
             <div className="ritual-label mb-2 text-muted-foreground">
               ANALYTICS / {me?.name?.toUpperCase()}
