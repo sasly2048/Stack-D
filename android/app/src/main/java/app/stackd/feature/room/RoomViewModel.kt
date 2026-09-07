@@ -608,7 +608,10 @@ class RoomViewModel(
      */
     fun onInteraction() {
         val s = _state.value
-        if (!s.armed || s.phase != RoomPhase.ACTIVE || s.iBreached) return
+        // Not while calibrating: the phone is still being placed face-down, and
+        // those placement taps must not be read as breaking a stack that isn't
+        // built yet.
+        if (!s.armed || s.calibrating || s.phase != RoomPhase.ACTIVE || s.iBreached) return
         onBreach(BreachReason.INTERACTION, BreachSeverity.SEVERE)
     }
 

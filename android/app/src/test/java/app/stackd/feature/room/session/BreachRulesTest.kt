@@ -232,6 +232,18 @@ class BreachRulesTest {
         assertEquals(40f, BreachRules.delta(current = 20f, baseline = -20f), 0.0001f)
     }
 
+    // --- face-down gate ---------------------------------------------------
+
+    @Test
+    fun `face-down requires the screen axis pointing down`() {
+        // rotationMatrix[8]: +1 screen-up, 0 vertical, -1 screen flat down.
+        assertTrue(BreachRules.isFaceDown(-1.0f))          // dead flat, face down
+        assertTrue(BreachRules.isFaceDown(-0.7f))          // ~45° off, still counts
+        assertTrue(!BreachRules.isFaceDown(-0.5f))         // too tilted to arm
+        assertTrue(!BreachRules.isFaceDown(0.0f))          // held vertical
+        assertTrue(!BreachRules.isFaceDown(1.0f))          // face up — must never arm
+    }
+
     @Test
     fun `delta wraps across the plus-minus 180 seam`() {
         // Face-down roll sits on the ±180 seam. +178° vs -178° is a 4° wobble,

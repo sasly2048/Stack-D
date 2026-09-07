@@ -306,10 +306,11 @@ private fun Active(
     // Initial pointer pass so it fires before children (scroll, workspace
     // checkboxes, roster) can consume the event. The host's End/Abort controls
     // are rendered OUTSIDE this column, so a clean finish never trips the breach.
-    // Keyed on `armed` so pre-calibration placement taps are ignored and it
-    // activates the moment calibration completes.
-    val interactionGuard = if (state.armed && !state.iBreached) {
-        Modifier.pointerInput(state.armed) {
+    // Gated on `!calibrating` so the taps that place the phone face-down during
+    // the ARMING window don't themselves trip the breach; the guard activates
+    // the moment calibration completes and the stack is being watched.
+    val interactionGuard = if (state.armed && !state.calibrating && !state.iBreached) {
+        Modifier.pointerInput(state.armed, state.calibrating) {
             awaitPointerEventScope {
                 while (true) {
                     awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)

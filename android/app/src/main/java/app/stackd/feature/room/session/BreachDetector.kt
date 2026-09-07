@@ -184,6 +184,21 @@ class BreachDetector(
             // pose, so every later reading is measured against a wrong zero —
             // false breaches on honest users, and real tilts masked. Instead,
             // gather a short window and take its median.
+            //
+            // First gate on face-down: rotationMatrix[8] is the world-up
+            // component of the screen-normal axis (−1 = screen flat down). If the
+            // phone isn't stacked yet, DISCARD the window and don't arm — this is
+            // what stops a session starting (and locking a baseline) while the
+            // phone is still upright in the user's hand. Calibration only accrues
+            // once the phone is actually face-down, so the baseline can only ever
+            // be the stacked pose and a later lift always reads as a real breach.
+            if (!BreachRules.isFaceDown(rotationMatrix[8])) {
+                calibrationStartedAt = 0L
+                calBetas.clear()
+                calGammas.clear()
+                return
+            }
+
             val t = now()
             if (calibrationStartedAt == 0L) calibrationStartedAt = t
             calBetas.add(beta)
@@ -196,6 +211,10 @@ class BreachDetector(
             }
             calBetas.clear()
             calGammas.clear()
+            android.util.Log.i(
+                "StackdBreach",
+                "calibrated face-down: baseline beta=$baselineBeta gamma=$baselineGamma z=${rotationMatrix[8]}",
+            )
             onCalibrated?.invoke()
             return
         }

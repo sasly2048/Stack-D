@@ -27,6 +27,19 @@ object BreachRules {
     const val CALIBRATION_MS = 800L
     const val CALIBRATION_MIN_SAMPLES = 5
 
+    /**
+     * How face-down the screen must be before calibration will lock a baseline
+     * and arm the session. `rotationMatrix[8]` is the world-up component of the
+     * device's screen-normal axis: +1 screen-up, 0 vertical, −1 screen-down.
+     * −0.7 ≈ within ~45° of flat-face-down — generous enough for a phone resting
+     * on a slightly uneven stack, strict enough that an upright or face-up phone
+     * never calibrates. This is the gate that stops a session arming (and locking
+     * a wrong baseline) before the phone is actually stacked.
+     */
+    const val FACE_DOWN_Z_MAX = -0.7f
+
+    fun isFaceDown(screenUpComponent: Float): Boolean = screenUpComponent <= FACE_DOWN_Z_MAX
+
     /** Window over which shake peaks are counted, and how many are needed. */
     const val SHAKE_WINDOW_MS = 600L
     const val SHAKE_MIN_PEAKS = 3
