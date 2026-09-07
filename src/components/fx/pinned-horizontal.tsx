@@ -85,12 +85,16 @@ export function PinnedHorizontal({
 
 
     const ctx = gsap.context(() => {
+      // ScrollTrigger's own pinSpacing reserves exactly the scroll length the
+      // pin consumes. Setting the wrapper height by hand on top of that added
+      // a full extra viewport of empty scroll after the track finished — the
+      // dead band that made the section feel broken on phones.
       const setSize = () => {
         const distance = Math.max(0, track.scrollWidth - window.innerWidth);
-        wrap.style.height = `${window.innerHeight + distance + window.innerHeight * extraPin}px`;
         pin.style.height = `${window.innerHeight}px`;
         return distance;
       };
+
 
       let distance = setSize();
 
