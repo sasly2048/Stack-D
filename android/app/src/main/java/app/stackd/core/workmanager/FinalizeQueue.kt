@@ -87,6 +87,16 @@ class FinalizeQueue(private val context: Context) {
 
     suspend fun size(owner: String): Int = readFor(owner).size
 
+    /**
+     * Live count of this owner's pending results. The badge observes this so it
+     * appears the instant a result is parked and clears the instant the queue
+     * drains — no polling. DataStore's own data Flow is the subscription.
+     */
+    fun sizeFlow(owner: String): kotlinx.coroutines.flow.Flow<Int> =
+        context.finalizeStore.data.map { prefs ->
+            decode(prefs[KEY]).count { it.owner == owner }
+        }
+
     private fun decode(raw: String?): List<FinalizePayload> {
         if (raw.isNullOrBlank()) return emptyList()
         // A corrupt blob shouldn't wedge the queue forever; drop it and move on.

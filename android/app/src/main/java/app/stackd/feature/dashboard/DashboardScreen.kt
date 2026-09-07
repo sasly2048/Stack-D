@@ -159,6 +159,19 @@ fun DashboardScreen(
             )
             Spacer(Modifier.height(16.dp))
         }
+
+        // Atlas — the ambient companion. Shows a next-session recommendation
+        // derived from the same history the ledger already loaded. Dismissible.
+        if (!state.loading && !state.isEmpty) {
+            var atlasVisible by remember { mutableStateOf(true) }
+            if (atlasVisible) {
+                AtlasCard(
+                    rec = app.stackd.feature.insights.recommendNextSession(state.history),
+                    onDismiss = { atlasVisible = false },
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+        }
         Spacer(Modifier.height(12.dp))
 
         when {
@@ -448,4 +461,62 @@ private fun Tile(modifier: Modifier = Modifier, content: @Composable () -> Unit)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(20.dp),
     ) { content() }
+}
+
+/**
+ * Atlas companion card — the Android counterpart to the web's `AtlasWhisper`.
+ * A dismissible presence surfacing the next-session recommendation. Ember-
+ * bordered to read as ambient guidance, not a hard control.
+ */
+@Composable
+private fun AtlasCard(
+    rec: app.stackd.feature.insights.SessionRecommendation,
+    onDismiss: () -> Unit,
+) {
+    val colors = Stackd.colors
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.accent.copy(alpha = 0.06f), Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.25f), Radius2Xl)
+            .padding(20.dp),
+    ) {
+        Text(
+            "✕",
+            style = MonoLabelSmall,
+            color = colors.textMuted,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .clickable(onClick = onDismiss)
+                .padding(4.dp),
+        )
+        Column {
+            Text("ATLAS", style = MonoLabelSmall, color = colors.accent)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Atlas here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                rec.topic,
+                style = MaterialTheme.typography.titleLarge,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                rec.rationale,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "${rec.durationMinutes} MIN · CONFIDENCE ${rec.confidence.uppercase()}",
+                style = MonoLabelSmall,
+                color = colors.accent,
+            )
+        }
+    }
 }

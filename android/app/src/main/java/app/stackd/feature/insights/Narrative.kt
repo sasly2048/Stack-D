@@ -83,3 +83,60 @@ fun forecast(rows: List<FocusHistoryRow>, currentXp: Long): Forecast {
         monthlyForecastMinutes = avgDailyMinutes * 30,
     )
 }
+
+/* ---------------------------- Next-session rec --------------------------- */
+
+data class SessionRecommendation(
+    val durationMinutes: Int,
+    val topic: String,
+    val rationale: String,
+    val confidence: String,
+    val basedOnSessions: Int,
+)
+
+/**
+ * Suggests the next focus session from recent history — the Atlas companion's
+ * content.
+ *
+ * The web's `recommendNextSession` asks an LLM, but falls back to a
+ * deterministic rule whenever that call is unavailable. That fallback is pure
+ * math over the same history rows, so it's the honest, always-available version
+ * — ported verbatim (same thresholds: 85/70 score gates, breach < 3, the 45/30/
+ * 20-minute tiers, and the ≥15 / ≥5 confidence bands). No server AI dependency.
+ *
+ * [rows] is the user's recent focus history (web reads the last 20).
+ */
+fun recommendNextSession(rows: List<FocusHistoryRow>): SessionRecommendation {
+    if (rows.isEmpty()) {
+        return SessionRecommendation(
+            durationMinutes = 20,
+            topic = "First stack — settle in",
+            rationale = "No history yet. Start light: twenty minutes is long enough to " +
+                "feel the silence, short enough to complete cleanly.",
+            confidence = "low",
+            basedOnSessions = 0,
+        )
+    }
+    val basedOnSessions = rows.size
+    val avgScore = Math.round(rows.sumOf { it.score }.toDouble() / rows.size).toInt()
+    val avgMin = Math.round(rows.sumOf { it.durationSeconds }.toDouble() / rows.size / 60).toInt()
+    val totalBreaches = rows.sumOf { it.breachesCount }
+
+    val tier = when {
+        avgScore >= 85 && totalBreaches < 3 -> 45
+        avgScore >= 70 -> 30
+        else -> 20
+    }
+    return SessionRecommendation(
+        durationMinutes = tier,
+        topic = if (avgScore >= 80) "Deep work, one task" else "Rebuild the baseline",
+        rationale = "Averaging $avgScore/100 across $basedOnSessions sessions at $avgMin min. " +
+            if (avgScore >= 80) "Room to push longer." else "Shorter, cleaner runs first.",
+        confidence = when {
+            basedOnSessions >= 15 -> "high"
+            basedOnSessions >= 5 -> "medium"
+            else -> "low"
+        },
+        basedOnSessions = basedOnSessions,
+    )
+}

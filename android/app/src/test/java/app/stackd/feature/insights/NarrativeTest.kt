@@ -57,4 +57,39 @@ class NarrativeTest {
         assertEquals(1234, f.currentXp)
         assertEquals(0, f.projections.size)
     }
+
+    private fun scored(score: Int, breaches: Int, minutes: Int = 30) = FocusHistoryRow(
+        id = "s$score-$breaches", score = score, xp = 100,
+        durationSeconds = minutes * 60, breachesCount = breaches, tier = "steady",
+        createdAt = "2026-08-01T09:00:00Z",
+    )
+
+    @Test
+    fun `recommendation gates duration on score and breaches`() {
+        // High score AND low breaches → nudge up to 45 min.
+        assertEquals(45, recommendNextSession(List(3) { scored(90, 0) }).durationMinutes)
+        // High score but too many breaches → falls to the mid tier.
+        assertEquals(30, recommendNextSession(List(3) { scored(90, 5) }).durationMinutes)
+        // Mid score → 30 min.
+        assertEquals(30, recommendNextSession(List(3) { scored(72, 1) }).durationMinutes)
+        // Low score → 20 min, rebuild.
+        val low = recommendNextSession(List(3) { scored(50, 4) })
+        assertEquals(20, low.durationMinutes)
+        assertEquals("Rebuild the baseline", low.topic)
+    }
+
+    @Test
+    fun `recommendation confidence follows session count`() {
+        assertEquals("low", recommendNextSession(List(3) { scored(80, 0) }).confidence)
+        assertEquals("medium", recommendNextSession(List(8) { scored(80, 0) }).confidence)
+        assertEquals("high", recommendNextSession(List(20) { scored(80, 0) }).confidence)
+    }
+
+    @Test
+    fun `empty history returns the first-stack recommendation`() {
+        val r = recommendNextSession(emptyList())
+        assertEquals(20, r.durationMinutes)
+        assertEquals(0, r.basedOnSessions)
+        assertEquals("low", r.confidence)
+    }
 }
