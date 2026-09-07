@@ -127,8 +127,8 @@ export function PinnedHorizontal({
 
     return () => {
       ctx.revert();
-      // ctx.revert() restores what GSAP set, but the wrapper height is ours.
       wrap.style.height = "";
+      pin.style.height = "";
     };
   }, [extraPin, layoutEpoch]);
 
