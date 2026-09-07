@@ -521,11 +521,11 @@
    with the viewport so every height feels intentional: tighter on laptops,
    more generous on large screens — never a marooned block of centered text. */
 @utility scene-pad-y {
-  padding-top: clamp(3.5rem, 8vh, 9rem);
-  padding-bottom: clamp(3rem, 6vh, 7rem);
+  padding-top: clamp(6rem, 10vh, 9rem);
+  padding-bottom: clamp(5rem, 7vh, 7rem);
 }
 @utility scene-pad-y-compact {
-  padding-top: clamp(3rem, 6vh, 8rem);
+  padding-top: clamp(5.5rem, 8vh, 8rem);
   padding-bottom: clamp(2rem, 4vh, 2.5rem);
 }
 
