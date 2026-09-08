@@ -212,9 +212,18 @@ class BreachDetector(
             }
             calBetas.clear()
             calGammas.clear()
+            // Seed the resting gravity vector from the rotation matrix's third
+            // row — world-up expressed in device coords — captured at the moment
+            // calibration confirms face-down. This is sign-stable and can't be a
+            // stray face-up frame, unlike seeding from a single raw accelerometer
+            // sample (that caught the placement handoff and locked an inverted
+            // baseline, so a resting phone showed a constant ~172° phantom tilt).
+            baseGravX = rotationMatrix[6]
+            baseGravY = rotationMatrix[7]
+            baseGravZ = rotationMatrix[8]
             android.util.Log.i(
                 "StackdBreach",
-                "calibrated face-down: baseline beta=$baselineBeta gamma=$baselineGamma z=${rotationMatrix[8]}",
+                "calibrated face-down: grav=(${rotationMatrix[6]},${rotationMatrix[7]},${rotationMatrix[8]})",
             )
             onCalibrated?.invoke()
             return
@@ -232,21 +241,15 @@ class BreachDetector(
         // return`. baselineBeta being set is the signal that calibration is done.
         if (baselineBeta == null) return
 
+        // The resting gravity baseline is seeded at calibration from the rotation
+        // matrix (see handleOrientation); until that lands, there's nothing to
+        // compare against.
+        val bx = baseGravX ?: return
+
         val x = event.values.getOrElse(0) { 0f }
         val y = event.values.getOrElse(1) { 0f }
         val z = event.values.getOrElse(2) { 0f }
         val t = now()
-
-        // Seed the resting gravity vector from the first post-calibration sample.
-        // The phone is stacked and still here (placement was proven pre-start),
-        // so one sample is a good zero; later samples refine nothing — a lift
-        // must be measured against the fixed resting pose, not a moving average.
-        if (baseGravX == null) {
-            baseGravX = x
-            baseGravY = y
-            baseGravZ = z
-            android.util.Log.i("StackdBreach", "gravity baseline: x=$x y=$y z=$z")
-        }
 
         val mag = BreachRules.magnitude(x, y, z)
         accelWindow = BreachRules.pruneWindow(accelWindow + BreachRules.TimedMagnitude(mag, t), t)
@@ -263,7 +266,6 @@ class BreachDetector(
         // Euler beta/gamma breach. The angle between the resting gravity vector
         // and the current one grows smoothly as the phone is tilted off the
         // stack: 0° flat, 90° upright, 180° flipped.
-        val bx = baseGravX ?: return
         val tilt = BreachRules.gravityAngleDelta(bx, baseGravY, baseGravZ, x, y, z)
 
         if (tilt > 10f) {
