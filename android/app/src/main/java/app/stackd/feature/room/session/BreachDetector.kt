@@ -268,10 +268,6 @@ class BreachDetector(
         // stack: 0° flat, 90° upright, 180° flipped.
         val tilt = BreachRules.gravityAngleDelta(bx, baseGravY, baseGravZ, x, y, z)
 
-        if (tilt > 10f) {
-            android.util.Log.i("StackdBreach", "tilt=$tilt thr=${BreachRules.tiltThreshold(mode)} mode=$mode")
-        }
-
         if (tiltStartedAt == 0L && tilt > BreachRules.tiltThreshold(mode)) {
             tiltStartedAt = t
         }
