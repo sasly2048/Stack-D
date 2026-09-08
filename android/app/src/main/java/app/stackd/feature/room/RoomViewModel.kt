@@ -31,7 +31,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /** Where the room screen is in the session lifecycle. */
-enum class RoomPhase { LOADING, LOBBY, COUNTDOWN, ACTIVE, ENDED, ERROR }
+enum class RoomPhase { LOADING, LOBBY, COUNTDOWN, PLACING, ACTIVE, ENDED, ERROR }
 
 data class RoomUiState(
     val phase: RoomPhase = RoomPhase.LOADING,
@@ -479,7 +479,17 @@ class RoomViewModel(
     /*  Host controls                                                          */
     /* ---------------------------------------------------------------------- */
 
-    /** Host: begin the 3-2-1 countdown, then start the server session. */
+    private var placementWatcher: app.stackd.feature.room.session.PlacementWatcher? = null
+
+    /**
+     * Host: run the 3-2-1 ceremony, then hold at PLACING until the phone is
+     * verifiably stacked (flat, face-down, still) before starting the server
+     * session. The clock is server-authoritative and every score derives from
+     * `started_at`, so the RPC MUST NOT fire until the stack actually exists —
+     * otherwise the timer runs while the phone is still in hand. Placement is
+     * confirmed by [app.stackd.feature.room.session.PlacementWatcher] off the
+     * accelerometer's gravity vector.
+     */
     fun startRitual() {
         if (!_state.value.isHost || _state.value.room?.statusEnum != RoomStatus.LOBBY) return
         viewModelScope.launch {
@@ -488,7 +498,38 @@ class RoomViewModel(
                 _state.value = _state.value.copy(countdown = c)
                 kotlinx.coroutines.delay(1000)
             }
-            _state.value = _state.value.copy(countdown = null)
+            _state.value = _state.value.copy(countdown = null, phase = RoomPhase.PLACING)
+            beginPlacementGate()
+        }
+    }
+
+    /**
+     * Starts watching for a confirmed face-down placement; fires the start RPC
+     * only once it lands. If the device has no accelerometer, placement can't be
+     * enforced — start immediately rather than trap the host in a gate that can
+     * never open.
+     */
+    private fun beginPlacementGate() {
+        val sensorManager = container.appContextForWork
+            .getSystemService(android.content.Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+        placementWatcher?.stop()
+        val watcher = sensorManager?.let {
+            app.stackd.feature.room.session.PlacementWatcher(it) { onPlacementConfirmed() }
+        }
+        placementWatcher = watcher
+        val watching = watcher?.start() ?: false
+        if (!watching) {
+            placementWatcher = null
+            onPlacementConfirmed()
+        }
+    }
+
+    private fun onPlacementConfirmed() {
+        placementWatcher?.stop()
+        placementWatcher = null
+        // Guard against a late callback after the user already left PLACING.
+        if (_state.value.phase != RoomPhase.PLACING) return
+        viewModelScope.launch {
             // The server sets started_at from its own clock — every score derives
             // from it, so it must never be a device timestamp.
             runCatching { rooms.startSession(_state.value.room!!.id) }
@@ -530,6 +571,8 @@ class RoomViewModel(
     fun abortSession() {
         if (!_state.value.isHost) return
         val room = _state.value.room ?: return
+        placementWatcher?.stop()
+        placementWatcher = null
         stopForegroundTimer()
         viewModelScope.launch {
             runCatching { rooms.abortSession(room.id) }
@@ -745,6 +788,8 @@ class RoomViewModel(
         super.onCleared()
         // Leaving the screen must not leave a countdown notification stranded.
         stopForegroundTimer()
+        placementWatcher?.stop()
+        placementWatcher = null
         channel?.let { ch -> viewModelScope.launch { runCatching { ch.unsubscribe() } } }
     }
 
@@ -754,7 +799,14 @@ class RoomViewModel(
 
     private fun phaseFor(room: RoomRow, current: RoomUiState = _state.value): RoomPhase =
         when (room.statusEnum) {
-            RoomStatus.LOBBY -> if (current.countdown != null) RoomPhase.COUNTDOWN else RoomPhase.LOBBY
+            // The row is still LOBBY during the countdown AND the placement gate
+            // (the start RPC hasn't fired yet), so a realtime echo must not knock
+            // us back to LOBBY and cancel either — preserve them.
+            RoomStatus.LOBBY -> when {
+                current.phase == RoomPhase.PLACING -> RoomPhase.PLACING
+                current.countdown != null -> RoomPhase.COUNTDOWN
+                else -> RoomPhase.LOBBY
+            }
             RoomStatus.ACTIVE -> RoomPhase.ACTIVE
             RoomStatus.COMPLETE, RoomStatus.ABORTED -> RoomPhase.ENDED
         }

@@ -40,6 +40,49 @@ object BreachRules {
 
     fun isFaceDown(screenUpComponent: Float): Boolean = screenUpComponent <= FACE_DOWN_Z_MAX
 
+    /* ----------------------- strict placement gate ----------------------- */
+    //
+    // The session must not arm until the phone is verifiably face-down AND at
+    // rest — measured directly from the accelerometer's gravity vector, which is
+    // unambiguous where beta/gamma are not (they can't tell face-up from
+    // face-down when flat). At rest the accelerometer reads gravity: face-down is
+    // z ≈ -9.8 with x,y near zero. We require that pose to HOLD still for a short
+    // window, so a phone waved screen-down in passing can't arm a session.
+
+    /** Standard gravity, m/s². Accelerometer at rest reads ~this magnitude. */
+    const val GRAVITY = 9.81f
+
+    /**
+     * How negative the accelerometer Z must be to count as face-down: ≤ -8.0
+     * ≈ within ~35° of flat, generous for an uneven stack but firmly excluding
+     * upright (z≈0) and face-up (z≈+9.8).
+     */
+    const val PLACEMENT_Z_MAX = -8.0f
+
+    /**
+     * Max horizontal tilt while placed: √(x²+y²) must stay under this. At true
+     * flat it's ~0; this bounds how far the stack can lean and still arm.
+     */
+    const val PLACEMENT_XY_MAX = 4.5f
+
+    /**
+     * Stillness tolerance: each sample's total magnitude must stay within this of
+     * 1 g. A phone in motion (being flipped, carried) swings well outside; a
+     * resting one barely moves. Rejects "face-down but still moving".
+     */
+    const val PLACEMENT_STILL_TOLERANCE = 1.5f
+
+    /** The pose must hold this long before the session arms. */
+    const val PLACEMENT_HOLD_MS = 700L
+
+    /** True if this single gravity sample looks like a flat, face-down, still phone. */
+    fun isPlacedSample(x: Float, y: Float, z: Float): Boolean {
+        if (z > PLACEMENT_Z_MAX) return false
+        if (sqrt(x * x + y * y) > PLACEMENT_XY_MAX) return false
+        val mag = magnitude(x, y, z)
+        return abs(mag - GRAVITY) <= PLACEMENT_STILL_TOLERANCE
+    }
+
     /** Window over which shake peaks are counted, and how many are needed. */
     const val SHAKE_WINDOW_MS = 600L
     const val SHAKE_MIN_PEAKS = 3

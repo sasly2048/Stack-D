@@ -85,6 +85,16 @@ class BreachDetector(
     private var baselineBeta: Float? = null
     private var baselineGamma: Float? = null
 
+    /**
+     * Strict placement gate: the session may not arm until the accelerometer has
+     * reported a flat, face-down, still phone continuously for
+     * [BreachRules.PLACEMENT_HOLD_MS]. `placementConfirmed` latches true once that
+     * holds; orientation calibration and arming are blocked until then, so a
+     * session started with the phone in hand simply waits, showing "ARMING…".
+     */
+    private var placementConfirmed: Boolean = false
+    private var placedSince: Long = 0
+
     // Calibration state — samples gathered before the baseline is fixed.
     private var calibrationStartedAt: Long = 0
     private val calBetas = ArrayList<Float>()
@@ -138,6 +148,8 @@ class BreachDetector(
     fun reset() {
         baselineBeta = null
         baselineGamma = null
+        placementConfirmed = false
+        placedSince = 0
         calibrationStartedAt = 0
         calBetas.clear()
         calGammas.clear()
@@ -185,14 +197,13 @@ class BreachDetector(
             // false breaches on honest users, and real tilts masked. Instead,
             // gather a short window and take its median.
             //
-            // First gate on face-down: rotationMatrix[8] is the world-up
-            // component of the screen-normal axis (−1 = screen flat down). If the
-            // phone isn't stacked yet, DISCARD the window and don't arm — this is
-            // what stops a session starting (and locking a baseline) while the
-            // phone is still upright in the user's hand. Calibration only accrues
-            // once the phone is actually face-down, so the baseline can only ever
-            // be the stacked pose and a later lift always reads as a real breach.
-            if (!BreachRules.isFaceDown(rotationMatrix[8])) {
+            // Don't calibrate — or arm — until the accelerometer has confirmed
+            // the phone is flat, face-down and still (see handleMotion). This is
+            // what stops a session starting while the phone is upright in hand,
+            // and guarantees the baseline is the true stacked pose so a later
+            // lift always reads as a real breach. Discard any stray orientation
+            // samples until then so a wrong baseline can't accrue.
+            if (!placementConfirmed) {
                 calibrationStartedAt = 0L
                 calBetas.clear()
                 calGammas.clear()
@@ -241,16 +252,36 @@ class BreachDetector(
     }
 
     private fun handleMotion(event: SensorEvent) {
+        val x = event.values.getOrElse(0) { 0f }
+        val y = event.values.getOrElse(1) { 0f }
+        val z = event.values.getOrElse(2) { 0f }
+        val t = now()
+
+        // Strict placement gate. Until the phone has been flat, face-down and
+        // still for PLACEMENT_HOLD_MS, the session cannot arm — orientation
+        // calibration and shake detection are both blocked. The accelerometer's
+        // gravity vector decides this directly (z ≈ -9.8, x/y small, magnitude
+        // ≈ 1 g), independent of the rotation-vector sensor. Any sample that
+        // breaks the pose resets the hold clock, so a phone in motion or held
+        // upright never crosses the gate.
+        if (!placementConfirmed) {
+            if (BreachRules.isPlacedSample(x, y, z)) {
+                if (placedSince == 0L) placedSince = t
+                if (t - placedSince >= BreachRules.PLACEMENT_HOLD_MS) {
+                    placementConfirmed = true
+                    android.util.Log.i("StackdBreach", "placement confirmed: z=$z x=$x y=$y")
+                }
+            } else {
+                placedSince = 0
+            }
+            return
+        }
+
         // Motion before the baseline settles is the user placing the phone —
         // ignore it, matching the web hook's `if (!state.baseline) return`.
         if (baselineBeta == null) return
 
-        val x = event.values.getOrElse(0) { 0f }
-        val y = event.values.getOrElse(1) { 0f }
-        val z = event.values.getOrElse(2) { 0f }
         val mag = BreachRules.magnitude(x, y, z)
-        val t = now()
-
         accelWindow = BreachRules.pruneWindow(accelWindow + BreachRules.TimedMagnitude(mag, t), t)
 
         // A shake is sustained agitation, not one spike: require repeated peaks

@@ -244,6 +244,35 @@ class BreachRulesTest {
         assertTrue(!BreachRules.isFaceDown(1.0f))          // face up — must never arm
     }
 
+    // --- strict placement gate --------------------------------------------
+
+    @Test
+    fun `a flat face-down still phone counts as placed`() {
+        // Resting face-down: z ≈ -9.8, x/y near zero, magnitude ≈ 1 g.
+        assertTrue(BreachRules.isPlacedSample(0.1f, -0.2f, -9.8f))
+    }
+
+    @Test
+    fun `an upright or face-up phone is never placed`() {
+        assertTrue(!BreachRules.isPlacedSample(0f, 9.8f, 0f))    // portrait upright
+        assertTrue(!BreachRules.isPlacedSample(0f, 0f, 9.8f))    // face-up flat
+        assertTrue(!BreachRules.isPlacedSample(0f, 0f, 0f))      // free fall
+    }
+
+    @Test
+    fun `face-down but tilted past the horizontal bound is not placed`() {
+        // z is over threshold but a 5f horizontal component (> 4.5 max) means it's
+        // propped at an angle, not stacked flat.
+        assertTrue(!BreachRules.isPlacedSample(5f, 0f, -8.5f))
+    }
+
+    @Test
+    fun `face-down but in motion is not placed`() {
+        // Right orientation, but total magnitude 13 is 3 g off rest — the phone is
+        // being moved, not resting. Must not arm.
+        assertTrue(!BreachRules.isPlacedSample(0f, 0f, -13f))
+    }
+
     @Test
     fun `delta wraps across the plus-minus 180 seam`() {
         // Face-down roll sits on the ±180 seam. +178° vs -178° is a 4° wobble,

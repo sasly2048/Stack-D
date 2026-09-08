@@ -143,6 +143,7 @@ fun RoomScreen(
                 onSaveMeta, onAddSchedule,
             )
             RoomPhase.COUNTDOWN -> Countdown(state)
+            RoomPhase.PLACING -> Placing(onAbort)
             RoomPhase.ACTIVE -> Active(
                 state, onEnd, onAbort,
                 onToggleReady, onAddWorkspace, onToggleWorkspace, onDeleteWorkspace,
@@ -281,6 +282,34 @@ private fun Countdown(state: RoomUiState) {
     )
     Spacer(Modifier.height(12.dp))
     Text("Stack your phones face-down.", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+}
+
+/**
+ * The placement gate: after the countdown, the session waits here until the
+ * accelerometer confirms the phone is flat, face-down and still. The clock has
+ * NOT started yet — the start RPC only fires once placement lands — so a phone
+ * left in hand simply holds here. An abort escape keeps the host from being
+ * trapped if they can't get the phone flat (or change their mind).
+ */
+@Composable
+private fun Placing(onAbort: () -> Unit) {
+    val colors = Stackd.colors
+    SectionLabel("PLACE TO BEGIN")
+    Spacer(Modifier.height(24.dp))
+    Text(
+        "Phone face-down to start.",
+        style = MaterialTheme.typography.displaySmall,
+        color = colors.textPrimary,
+        fontWeight = FontWeight.ExtraBold,
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+        "The clock starts the moment your phone is flat and still. Lift it and the session breaks.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = colors.textMuted,
+    )
+    Spacer(Modifier.height(24.dp))
+    GhostButton(text = "Cancel", onClick = onAbort)
 }
 
 @Composable
