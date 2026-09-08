@@ -420,9 +420,16 @@ private fun Active(
     }
     } // end interaction-guarded content column
 
+    // Ambient soundscapes sit OUTSIDE the guarded column, like End/Abort:
+    // choosing a bed or nudging volume is a deliberate control, not a stack
+    // breach. Web mounts <AmbientPlayer/> in the same active-session panels.
+    Spacer(Modifier.height(16.dp))
+    AmbientPlayer()
+
     // End/Abort live OUTSIDE the guarded column so the host can finish cleanly
     // without the tap registering as a stack-breaking interaction.
     if (state.isHost) {
+        Spacer(Modifier.height(16.dp))
         EmberButton(text = "End Now", onClick = onEnd)
         Spacer(Modifier.height(12.dp))
         GhostButton(text = "Abort", onClick = onAbort)
