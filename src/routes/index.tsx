@@ -801,7 +801,7 @@ function Landing() {
               </div>
             </>
           }
-          contentClassName="max-w-3xl text-center"
+          contentClassName="mx-auto max-w-3xl text-center"
           glow="center"
           handoff={false}
         >

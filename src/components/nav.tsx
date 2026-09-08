@@ -183,9 +183,9 @@ export function Nav() {
               </Link>
               <Link
                 to="/auth"
-                className="btn-ember min-h-9 px-4 py-1.5 border border-silver/30 rounded-full text-silver sm:px-5"
+                className="btn-ember inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-silver/30 px-4 font-mono text-[10px] leading-none text-silver sm:px-5"
               >
-                Enter
+                <span className="block leading-none">Enter</span>
               </Link>
             </>
           )}
