@@ -274,6 +274,30 @@ class BreachRulesTest {
     }
 
     @Test
+    fun `gravity angle is zero at rest and grows smoothly with tilt`() {
+        // Same vector → 0°. This is the resting case that the Euler roll seam
+        // wrongly reported as ~180°; the gravity angle has no such pole.
+        assertEquals(0f, BreachRules.gravityAngleDelta(0f, 0f, -9.8f, 0f, 0f, -9.8f), 0.01f)
+        // Face-down → vertical (upright) is a 90° tilt.
+        assertEquals(90f, BreachRules.gravityAngleDelta(0f, 0f, -9.8f, 0f, -9.8f, 0f), 0.5f)
+        // Face-down → face-up is a full 180° flip.
+        assertEquals(180f, BreachRules.gravityAngleDelta(0f, 0f, -9.8f, 0f, 0f, 9.8f), 0.5f)
+    }
+
+    @Test
+    fun `gravity angle crosses the absolute threshold on a real lift`() {
+        // A ~35° tilt off the stack (still well short of upright) already exceeds
+        // the 30° absolute threshold → severe on the first sample.
+        val tilt = BreachRules.gravityAngleDelta(0f, 0f, -9.8f, 0f, -5.6f, -8.03f)
+        assertTrue("expected >30, got $tilt", tilt > 30f)
+    }
+
+    @Test
+    fun `gravity angle is safe on degenerate zero input`() {
+        assertEquals(0f, BreachRules.gravityAngleDelta(0f, 0f, 0f, 0f, 0f, -9.8f), 0.01f)
+    }
+
+    @Test
     fun `delta wraps across the plus-minus 180 seam`() {
         // Face-down roll sits on the ±180 seam. +178° vs -178° is a 4° wobble,
         // not a 356° flip — the bug that fired an instant LIFT breach at start.

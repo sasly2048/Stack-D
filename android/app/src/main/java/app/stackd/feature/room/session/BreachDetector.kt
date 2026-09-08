@@ -85,6 +85,18 @@ class BreachDetector(
     private var baselineBeta: Float? = null
     private var baselineGamma: Float? = null
 
+    /**
+     * The resting gravity vector, captured at calibration. Lift/tilt is measured
+     * as the angle between this and the live gravity vector — see
+     * [BreachRules.gravityAngleDelta]. The accelerometer is used instead of
+     * Euler angles because face-down sits on the orientation roll singularity,
+     * where gamma flips ±180 at rest and fakes a breach. Null until the first
+     * accelerometer sample after calibration seeds it.
+     */
+    private var baseGravX: Float? = null
+    private var baseGravY: Float = 0f
+    private var baseGravZ: Float = 0f
+
     // Calibration state — samples gathered before the baseline is fixed.
     private var calibrationStartedAt: Long = 0
     private val calBetas = ArrayList<Float>()
@@ -138,6 +150,9 @@ class BreachDetector(
     fun reset() {
         baselineBeta = null
         baselineGamma = null
+        baseGravX = null
+        baseGravY = 0f
+        baseGravZ = 0f
         calibrationStartedAt = 0
         calBetas.clear()
         calGammas.clear()
@@ -205,43 +220,34 @@ class BreachDetector(
             return
         }
 
-        val db = BreachRules.delta(beta, bBase)
-        val dg = BreachRules.delta(gamma, gBase)
-
-        if (db > 10f || dg > 10f) {
-            android.util.Log.i("StackdBreach", "orient dB=$db dG=$dg thr=${BreachRules.tiltThreshold(mode)} mode=$mode")
-        }
-
-        // Start the clock before evaluating, so a reading that is both the
-        // first over-threshold sample and already steep still reads as a lift.
-        if (tiltStartedAt == 0L && (db > BreachRules.tiltThreshold(mode) || dg > BreachRules.tiltThreshold(mode))) {
-            tiltStartedAt = now()
-        }
-        val held = if (tiltStartedAt == 0L) 0L else now() - tiltStartedAt
-
-        when (val verdict = BreachRules.evaluateOrientation(mode, db, dg, held)) {
-            BreachRules.Verdict.Settled -> tiltStartedAt = 0
-            BreachRules.Verdict.SettledAfterBriefTilt -> {
-                fireMinor(BreachReason.TILT)
-                tiltStartedAt = 0
-            }
-            BreachRules.Verdict.TiltingNotYetSevere -> Unit
-            is BreachRules.Verdict.Severe -> fireSevere(verdict.reason)
-        }
+        // Lift/tilt is decided in handleMotion off the gravity vector — the
+        // orientation stream only establishes that calibration is complete.
+        // Euler beta/gamma are unusable for the breach itself at face-down
+        // (the roll singularity fakes a ~180° delta at rest).
     }
 
     private fun handleMotion(event: SensorEvent) {
-        // Motion before the baseline settles is the user placing the phone —
-        // ignore it, matching the web hook's `if (!state.baseline) return`. The
-        // pre-start PlacementWatcher already proved the phone was stacked before
-        // this service started, so the detector calibrates the resting pose
-        // straight away rather than re-gating placement here.
+        // Motion before orientation calibration settles is the user placing the
+        // phone — ignore it, matching the web hook's `if (!state.baseline)
+        // return`. baselineBeta being set is the signal that calibration is done.
         if (baselineBeta == null) return
 
         val x = event.values.getOrElse(0) { 0f }
         val y = event.values.getOrElse(1) { 0f }
         val z = event.values.getOrElse(2) { 0f }
         val t = now()
+
+        // Seed the resting gravity vector from the first post-calibration sample.
+        // The phone is stacked and still here (placement was proven pre-start),
+        // so one sample is a good zero; later samples refine nothing — a lift
+        // must be measured against the fixed resting pose, not a moving average.
+        if (baseGravX == null) {
+            baseGravX = x
+            baseGravY = y
+            baseGravZ = z
+            android.util.Log.i("StackdBreach", "gravity baseline: x=$x y=$y z=$z")
+        }
+
         val mag = BreachRules.magnitude(x, y, z)
         accelWindow = BreachRules.pruneWindow(accelWindow + BreachRules.TimedMagnitude(mag, t), t)
 
@@ -250,6 +256,33 @@ class BreachDetector(
         // table bump or passing truck no longer ends a session.
         if (BreachRules.isShakeSustained(accelWindow, BreachRules.shakeThreshold(mode), t)) {
             fireSevere(BreachReason.SHAKE)
+            return
+        }
+
+        // Lift/tilt from the gravity vector — the seam-free replacement for the
+        // Euler beta/gamma breach. The angle between the resting gravity vector
+        // and the current one grows smoothly as the phone is tilted off the
+        // stack: 0° flat, 90° upright, 180° flipped.
+        val bx = baseGravX ?: return
+        val tilt = BreachRules.gravityAngleDelta(bx, baseGravY, baseGravZ, x, y, z)
+
+        if (tilt > 10f) {
+            android.util.Log.i("StackdBreach", "tilt=$tilt thr=${BreachRules.tiltThreshold(mode)} mode=$mode")
+        }
+
+        if (tiltStartedAt == 0L && tilt > BreachRules.tiltThreshold(mode)) {
+            tiltStartedAt = t
+        }
+        val held = if (tiltStartedAt == 0L) 0L else t - tiltStartedAt
+
+        when (val verdict = BreachRules.evaluateOrientation(mode, tilt, 0f, held)) {
+            BreachRules.Verdict.Settled -> tiltStartedAt = 0
+            BreachRules.Verdict.SettledAfterBriefTilt -> {
+                fireMinor(BreachReason.TILT)
+                tiltStartedAt = 0
+            }
+            BreachRules.Verdict.TiltingNotYetSevere -> Unit
+            is BreachRules.Verdict.Severe -> fireSevere(verdict.reason)
         }
     }
 

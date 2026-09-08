@@ -83,6 +83,31 @@ object BreachRules {
         return abs(mag - GRAVITY) <= PLACEMENT_STILL_TOLERANCE
     }
 
+    /**
+     * The angle, in degrees, between two gravity vectors — how far the phone has
+     * tilted from its stacked resting pose.
+     *
+     * This is why lift detection uses the accelerometer, not `getOrientation`'s
+     * Euler angles: face-down sits on the Euler roll singularity (the ±180 seam),
+     * where roll reads ±180 interchangeably frame to frame and a resting phone
+     * shows a phantom ~180° delta. The gravity vector has no such pole — the
+     * angle between "resting" and "now" grows smoothly from 0° (flat) toward 90°
+     * (upright) and 180° (flipped face-up), so it is a stable lift signal.
+     *
+     * Returns 0..180. Degenerate zero-magnitude input (free fall) returns 0.
+     */
+    fun gravityAngleDelta(
+        bx: Float, by: Float, bz: Float,
+        cx: Float, cy: Float, cz: Float,
+    ): Float {
+        val bMag = sqrt(bx * bx + by * by + bz * bz)
+        val cMag = sqrt(cx * cx + cy * cy + cz * cz)
+        if (bMag < 1e-3f || cMag < 1e-3f) return 0f
+        val dot = (bx * cx + by * cy + bz * cz) / (bMag * cMag)
+        val clamped = dot.coerceIn(-1f, 1f)
+        return Math.toDegrees(kotlin.math.acos(clamped).toDouble()).toFloat()
+    }
+
     /** Window over which shake peaks are counted, and how many are needed. */
     const val SHAKE_WINDOW_MS = 600L
     const val SHAKE_MIN_PEAKS = 3
