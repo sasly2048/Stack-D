@@ -111,9 +111,13 @@ class MainActivity : ComponentActivity() {
                                         .padding(bottom = 32.dp),
                                 )
 
+                                // Sits above the floating timer pill so a toast
+                                // isn't drawn behind it.
                                 SnackbarHost(
                                     hostState = snackbarHost,
-                                    modifier = Modifier.align(Alignment.BottomCenter),
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 96.dp),
                                 )
                             }
                         }
