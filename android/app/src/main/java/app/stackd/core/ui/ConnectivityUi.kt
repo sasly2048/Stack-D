@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +43,11 @@ import app.stackd.core.theme.Stackd
 @Composable
 fun OfflineBanner(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val online by context.onlineStatus().collectAsStateWithLifecycle(initialValue = true)
+    // remember the flow so it isn't rebuilt (and re-subscribed, re-seeded) on
+    // every recomposition — a fresh cold flow each frame churns the network
+    // callback and keeps re-emitting the initial online=true.
+    val flow = remember(context) { context.onlineStatus() }
+    val online by flow.collectAsStateWithLifecycle(initialValue = true)
     val colors = Stackd.colors
 
     AnimatedVisibility(

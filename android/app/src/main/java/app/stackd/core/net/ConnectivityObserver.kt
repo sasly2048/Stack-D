@@ -29,15 +29,24 @@ fun Context.onlineStatus(): Flow<Boolean> = callbackFlow {
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
+    fun emit(online: Boolean) {
+        android.util.Log.i("StackdNet", "online=$online")
+        trySend(online)
+    }
+
     // Seed with the current active network so the banner state is correct
     // before any callback fires.
-    trySend(validated(cm.activeNetwork))
+    emit(validated(cm.activeNetwork))
 
     val callback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) { trySend(true) }
-        override fun onLost(network: Network) { trySend(validated(cm.activeNetwork)) }
+        override fun onAvailable(network: Network) { emit(true) }
+        // The lost network is going away — emit offline directly rather than
+        // re-querying activeNetwork, which can still return the dying network
+        // (with stale VALIDATED caps) for a beat and mask the drop.
+        override fun onLost(network: Network) { emit(false) }
+        override fun onUnavailable() { emit(false) }
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-            trySend(caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+            emit(caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
         }
     }
 
