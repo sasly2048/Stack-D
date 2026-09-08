@@ -7,5 +7,5 @@
 - [x] Polish authenticated screens across all breakpoints and states
 - [x] Add repeatable route/state visual audit coverage
 - [x] Re-audit, fix regressions, and run focused test suites
-- [ ] Center the top Enter control and align scene 06 with the shared scene container
-- [ ] Verify scenes 01–06 at mobile, tablet, and desktop widths
+- [x] Center the top Enter control and align scene 06 with the shared scene container
+- [x] Verify scenes 01–06 at mobile, tablet, and desktop widths
