@@ -46,6 +46,15 @@ data class RoomUiState(
     val elapsedSeconds: Long = 0,
     val armed: Boolean = false,
     val calibrating: Boolean = false,
+    /**
+     * Set the instant a severe breach is detected locally, so the UI flips to
+     * BREACHED immediately instead of waiting for the server's participant-row
+     * UPDATE to echo back over realtime (which may lag or, if participant
+     * realtime isn't firing, never arrive). The echo, when it lands, sets
+     * `me.breached` and agrees — this just wins the race so the user sees the
+     * breach the moment it happens.
+     */
+    val locallyBreached: Boolean = false,
     /** Null until this user's result is computed at session end. */
     val result: FocusScore.Result? = null,
     val resultQueuedOffline: Boolean = false,
@@ -73,7 +82,7 @@ data class RoomUiState(
 ) {
     val me: ParticipantRow? get() = participants.firstOrNull { it.userId == meId }
     val isHost: Boolean get() = room != null && meId != null && room.hostId == meId
-    val iBreached: Boolean get() = me?.breached == true
+    val iBreached: Boolean get() = me?.breached == true || locallyBreached
     val code: String get() = room?.code.orEmpty()
     val iAmReady: Boolean get() = meId != null && meId in readyIds
 
@@ -673,7 +682,16 @@ class RoomViewModel(
         val s = _state.value
         val room = s.room ?: return
         val me = s.me ?: return
-        if (severity == BreachSeverity.SEVERE && me.breached) return
+        // Already breached (locally or per the server row) — don't double-record.
+        if (severity == BreachSeverity.SEVERE && s.iBreached) return
+
+        // Flip the UI to BREACHED and disarm NOW, before the RPC round-trip and
+        // without waiting for the participant-row realtime echo. This is what
+        // makes the breach visible the instant the phone is lifted or the screen
+        // is touched; the server record and its echo follow and agree.
+        if (severity == BreachSeverity.SEVERE) {
+            _state.value = _state.value.copy(armed = false, locallyBreached = true)
+        }
 
         val integrity = if (room.targetDurationSeconds > 0) {
             ((s.elapsedSeconds.toDouble() / room.targetDurationSeconds) * 100).toInt().coerceIn(0, 100)
@@ -688,9 +706,6 @@ class RoomViewModel(
                     severity = severity.wire,
                     integrity = integrity,
                 )
-            }
-            if (severity == BreachSeverity.SEVERE) {
-                _state.value = _state.value.copy(armed = false)
             }
         }
     }
