@@ -181,22 +181,28 @@ fun ReplayScreen(
             )
             Spacer(Modifier.height(16.dp))
 
+            var showPicker by remember { mutableStateOf(false) }
+            // Tappable date label — jump to any day (web's <input type="date">).
+            // On its own row so the full-width Prev/Next buttons below don't
+            // squeeze it off-screen.
+            Text(
+                prettyDate(state.date),
+                style = MonoLabelSmall,
+                color = colors.accent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showPicker = true }
+                    .padding(vertical = 10.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                GhostButton(text = "← Prev", onClick = { onShiftDay(-1) })
-                var showPicker by remember { mutableStateOf(false) }
-                Text(
-                    prettyDate(state.date),
-                    style = MonoLabelSmall,
-                    color = colors.textPrimary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { showPicker = true },
-                )
-                GhostButton(text = "Next →", onClick = { onShiftDay(1) })
+                Box(Modifier.weight(1f)) { GhostButton(text = "← Prev", onClick = { onShiftDay(-1) }) }
+                Box(Modifier.weight(1f)) { GhostButton(text = "Next →", onClick = { onShiftDay(1) }) }
 
                 // Tap the date to jump to any day — the web's <input type="date">.
                 if (showPicker) {
