@@ -11,7 +11,15 @@
  *    deliberately lossy and must never be used for uniqueness or display.
  */
 
-/** Zero-width, joiners, BOM, bidi controls, soft hyphen, variation selectors. */
+/**
+ * Zero-width, joiners, BOM, bidi controls, soft hyphen, variation selectors.
+ *
+ * eslint-disable-next-line no-misleading-character-class \u2014 the class
+ * deliberately lists variation-selector / combining code points (\u180B-\u180E,
+ * \uFE00-\uFE0F) so they can be STRIPPED individually; matching them as
+ * standalone code points is exactly the intent here, not a mistake.
+ */
+// eslint-disable-next-line no-misleading-character-class
 const INVISIBLE = /[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0]/g;
 
 /** Anything that a human reads as a separator or decoration. */
