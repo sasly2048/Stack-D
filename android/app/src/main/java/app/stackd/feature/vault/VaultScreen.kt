@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -226,6 +228,25 @@ fun VaultScreen(
                     // Android already holds the full page (limit 200), so the
                     // same match runs in memory with no extra round-trip.
                     var query by remember { mutableStateOf("") }
+                    // Guard the irreversible delete behind a confirm, mirroring
+                    // the web's window.confirm. Holds the item id awaiting
+                    // confirmation; null = no dialog.
+                    var pendingDelete by remember { mutableStateOf<String?>(null) }
+                    pendingDelete?.let { id ->
+                        AlertDialog(
+                            onDismissRequest = { pendingDelete = null },
+                            title = { Text("Delete this vault item?") },
+                            text = { Text("This can't be undone.") },
+                            confirmButton = {
+                                TextButton(onClick = { onDelete(id); pendingDelete = null }) {
+                                    Text("Delete")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+                            },
+                        )
+                    }
                     if (state.items.isNotEmpty()) {
                         OutlinedTextField(
                             value = query,
@@ -276,7 +297,7 @@ fun VaultScreen(
                                     style = MonoLabelSmall,
                                     color = colors.textMuted,
                                     modifier = Modifier
-                                        .clickable { onDelete(item.id) }
+                                        .clickable { pendingDelete = item.id }
                                         .padding(start = 8.dp),
                                 )
                             }

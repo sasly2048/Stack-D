@@ -123,9 +123,22 @@ fun ChallengesScreen(
                     "weekly" to "THIS WEEK",
                 ).forEach { (cadence, heading) ->
                     val rows = state.rows.filter { it.cadence == cadence }
-                    if (rows.isEmpty()) return@forEach
                     Text(heading, style = MonoLabelSmall, color = colors.accent)
                     Spacer(Modifier.height(6.dp))
+                    if (rows.isEmpty()) {
+                        // Per-group empty state (web renders one too). Without
+                        // this a user with no active challenges — every new user —
+                        // saw a blank screen.
+                        Text(
+                            "Nothing here yet — hold a focus session to earn ${
+                                if (cadence == "daily") "today's" else "this week's"
+                            } challenges.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textMuted,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        return@forEach
+                    }
                     rows.forEach { c ->
                         val done = c.completedAt != null
                         Column(
@@ -175,8 +188,9 @@ fun ChallengesScreen(
                                 )
                             }
                             Spacer(Modifier.height(4.dp))
+                            val unit = if (c.metric == "focus_minutes") " min" else ""
                             Text(
-                                "${c.progress} / ${c.target}",
+                                "${c.progress}$unit / ${c.target}$unit",
                                 style = MonoLabelSmall,
                                 color = colors.textMuted,
                             )

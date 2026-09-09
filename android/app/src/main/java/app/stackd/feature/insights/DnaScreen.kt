@@ -169,7 +169,8 @@ fun DnaScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "SIGNATURE ${dna.signature} · ${dna.totalSessions} SESSIONS · PEAK ${dna.peakHour}:00",
+                        "SIGNATURE ${dna.signature} · ${dna.totalSessions} SESSIONS · " +
+                            "PEAK ${dna.peakHour}:00 · ${dna.consistencyScore}% CONSISTENT",
                         style = MonoLabelSmall,
                         color = colors.textMuted,
                     )

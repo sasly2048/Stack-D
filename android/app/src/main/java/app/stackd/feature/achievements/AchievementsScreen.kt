@@ -170,6 +170,24 @@ fun AchievementsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textMuted,
             )
+            if (!state.loading && !state.error && state.total > 0) {
+                // Overall unlock progress bar — web renders one at the top.
+                Spacer(Modifier.height(8.dp))
+                val frac = (state.unlocked.toFloat() / state.total).coerceIn(0f, 1f)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(frac)
+                            .height(6.dp)
+                            .background(colors.accent, CircleShape),
+                    )
+                }
+            }
             if (!state.loading && !state.error) {
                 Spacer(Modifier.height(16.dp))
                 ChapterCard(state.lifetimeXp)
@@ -230,12 +248,29 @@ fun AchievementsScreen(
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
+                            // "New" badge for a fresh unlock (< 24h), like web.
+                            val unlockedMs = a.unlockedAt?.let {
+                                app.stackd.core.parseIsoMillis(it)
+                            }
+                            val isNew = unlockedMs != null &&
+                                System.currentTimeMillis() - unlockedMs < 24 * 60 * 60 * 1000L
+                            if (isNew) {
+                                Text("NEW", style = MonoLabelSmall, color = colors.accent)
+                            }
                             Text(a.tier.uppercase(), style = MonoLabelSmall, color = accent)
                             Text(
                                 if (unlocked) "+${a.xpReward} XP" else "LOCKED",
                                 style = MonoLabelSmall,
                                 color = if (unlocked) colors.accent else colors.textMuted,
                             )
+                            // "Unlocked {date}" line web shows per unlocked card.
+                            a.unlockedAt?.let { at ->
+                                Text(
+                                    "UNLOCKED ${at.take(10)}",
+                                    style = MonoLabelSmall,
+                                    color = colors.textMuted,
+                                )
+                            }
                         }
                     }
                 }

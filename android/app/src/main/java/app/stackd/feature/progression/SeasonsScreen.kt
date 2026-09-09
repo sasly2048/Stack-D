@@ -3,6 +3,7 @@ package app.stackd.feature.progression
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +17,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -166,12 +171,36 @@ fun SeasonsScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "ENDS ${s.endsAt.take(10)} · ×${s.xpMultiplier} XP",
+                        "${seasonCountdown(s.endsAt)} · ×${s.xpMultiplier} XP",
                         style = MonoLabelSmall, color = colors.accent,
                     )
                     s.description?.let {
                         Spacer(Modifier.height(8.dp))
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                    }
+
+                    // Your standing at a glance — web shows Your XP + Your Rank
+                    // as headline stats, not buried in the list.
+                    state.mine?.let { me ->
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                            Column {
+                                Text("YOUR XP", style = MonoLabelSmall, color = colors.textMuted)
+                                Text(
+                                    "${me.xp}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colors.textPrimary, fontWeight = FontWeight.Bold,
+                                )
+                            }
+                            Column {
+                                Text("YOUR RANK", style = MonoLabelSmall, color = colors.textMuted)
+                                Text(
+                                    "#${me.rank}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colors.textPrimary, fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
                     }
                     Spacer(Modifier.height(16.dp))
 
@@ -236,4 +265,32 @@ fun SeasonsScreen(
             Spacer(Modifier.height(32.dp))
         }
     }
+}
+
+/**
+ * Live "ENDS IN 2d 5h 30m" label that ticks each second, mirroring the web's
+ * useCountdown. Falls to "SEASON ENDED" once the end time passes. Returns a
+ * plain String so the caller keeps full control of styling.
+ */
+@Composable
+private fun seasonCountdown(endsAtIso: String): String {
+    val endMs = remember(endsAtIso) {
+        runCatching { java.time.Instant.parse(endsAtIso).toEpochMilli() }.getOrNull()
+    } ?: return "ENDS ${endsAtIso.take(10)}"
+
+    var nowMs by remember(endsAtIso) { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(endsAtIso) {
+        while (true) {
+            nowMs = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+
+    val remaining = endMs - nowMs
+    if (remaining <= 0) return "SEASON ENDED"
+    val totalMin = remaining / 60_000
+    val d = totalMin / (60 * 24)
+    val h = (totalMin / 60) % 24
+    val m = totalMin % 60
+    return "ENDS IN ${d}d ${h}h ${m}m"
 }

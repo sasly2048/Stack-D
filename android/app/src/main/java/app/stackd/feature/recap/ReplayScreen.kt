@@ -19,7 +19,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -101,6 +105,13 @@ class ReplayViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
+    /** Jump to an arbitrary day (the web's `<input type="date">`). [iso] = yyyy-MM-dd. */
+    fun setDate(iso: String) {
+        if (iso == _state.value.date) return
+        _state.value = _state.value.copy(date = iso)
+        load()
+    }
+
     fun togglePlay() {
         if (_state.value.playing) {
             playLoop?.cancel()
@@ -135,16 +146,19 @@ fun ReplayRoute(
     ReplayScreen(
         state = state,
         onShiftDay = vm::shiftDay,
+        onSetDate = vm::setDate,
         onTogglePlay = vm::togglePlay,
         onBack = onBack,
         modifier = modifier,
     )
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ReplayScreen(
     state: ReplayUiState,
     onShiftDay: (Long) -> Unit,
+    onSetDate: (String) -> Unit,
     onTogglePlay: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -173,13 +187,47 @@ fun ReplayScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 GhostButton(text = "← Prev", onClick = { onShiftDay(-1) })
+                var showPicker by remember { mutableStateOf(false) }
                 Text(
                     prettyDate(state.date),
                     style = MonoLabelSmall,
                     color = colors.textPrimary,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showPicker = true },
                 )
                 GhostButton(text = "Next →", onClick = { onShiftDay(1) })
+
+                // Tap the date to jump to any day — the web's <input type="date">.
+                if (showPicker) {
+                    val pickerState = androidx.compose.material3.rememberDatePickerState(
+                        initialSelectedDateMillis = runCatching {
+                            java.time.LocalDate.parse(state.date)
+                                .atStartOfDay(java.time.ZoneOffset.UTC)
+                                .toInstant().toEpochMilli()
+                        }.getOrNull(),
+                    )
+                    androidx.compose.material3.DatePickerDialog(
+                        onDismissRequest = { showPicker = false },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(onClick = {
+                                pickerState.selectedDateMillis?.let { ms ->
+                                    val iso = java.time.Instant.ofEpochMilli(ms)
+                                        .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                                    onSetDate(iso)
+                                }
+                                showPicker = false
+                            }) { Text("Go") }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showPicker = false },
+                            ) { Text("Cancel") }
+                        },
+                    ) {
+                        androidx.compose.material3.DatePicker(state = pickerState)
+                    }
+                }
             }
             Spacer(Modifier.height(8.dp))
             EmberButton(
