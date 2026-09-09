@@ -16,13 +16,18 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -86,22 +91,42 @@ fun RoomRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    RoomScreen(
-        state = state,
-        onStart = vm::startRitual,
-        onEnd = vm::endSession,
-        onAbort = vm::abortSession,
-        onExit = onExit,
-        onToggleReady = vm::toggleReady,
-        onRespondJoin = vm::respondToJoinRequest,
-        onAddWorkspace = vm::addWorkspaceItem,
-        onToggleWorkspace = vm::toggleWorkspaceDone,
-        onDeleteWorkspace = vm::deleteWorkspaceItem,
-        onSaveMeta = vm::saveRoomMeta,
-        onAddSchedule = vm::addScheduledEvent,
-        onSaveSessionMeta = vm::saveSessionMeta,
-        onInteraction = vm::onInteraction,
-    )
+    // "X broke the stack" toasts for other participants' severe breaks.
+    val snackbarHost = remember { SnackbarHostState() }
+    LaunchedEffect(vm) {
+        vm.breachToasts.collect { msg -> snackbarHost.showSnackbar(msg) }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        RoomScreen(
+            state = state,
+            onStart = vm::startRitual,
+            onEnd = vm::endSession,
+            onAbort = vm::abortSession,
+            onExit = onExit,
+            onToggleReady = vm::toggleReady,
+            onRespondJoin = vm::respondToJoinRequest,
+            onAddWorkspace = vm::addWorkspaceItem,
+            onToggleWorkspace = vm::toggleWorkspaceDone,
+            onDeleteWorkspace = vm::deleteWorkspaceItem,
+            onSaveMeta = vm::saveRoomMeta,
+            onAddSchedule = vm::addScheduledEvent,
+            onSaveSessionMeta = vm::saveSessionMeta,
+            onInteraction = vm::onInteraction,
+        )
+        SnackbarHost(
+            hostState = snackbarHost,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp),
+        )
+
+        // Cinematic post-session ceremony over everything, once the rich summary
+        // has loaded and until the user taps Continue.
+        state.ceremony?.let { summary ->
+            if (!state.ceremonyDismissed) {
+                SessionCeremony(summary = summary, onContinue = vm::dismissCeremony)
+            }
+        }
+    }
 }
 
 @Composable
@@ -132,7 +157,14 @@ fun RoomScreen(
       app.stackd.core.ui.ResponsiveColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        Text("ROOM / ${state.code}", style = MonoLabel, color = colors.textMuted)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("ROOM / ${state.code}", style = MonoLabel, color = colors.textMuted)
+            ConnectionBadge(state.connection)
+        }
         Spacer(Modifier.height(24.dp))
 
         when (state.phase) {
@@ -160,6 +192,67 @@ fun RoomScreen(
       ) {
           app.stackd.core.ui.Confetti(modifier = Modifier.fillMaxSize())
       }
+    }
+}
+
+/**
+ * Live shared breach feed during an active session — every participant's
+ * breaks as they land over realtime, not just the caller's and not only at the
+ * end. This is the shared-accountability surface the web renders in-session;
+ * without it a stacker can't see anyone else break.
+ */
+@Composable
+private fun LiveBreachFeed(breaks: List<app.stackd.data.room.BreakRow>) {
+    if (breaks.isEmpty()) return
+    val colors = Stackd.colors
+    Text("BREACH LOG", style = MonoLabelSmall, color = colors.textMuted)
+    Spacer(Modifier.height(6.dp))
+    breaks.sortedByDescending { it.at }.forEach { b ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 3.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                b.displayName,
+                style = MonoLabelSmall,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                "${b.reason} · ${b.severity}",
+                style = MonoLabelSmall,
+                color = if (b.isSevere) colors.breach else colors.textMuted,
+            )
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+}
+
+/**
+ * Realtime health dot + label in the room header. LIVE is a calm accent dot;
+ * CONNECTING/RECONNECTING use the breach palette so a silently-dead socket is
+ * visible rather than looking live. Surfaces RoomViewModel's channel status.
+ */
+@Composable
+private fun ConnectionBadge(connection: ConnectionState) {
+    val colors = Stackd.colors
+    val (dot, label) = when (connection) {
+        ConnectionState.LIVE -> colors.accent to "LIVE"
+        ConnectionState.CONNECTING -> colors.textMuted to "CONNECTING"
+        ConnectionState.RECONNECTING -> colors.breach to "RECONNECTING"
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(
+            Modifier
+                .size(7.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(dot),
+        )
+        Text(label, style = MonoLabelSmall, color = dot)
     }
 }
 
@@ -418,6 +511,7 @@ private fun Active(
         MilestoneTimeline(state.milestones)
         Spacer(Modifier.height(16.dp))
     }
+    LiveBreachFeed(state.breaks)
     } // end interaction-guarded content column
 
     // Ambient soundscapes sit OUTSIDE the guarded column, like End/Abort:

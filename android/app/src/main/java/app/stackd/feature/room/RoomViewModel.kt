@@ -33,6 +33,9 @@ import kotlinx.serialization.json.decodeFromJsonElement
 /** Where the room screen is in the session lifecycle. */
 enum class RoomPhase { LOADING, LOBBY, COUNTDOWN, PLACING, ACTIVE, ENDED, ERROR }
 
+/** Realtime socket health for the room header badge. */
+enum class ConnectionState { CONNECTING, LIVE, RECONNECTING }
+
 data class RoomUiState(
     val phase: RoomPhase = RoomPhase.LOADING,
     val error: String? = null,
@@ -47,6 +50,12 @@ data class RoomUiState(
     val armed: Boolean = false,
     val calibrating: Boolean = false,
     /**
+     * Realtime channel health, surfaced in the room header. A live-looking room
+     * whose socket has silently died is the worst failure mode (web calls it
+     * out explicitly), so we mirror the channel's subscribe status to the UI.
+     */
+    val connection: ConnectionState = ConnectionState.CONNECTING,
+    /**
      * Set the instant a severe breach is detected locally, so the UI flips to
      * BREACHED immediately instead of waiting for the server's participant-row
      * UPDATE to echo back over realtime (which may lag or, if participant
@@ -60,6 +69,14 @@ data class RoomUiState(
     val resultQueuedOffline: Boolean = false,
     /** History row id from finalize — gates the post-session notes/tags form. */
     val historyId: String? = null,
+    /**
+     * Rich post-session summary for the cinematic ceremony overlay (score → XP →
+     * level → achievements → milestones → rank → friends). Null until the async
+     * fetch after finalize lands; the overlay shows only when non-null and not
+     * yet dismissed.
+     */
+    val ceremony: app.stackd.data.recap.SessionSummary? = null,
+    val ceremonyDismissed: Boolean = false,
     val savingSessionMeta: Boolean = false,
     val sessionMetaSaved: Boolean = false,
     /** A device signal that isn't guarding the stack — surfaced as a warning. */
@@ -125,6 +142,17 @@ class RoomViewModel(
 
     private val _state = MutableStateFlow(RoomUiState())
     val state: StateFlow<RoomUiState> = _state.asStateFlow()
+
+    /**
+     * One-shot toasts for another participant breaking the stack — the social
+     * accountability signal the web shows ("X broke the stack"). The screen
+     * collects this into a snackbar. replay=0 so a toast never re-fires on
+     * recomposition/re-collection.
+     */
+    val breachToasts = kotlinx.coroutines.flow.MutableSharedFlow<String>(
+        replay = 0,
+        extraBufferCapacity = 8,
+    )
 
     private var channel: RealtimeChannel? = null
     private var mode: EnforcementMode = EnforcementMode.ABSOLUTE
@@ -306,6 +334,25 @@ class RoomViewModel(
             }
         }.launchIn(viewModelScope)
 
+        // Mirror the channel's own subscribe status into the UI. Once it has
+        // been SUBSCRIBED, any later drop reads as RECONNECTING (not the initial
+        // CONNECTING), so the header distinguishes "still connecting" from "was
+        // live, lost it".
+        var everLive = false
+        ch.channel.status.onEach { status ->
+            val next = when (status) {
+                io.github.jan.supabase.realtime.RealtimeChannel.Status.SUBSCRIBED -> {
+                    everLive = true
+                    ConnectionState.LIVE
+                }
+                io.github.jan.supabase.realtime.RealtimeChannel.Status.SUBSCRIBING ->
+                    if (everLive) ConnectionState.RECONNECTING else ConnectionState.CONNECTING
+                else ->
+                    if (everLive) ConnectionState.RECONNECTING else ConnectionState.CONNECTING
+            }
+            _state.value = _state.value.copy(connection = next)
+        }.launchIn(viewModelScope)
+
         viewModelScope.launch { runCatching { ch.channel.subscribe() } }
     }
 
@@ -452,6 +499,12 @@ class RoomViewModel(
         _state.value = _state.value.copy(
             breaks = (listOf(row) + list).sortedByDescending { it.at }.take(BREAK_FEED_CAP),
         )
+        // Notify when SOMEONE ELSE breaks the stack — the shared-accountability
+        // signal. Skip my own (I already got a local BREACHED flip + buzz) and
+        // minor nudges (only a severe break ends someone's hold).
+        if (row.userId != _state.value.meId && row.isSevere) {
+            breachToasts.tryEmit("${row.displayName} broke the stack")
+        }
     }
 
     /* ---------------------------------------------------------------------- */
@@ -770,6 +823,10 @@ class RoomViewModel(
                 // Keep the id so the Ended screen's notes/tags form can attach
                 // metadata to this exact row.
                 _state.value = _state.value.copy(historyId = historyId)
+                // Kick off the rich ceremony summary (level/rank/awards/friends).
+                // Fire-and-forget: the recap already shows; the ceremony overlay
+                // appears once this lands, so a slow/failed fetch never blocks it.
+                fetchCeremony(userId, historyId!!)
                 // First finished session gates the Start-screen intro tip.
                 container.settings.markCompletedSession()
                 container.finalizeQueue // ensure init; drains on next flush
@@ -785,6 +842,20 @@ class RoomViewModel(
                 _state.value = _state.value.copy(resultQueuedOffline = true)
             }
         }
+    }
+
+    /** Pulls the rich ceremony summary for the just-finished session. */
+    private fun fetchCeremony(userId: String, historyId: String) {
+        viewModelScope.launch {
+            runCatching { container.recap.getSessionSummary(userId, historyId) }
+                .getOrNull()
+                ?.let { _state.value = _state.value.copy(ceremony = it) }
+        }
+    }
+
+    /** User tapped Continue on the ceremony overlay. */
+    fun dismissCeremony() {
+        _state.value = _state.value.copy(ceremonyDismissed = true)
     }
 
     /** Attaches notes + tags to the just-finished session (Ended phase). */

@@ -250,4 +250,231 @@ class RecapRepository(private val client: SupabaseClient) {
         }
         return events.sortedBy { it.at }
     }
+
+    /* ----------------------------- Session summary ---------------------------- */
+
+    /**
+     * The rich post-session summary powering the ceremony's beats — web's
+     * `getSessionSummary`. Every read is a plain, RLS-scoped table query plus the
+     * triangular level curve; no server function or LLM, so it runs from the
+     * client and returns the same numbers.
+     */
+    suspend fun getSessionSummary(userId: String, historyId: String): SessionSummary {
+        val h = client.postgrest.from("focus_history")
+            .select(
+                Columns.list("score", "tier", "duration_seconds", "breaches_count", "xp_earned"),
+            ) {
+                filter { eq("id", historyId); eq("profile_id", userId) }
+                limit(1)
+            }
+            .decodeList<SummaryHistoryRow>()
+            .firstOrNull()
+        val xpEarned = h?.xpEarned ?: 0
+
+        val prof = client.postgrest.from("profiles")
+            .select(
+                Columns.list("lifetime_xp", "prestige_level", "current_focus_streak", "productivity_dna"),
+            ) {
+                filter { eq("id", userId) }
+                limit(1)
+            }
+            .decodeList<SummaryProfileRow>()
+            .firstOrNull()
+        val lifetimeXp = prof?.lifetimeXp ?: 0
+        val (level, into, span) = levelFromXp(lifetimeXp)
+
+        // Rank = profiles strictly ahead + 1, now and before this session's XP.
+        suspend fun countAhead(xp: Long): Int {
+            val ahead = client.postgrest.from("profiles")
+                .select(Columns.list("id")) {
+                    count(Count.EXACT)
+                    head = true
+                    filter { gt("lifetime_xp", xp) }
+                }
+                .countOrNull() ?: 0
+            return ahead.toInt() + 1
+        }
+        val rankNow = countAhead(lifetimeXp)
+        val rankBefore = countAhead(maxOf(0, lifetimeXp - xpEarned))
+
+        // Awards unlocked in this session's window (last 5 minutes).
+        val since = Instant.ofEpochMilli(nowMillis() - 5 * 60 * 1000).toString()
+        val fresh = client.postgrest.from("user_achievements")
+            .select(Columns.list("achievement_id", "unlocked_at")) {
+                filter { eq("user_id", userId); gte("unlocked_at", since) }
+            }
+            .decodeList<FreshAwardRow>()
+        val ids = fresh.map { it.achievementId }
+        var achievements = emptyList<AwardCard>()
+        var milestones = emptyList<AwardCard>()
+        if (ids.isNotEmpty()) {
+            val defs = client.postgrest.from("achievements")
+                .select(Columns.list("id", "name", "description", "icon", "tier", "xp_reward")) {
+                    filter { isIn("id", ids) }
+                }
+                .decodeList<AwardCard>()
+            milestones = defs.filter { it.tier == "milestone" }
+            achievements = defs.filter { it.tier != "milestone" }
+        }
+
+        // Friends who also finished a session today.
+        val links = client.postgrest.from("friendships")
+            .select(Columns.list("requester_id", "addressee_id", "status")) {
+                filter { eq("status", "accepted") }
+            }
+            .decodeList<FriendshipRow>()
+        val friendIds = links.map {
+            if (it.requesterId == userId) it.addresseeId else it.requesterId
+        }.filter { it != userId }.distinct()
+
+        var friendsFinished = emptyList<FriendFinish>()
+        if (friendIds.isNotEmpty()) {
+            val dayStart = Instant.ofEpochMilli(nowMillis())
+                .atZone(ZoneOffset.UTC).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant()
+            val acts = client.postgrest.from("activity_events")
+                .select(Columns.list("user_id", "payload", "created_at")) {
+                    filter {
+                        eq("kind", "session_complete")
+                        isIn("user_id", friendIds)
+                        gte("created_at", dayStart.toString())
+                    }
+                    order("created_at", Order.DESCENDING)
+                    limit(50)
+                }
+                .decodeList<SummaryActivityRow>()
+            val xpByUser = LinkedHashMap<String, Int>()
+            acts.forEach { a ->
+                val xp = (a.payload?.get("xp") as? kotlinx.serialization.json.JsonPrimitive)
+                    ?.content?.toIntOrNull() ?: 0
+                xpByUser[a.userId] = (xpByUser[a.userId] ?: 0) + xp
+            }
+            if (xpByUser.isNotEmpty()) {
+                val profs = client.postgrest.from("profiles")
+                    .select(Columns.list("id", "display_name", "avatar_url")) {
+                        filter { isIn("id", xpByUser.keys.toList()) }
+                    }
+                    .decodeList<SummaryFriendProfile>()
+                friendsFinished = profs.map {
+                    FriendFinish(it.id, it.displayName, it.avatarUrl, xpByUser[it.id] ?: 0)
+                }
+            }
+        }
+
+        return SessionSummary(
+            score = h?.score ?: 0,
+            tier = h?.tier ?: "steady",
+            durationSeconds = h?.durationSeconds ?: 0,
+            breaches = h?.breachesCount ?: 0,
+            xpEarned = xpEarned.toInt(),
+            lifetimeXp = lifetimeXp,
+            prestige = prof?.prestigeLevel ?: 0,
+            level = level,
+            levelXpInto = into,
+            levelXpSpan = span,
+            streak = prof?.currentFocusStreak ?: 0,
+            achievements = achievements,
+            milestones = milestones,
+            rankNow = rankNow,
+            rankBefore = rankBefore,
+            personality = prof?.productivityDna,
+            friendsFinished = friendsFinished,
+        )
+    }
+
+    // System time pulled through a helper so the queries above read cleanly.
+    private fun nowMillis(): Long = System.currentTimeMillis()
 }
+
+/** Triangular level curve — web's levelFromXp: each level costs 500 XP more. */
+fun levelFromXp(xp: Long): Triple<Int, Long, Long> {
+    var level = 1
+    var remaining = maxOf(0L, xp)
+    var span = 1000L
+    while (remaining >= span) {
+        remaining -= span
+        level += 1
+        span += 500
+    }
+    return Triple(level, remaining, span)
+}
+
+@Serializable
+internal data class SummaryHistoryRow(
+    val score: Int = 0,
+    val tier: String = "steady",
+    @SerialName("duration_seconds") val durationSeconds: Int = 0,
+    @SerialName("breaches_count") val breachesCount: Int = 0,
+    @SerialName("xp_earned") val xpEarned: Long = 0,
+)
+
+@Serializable
+internal data class SummaryProfileRow(
+    @SerialName("lifetime_xp") val lifetimeXp: Long = 0,
+    @SerialName("prestige_level") val prestigeLevel: Int = 0,
+    @SerialName("current_focus_streak") val currentFocusStreak: Int = 0,
+    @SerialName("productivity_dna") val productivityDna: String? = null,
+)
+
+@Serializable
+internal data class FreshAwardRow(
+    @SerialName("achievement_id") val achievementId: String,
+    @SerialName("unlocked_at") val unlockedAt: String? = null,
+)
+
+@Serializable
+internal data class FriendshipRow(
+    @SerialName("requester_id") val requesterId: String,
+    @SerialName("addressee_id") val addresseeId: String,
+    val status: String,
+)
+
+@Serializable
+internal data class SummaryActivityRow(
+    @SerialName("user_id") val userId: String,
+    val payload: kotlinx.serialization.json.JsonObject? = null,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+internal data class SummaryFriendProfile(
+    val id: String,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
+)
+
+@Serializable
+data class AwardCard(
+    val id: String,
+    val name: String,
+    val description: String = "",
+    val icon: String = "",
+    val tier: String = "",
+    @SerialName("xp_reward") val xpReward: Int = 0,
+)
+
+data class FriendFinish(
+    val userId: String,
+    val displayName: String?,
+    val avatarUrl: String?,
+    val xp: Int,
+)
+
+data class SessionSummary(
+    val score: Int,
+    val tier: String,
+    val durationSeconds: Int,
+    val breaches: Int,
+    val xpEarned: Int,
+    val lifetimeXp: Long,
+    val prestige: Int,
+    val level: Int,
+    val levelXpInto: Long,
+    val levelXpSpan: Long,
+    val streak: Int,
+    val achievements: List<AwardCard>,
+    val milestones: List<AwardCard>,
+    val rankNow: Int,
+    val rankBefore: Int,
+    val personality: String?,
+    val friendsFinished: List<FriendFinish>,
+)
