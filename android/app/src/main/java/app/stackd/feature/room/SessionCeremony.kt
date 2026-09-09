@@ -78,10 +78,15 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
         return i >= 0 && beat >= i
     }
 
-    // XP count-up, eased, once the xp beat is reached.
+    // XP count-up, eased, once the xp beat is reached. Keyed on a boolean, not
+    // `beat`: keying on `beat` restarted this effect on every later beat tick,
+    // cancelling a still-running count-up (it takes ~1.8s, beats advance every
+    // 1.4s) and freezing the number at a partial value. Gate on "have we passed
+    // the xp beat" so it starts once and always runs to completion.
+    val xpReached = beat >= beats.indexOf("xp")
     var xp by remember(summary) { mutableFloatStateOf(0f) }
-    LaunchedEffect(beat) {
-        if (beat >= beats.indexOf("xp") && xp == 0f && summary.xpEarned > 0) {
+    LaunchedEffect(summary, xpReached) {
+        if (xpReached && summary.xpEarned > 0) {
             val steps = 40
             repeat(steps + 1) { s ->
                 val p = s.toFloat() / steps

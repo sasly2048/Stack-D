@@ -4,6 +4,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import kotlin.math.abs
 
 enum class BreachReason(val wire: String) {
     TILT("tilt"),
@@ -218,6 +219,9 @@ class BreachDetector(
             // stray face-up frame, unlike seeding from a single raw accelerometer
             // sample (that caught the placement handoff and locked an inverted
             // baseline, so a resting phone showed a constant ~172° phantom tilt).
+            // Unit-length (rotation matrix row), whereas live accel samples are
+            // ~1g in magnitude. Only compare these two via gravityAngleDelta,
+            // which normalizes both — never a raw dot product or magnitude diff.
             baseGravX = rotationMatrix[6]
             baseGravY = rotationMatrix[7]
             baseGravZ = rotationMatrix[8]
@@ -266,7 +270,17 @@ class BreachDetector(
         // Euler beta/gamma breach. The angle between the resting gravity vector
         // and the current one grows smoothly as the phone is tilted off the
         // stack: 0° flat, 90° upright, 180° flipped.
-        val tilt = BreachRules.gravityAngleDelta(bx, baseGravY, baseGravZ, x, y, z)
+        //
+        // Only trust the angle when this sample is near pure gravity (|mag−1g|
+        // small). The raw accelerometer includes linear acceleration, so a hard
+        // table bump on a still-face-down phone spikes the apparent angle for a
+        // sample or two; requiring near-rest magnitude rejects those transients
+        // (a genuinely lifted phone still reads ~1g at its new angle). The shake
+        // path already catches sustained agitation above.
+        val nearRest = abs(mag - BreachRules.GRAVITY) <= BreachRules.PLACEMENT_STILL_TOLERANCE
+        val tilt = if (nearRest) {
+            BreachRules.gravityAngleDelta(bx, baseGravY, baseGravZ, x, y, z)
+        } else 0f
 
         if (tiltStartedAt == 0L && tilt > BreachRules.tiltThreshold(mode)) {
             tiltStartedAt = t
