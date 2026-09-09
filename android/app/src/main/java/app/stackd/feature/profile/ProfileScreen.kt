@@ -52,7 +52,19 @@ data class ProfileUiState(
     val saving: Boolean = false,
     val usernameSaving: Boolean = false,
     val usernameNotice: String? = null,
+    /** Live availability hint while typing a username. */
+    val usernameStatus: UsernameStatus = UsernameStatus.Idle,
+    /** Lifetime milestones shelf — null until loaded. */
+    val shelf: app.stackd.data.profile.MilestoneShelf? = null,
 )
+
+/** Live username-availability hint states. */
+sealed interface UsernameStatus {
+    data object Idle : UsernameStatus
+    data object Checking : UsernameStatus
+    data object Available : UsernameStatus
+    data class Unavailable(val message: String) : UsernameStatus
+}
 
 /** Own profile — web's `profile.tsx`: identity card, stats, edit, sign out. */
 class ProfileViewModel(private val container: AppContainer) : ViewModel() {
@@ -75,10 +87,15 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
             runCatching {
                 val profile = container.profiles.getProfile(userId)
                 val tier = runCatching { container.premium.myEntitlement().tier }.getOrDefault("free")
-                profile to tier
+                val shelf = runCatching {
+                    container.profiles.getMilestones(userId, userId)
+                }.getOrNull()
+                Triple(profile, tier, shelf)
             }.fold(
-                onSuccess = { (profile, tier) ->
-                    val fresh = ProfileUiState(loading = false, profile = profile, tier = tier)
+                onSuccess = { (profile, tier, shelf) ->
+                    val fresh = ProfileUiState(
+                        loading = false, profile = profile, tier = tier, shelf = shelf,
+                    )
                     _state.value = fresh
                     container.cache.put(cacheKey(userId), fresh)
                 },
@@ -94,6 +111,37 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
             runCatching { container.profiles.updateProfile(userId, displayName, bio) }
             _state.value = _state.value.copy(saving = false)
             load()
+        }
+    }
+
+    private var usernameProbe: kotlinx.coroutines.Job? = null
+
+    /**
+     * Debounced live availability probe as the user types (web's Checking… /
+     * Available hint). The current handle is never flagged "taken" against
+     * itself. Purely advisory — [saveUsername] is the real gate.
+     */
+    fun onUsernameInput(input: String) {
+        usernameProbe?.cancel()
+        val trimmed = input.trim()
+        val current = _state.value.profile?.username
+        if (trimmed.isEmpty() || trimmed == current) {
+            _state.value = _state.value.copy(usernameStatus = UsernameStatus.Idle)
+            return
+        }
+        val userId = container.auth.currentUserId ?: return
+        _state.value = _state.value.copy(usernameStatus = UsernameStatus.Checking)
+        usernameProbe = viewModelScope.launch {
+            kotlinx.coroutines.delay(400)
+            val result = runCatching { container.profiles.checkUsername(userId, trimmed) }.getOrNull()
+            _state.value = _state.value.copy(
+                usernameStatus = when (result) {
+                    is app.stackd.data.profile.UsernameResult.Ok -> UsernameStatus.Available
+                    is app.stackd.data.profile.UsernameResult.Rejected ->
+                        UsernameStatus.Unavailable(result.message)
+                    null -> UsernameStatus.Idle
+                },
+            )
         }
     }
 
@@ -135,6 +183,7 @@ fun ProfileRoute(
         state = state,
         onSave = vm::save,
         onSaveUsername = vm::saveUsername,
+        onUsernameInput = vm::onUsernameInput,
         onSignOut = { vm.signOut(onSignedOut) },
         onRetry = vm::load,
         onBack = onBack,
@@ -148,6 +197,7 @@ fun ProfileScreen(
     state: ProfileUiState,
     onSave: (String, String) -> Unit,
     onSaveUsername: (String) -> Unit,
+    onUsernameInput: (String) -> Unit = {},
     onSignOut: () -> Unit,
     onRetry: () -> Unit,
     onBack: () -> Unit,
@@ -228,6 +278,11 @@ fun ProfileScreen(
                         }
                     }
 
+                    state.shelf?.let { shelf ->
+                        Spacer(Modifier.height(24.dp))
+                        MilestoneShelfSection(shelf)
+                    }
+
                     Spacer(Modifier.height(24.dp))
                     SectionLabel("EDIT")
                     Spacer(Modifier.height(8.dp))
@@ -258,11 +313,27 @@ fun ProfileScreen(
                     var username by remember(p) { mutableStateOf(p.username.orEmpty()) }
                     OutlinedTextField(
                         value = username,
-                        onValueChange = { if (it.length <= 20) username = it },
-                        label = { Text("Username (3–20, starts with a letter)") },
+                        onValueChange = {
+                            if (it.length <= 20) {
+                                username = it
+                                onUsernameInput(it)
+                            }
+                        },
+                        label = { Text("Username") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    Spacer(Modifier.height(4.dp))
+                    // Live availability hint, else the rules + change-cooldown copy.
+                    val (hint, hintColor) = when (val s = state.usernameStatus) {
+                        UsernameStatus.Checking -> "Checking…" to colors.textMuted
+                        UsernameStatus.Available -> "Available" to colors.accent
+                        is UsernameStatus.Unavailable -> s.message to colors.breach
+                        UsernameStatus.Idle ->
+                            "3–20 characters, starts with a letter, letters/numbers/_/- only. " +
+                                "You can change it once every 24h." to colors.textMuted
+                    }
+                    Text(hint, style = MonoLabelSmall, color = hintColor)
                     state.usernameNotice?.let {
                         Spacer(Modifier.height(4.dp))
                         Text(it, style = MonoLabelSmall, color = colors.textMuted)
@@ -285,6 +356,84 @@ fun ProfileScreen(
             Spacer(Modifier.height(24.dp))
             GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
+        }
+    }
+}
+
+/**
+ * Lifetime milestones shelf — the Android counterpart to web's MilestoneShelf.
+ * Engraved plates for earned markers, the total hours held, empty copy before
+ * the first, and a progress bar toward the next unearned milestone.
+ */
+@Composable
+private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf) {
+    val colors = Stackd.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        SectionLabel("LIFETIME MILESTONES")
+        Text("${shelf.totalHours}H HELD", style = MonoLabelSmall, color = colors.textMuted)
+    }
+    Spacer(Modifier.height(12.dp))
+
+    if (shelf.earned.isEmpty()) {
+        Text(
+            "No milestones yet. The first plate is engraved at 100 hours held.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textMuted,
+        )
+    } else {
+        shelf.earned.forEach { m ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .background(colors.accent.copy(alpha = 0.06f), Radius2Xl)
+                    .border(1.dp, colors.accent.copy(alpha = 0.3f), Radius2Xl)
+                    .padding(16.dp),
+            ) {
+                Text(m.metric.uppercase(), style = MonoLabelSmall, color = colors.accent)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "${m.threshold}",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = colors.textPrimary,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+                if (m.description.isNotBlank()) {
+                    Text(m.description, style = MonoLabelSmall, color = colors.textMuted)
+                }
+                m.unlockedAt?.let {
+                    Text(it.take(10), style = MonoLabelSmall, color = colors.textMuted)
+                }
+            }
+        }
+    }
+
+    shelf.next?.let { next ->
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("NEXT · ${next.card.name.uppercase()}", style = MonoLabelSmall, color = colors.textMuted)
+            Text("${next.current} / ${next.card.threshold}", style = MonoLabelSmall, color = colors.textMuted)
+        }
+        Spacer(Modifier.height(6.dp))
+        val frac = (next.current.toFloat() / next.card.threshold.coerceAtLeast(1)).coerceIn(0f, 1f)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(5.dp)
+                .background(colors.textPrimary.copy(alpha = 0.05f), Radius2Xl),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(frac)
+                    .height(5.dp)
+                    .background(colors.accent.copy(alpha = 0.7f), Radius2Xl),
+            )
         }
     }
 }

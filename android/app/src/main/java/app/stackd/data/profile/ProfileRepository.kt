@@ -195,6 +195,30 @@ class ProfileRepository(private val client: SupabaseClient) {
         }
     }
 
+    /**
+     * Availability probe for the live "Checking… / Available / Taken" hint —
+     * web's `checkUsername`. Format-checks, then queries `username_canonical`
+     * for a collision owned by someone else. This is a UX hint only; the real
+     * gate stays [setMyUsername] (which also owns the cooldown + unique index).
+     */
+    suspend fun checkUsername(userId: String, raw: String): UsernameResult {
+        val username = raw.trim()
+        validateUsernameFormat(username)?.let { return it }
+        val canonical = username.lowercase()
+        val existing = client.postgrest.from("profiles")
+            .select(io.github.jan.supabase.postgrest.query.Columns.list("id")) {
+                filter { eq("username_canonical", canonical) }
+                limit(1)
+            }
+            .decodeList<UsernameIdRow>()
+            .firstOrNull()
+        return if (existing != null && existing.id != userId) {
+            UsernameResult.Rejected("That username isn't available.")
+        } else {
+            UsernameResult.Ok(username)
+        }
+    }
+
     /** Edits the cosmetic profile columns the DB still lets clients write. */
     suspend fun updateProfile(userId: String, displayName: String?, bio: String?) {
         client.postgrest.from("profiles").update(
@@ -334,7 +358,125 @@ class ProfileRepository(private val client: SupabaseClient) {
                 }
             }
             .decodeSingleOrNull()
+
+    /**
+     * Lifetime milestones shelf — web's `getMilestones`. Milestone definitions
+     * are `achievements` rows with tier "milestone"; the id encodes metric +
+     * threshold (ms_hours_100 → hours/100). All plain RLS-scoped reads. Session
+     * count only resolves for the signed-in user (focus_history is own-scoped).
+     */
+    suspend fun getMilestones(targetId: String, viewerId: String): MilestoneShelf {
+        val defs = client.postgrest.from("achievements")
+            .select(
+                io.github.jan.supabase.postgrest.query.Columns.list(
+                    "id", "name", "description", "icon", "xp_reward",
+                ),
+            ) {
+                filter { eq("tier", "milestone") }
+                order("sort_order", Order.ASCENDING)
+            }
+            .decodeList<MilestoneDefRow>()
+
+        val unlocks = client.postgrest.from("user_achievements")
+            .select(
+                io.github.jan.supabase.postgrest.query.Columns.list("achievement_id", "unlocked_at"),
+            ) {
+                filter { eq("user_id", targetId) }
+            }
+            .decodeList<MilestoneUnlockRow>()
+        val unlockMap = unlocks.associate { it.achievementId to it.unlockedAt }
+
+        val prof = client.postgrest.from("profiles")
+            .select(
+                io.github.jan.supabase.postgrest.query.Columns.list("total_focus_seconds", "best_streak"),
+            ) {
+                filter { eq("id", targetId) }
+                limit(1)
+            }
+            .decodeList<MilestoneProfileRow>()
+            .firstOrNull()
+        val totalHours = ((prof?.totalFocusSeconds ?: 0) / 3600).toInt()
+        val bestStreak = prof?.bestStreak ?: 0
+
+        val totalSessions = if (targetId == viewerId) {
+            (client.postgrest.from("focus_history")
+                .select(io.github.jan.supabase.postgrest.query.Columns.list("id")) {
+                    count(io.github.jan.supabase.postgrest.query.Count.EXACT)
+                    head = true
+                    filter { eq("profile_id", targetId) }
+                }
+                .countOrNull() ?: 0).toInt()
+        } else 0
+
+        fun metricOf(id: String) = when {
+            id.startsWith("ms_hours") -> "hours"
+            id.startsWith("ms_sessions") -> "sessions"
+            else -> "streak"
+        }
+        fun thresholdOf(id: String) = id.substringAfterLast("_").toIntOrNull() ?: 0
+
+        val cards = defs.map {
+            MilestoneCard(
+                id = it.id, name = it.name, description = it.description ?: "",
+                unlockedAt = unlockMap[it.id], threshold = thresholdOf(it.id),
+                metric = metricOf(it.id),
+            )
+        }
+        fun currentFor(metric: String) = when (metric) {
+            "hours" -> totalHours; "sessions" -> totalSessions; else -> bestStreak
+        }
+
+        val earned = cards.filter { it.unlockedAt != null }
+            .sortedByDescending { it.unlockedAt }
+        val next = cards.filter { it.unlockedAt == null }
+            .map { it to currentFor(it.metric) }
+            .maxByOrNull { (c, cur) -> cur.toFloat() / maxOf(1, c.threshold) }
+            ?.let { (c, cur) -> MilestoneProgress(c, cur) }
+
+        return MilestoneShelf(earned, next, totalHours, totalSessions, bestStreak)
+    }
 }
+
+@kotlinx.serialization.Serializable
+internal data class MilestoneDefRow(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val icon: String = "",
+    @kotlinx.serialization.SerialName("xp_reward") val xpReward: Int = 0,
+)
+
+@kotlinx.serialization.Serializable
+internal data class MilestoneUnlockRow(
+    @kotlinx.serialization.SerialName("achievement_id") val achievementId: String,
+    @kotlinx.serialization.SerialName("unlocked_at") val unlockedAt: String? = null,
+)
+
+@kotlinx.serialization.Serializable
+internal data class MilestoneProfileRow(
+    @kotlinx.serialization.SerialName("total_focus_seconds") val totalFocusSeconds: Long = 0,
+    @kotlinx.serialization.SerialName("best_streak") val bestStreak: Int = 0,
+)
+
+data class MilestoneCard(
+    val id: String,
+    val name: String,
+    val description: String,
+    val unlockedAt: String?,
+    val threshold: Int,
+    /** hours | sessions | streak */
+    val metric: String,
+)
+
+data class MilestoneProgress(val card: MilestoneCard, val current: Int)
+
+data class MilestoneShelf(
+    val earned: List<MilestoneCard>,
+    val next: MilestoneProgress?,
+    val totalHours: Int,
+    val totalSessions: Int,
+    val bestStreak: Int,
+)
 
 /** The web's 7-day reward cycle, verbatim. */
 val DAILY_REWARDS = intArrayOf(10, 20, 40, 60, 80, 100, 200)
@@ -418,6 +560,9 @@ internal fun validateUsernameFormat(raw: String): UsernameResult.Rejected? = whe
         UsernameResult.Rejected("Start with a letter; use letters, numbers, _ or - only.")
     else -> null
 }
+
+@kotlinx.serialization.Serializable
+internal data class UsernameIdRow(val id: String)
 
 @kotlinx.serialization.Serializable
 internal data class UsernameRow(

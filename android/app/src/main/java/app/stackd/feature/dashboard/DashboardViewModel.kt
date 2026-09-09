@@ -32,6 +32,8 @@ data class DashboardUiState(
     val streak: Int = 0,
     val history: List<FocusHistoryRow> = emptyList(),
     val live: List<RoomRow> = emptyList(),
+    /** The caller's recent rooms — a listed path back to a lobby/active room. */
+    val myRooms: List<app.stackd.data.room.RoomListItem> = emptyList(),
     /** Daily login reward — null while loading or if the read failed. */
     val reward: RewardStatus? = null,
     val claiming: Boolean = false,
@@ -51,6 +53,7 @@ data class DashboardUiState(
 class DashboardViewModel(
     private val auth: AuthRepository,
     private val profiles: ProfileRepository,
+    private val rooms: app.stackd.data.room.RoomRepository,
     private val cache: app.stackd.core.cache.MemoryCache,
 ) : ViewModel() {
 
@@ -91,10 +94,18 @@ class DashboardViewModel(
                     val historyDef = async { profiles.recentSessions(userId) }
                     val liveDef = async { profiles.activeSessions() }
                     val rewardDef = async { runCatching { profiles.rewardStatus(userId) }.getOrNull() }
-                    Quad(profileDef.await(), historyDef.await(), liveDef.await(), rewardDef.await())
+                    // My-rooms is best-effort: a failed read degrades to empty
+                    // rather than sinking the whole dashboard load.
+                    val roomsDef = async {
+                        runCatching { rooms.listMyRooms().first }.getOrDefault(emptyList())
+                    }
+                    Quint(
+                        profileDef.await(), historyDef.await(), liveDef.await(),
+                        rewardDef.await(), roomsDef.await(),
+                    )
                 }
             }.fold(
-                onSuccess = { (profile, history, live, reward) ->
+                onSuccess = { (profile, history, live, reward, myRooms) ->
                     val fresh = DashboardUiState(
                         loading = false,
                         name = profile?.displayName?.takeIf { it.isNotBlank() }
@@ -104,6 +115,7 @@ class DashboardViewModel(
                         history = history,
                         live = live,
                         reward = reward,
+                        myRooms = myRooms,
                     )
                     _state.value = fresh
                     cache.put(cacheKey(userId), fresh)
@@ -150,9 +162,12 @@ class DashboardViewModel(
 }
 
 /** Claim path + tiny tuple the fan-out load needs. */
-private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+private data class Quint<A, B, C, D, E>(
+    val a: A, val b: B, val c: C, val d: D, val e: E,
+)
 
-private operator fun <A, B, C, D> Quad<A, B, C, D>.component1() = a
-private operator fun <A, B, C, D> Quad<A, B, C, D>.component2() = b
-private operator fun <A, B, C, D> Quad<A, B, C, D>.component3() = c
-private operator fun <A, B, C, D> Quad<A, B, C, D>.component4() = d
+private operator fun <A, B, C, D, E> Quint<A, B, C, D, E>.component1() = a
+private operator fun <A, B, C, D, E> Quint<A, B, C, D, E>.component2() = b
+private operator fun <A, B, C, D, E> Quint<A, B, C, D, E>.component3() = c
+private operator fun <A, B, C, D, E> Quint<A, B, C, D, E>.component4() = d
+private operator fun <A, B, C, D, E> Quint<A, B, C, D, E>.component5() = e

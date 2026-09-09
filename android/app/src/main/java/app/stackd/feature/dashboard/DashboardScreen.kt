@@ -64,7 +64,7 @@ fun DashboardRoute(
     onOpenRoom: (String) -> Unit,
     menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
     vm: DashboardViewModel = viewModel(
-        factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles, it.cache) },
+        factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles, it.rooms, it.cache) },
     ),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -223,6 +223,10 @@ fun DashboardScreen(
                     LiveNow(state.live, onOpenRoom)
                     Spacer(Modifier.height(20.dp))
                 }
+                if (state.myRooms.isNotEmpty()) {
+                    MyRooms(state.myRooms, onOpenRoom)
+                    Spacer(Modifier.height(20.dp))
+                }
                 if (!state.isEmpty) {
                     ActivityHeatmap(state.history)
                     Spacer(Modifier.height(20.dp))
@@ -351,6 +355,51 @@ private fun LiveNow(live: List<RoomRow>, onOpenRoom: (String) -> Unit) {
         Spacer(Modifier.height(12.dp))
         live.forEach { room ->
             LiveSessionRow(room, onOpenRoom)
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/**
+ * The caller's recent rooms — a listed path back into a lobby or still-active
+ * room, mirroring web's MyRoomsPanel. First page only (the repository paginates,
+ * but the dashboard just needs a way back in; deep history lives elsewhere).
+ */
+@Composable
+private fun MyRooms(
+    rooms: List<app.stackd.data.room.RoomListItem>,
+    onOpenRoom: (String) -> Unit,
+) {
+    val colors = Stackd.colors
+    Tile {
+        SectionLabel("MY_ROOMS", color = colors.textMuted)
+        Spacer(Modifier.height(12.dp))
+        rooms.forEach { room ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenRoom(room.code) }
+                    .background(colors.textPrimary.copy(alpha = 0.03f), RadiusMd)
+                    .border(1.dp, colors.border, RadiusMd)
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(room.code, style = MonoLabelSmall, color = colors.textPrimary)
+                Text(
+                    room.status.uppercase(),
+                    style = MonoLabelSmall,
+                    color = if (room.statusEnum == app.stackd.data.room.RoomStatus.ACTIVE) {
+                        colors.live
+                    } else colors.textMuted,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    formatDuration(room.targetDurationSeconds.toInt()),
+                    style = MonoLabelSmall,
+                    color = colors.textMuted,
+                )
+            }
             Spacer(Modifier.height(8.dp))
         }
     }
