@@ -14,9 +14,17 @@ export const Route = createFileRoute("/_authenticated/groups")({
   head: () => ({
     meta: [
       { title: "Focus Circles — Stack'd" },
-      { name: "description", content: "Create and manage shared Stack'd focus circles, pool collective XP and hold silence with your group." },
+      {
+        name: "description",
+        content:
+          "Create and manage shared Stack'd focus circles, pool collective XP and hold silence with your group.",
+      },
       { property: "og:title", content: "Focus Circles — Stack'd" },
-      { property: "og:description", content: "Create and manage shared Stack'd focus circles, pool collective XP and hold silence with your group." },
+      {
+        property: "og:description",
+        content:
+          "Create and manage shared Stack'd focus circles, pool collective XP and hold silence with your group.",
+      },
     ],
   }),
   component: GroupsPage,
@@ -258,9 +266,7 @@ function GroupsPage() {
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-5xl">
-        <div className="ritual-label mb-2 text-muted-foreground">
-          CIRCLES / LEADERBOARDS
-        </div>
+        <div className="ritual-label mb-2 text-muted-foreground">CIRCLES / LEADERBOARDS</div>
         <h1 className="page-title mb-10 sm:mb-12">Focus circles.</h1>
 
         <section className="mb-14">
@@ -356,132 +362,141 @@ function GroupsPage() {
                   </div>
                 }
               >
-              {groups.map((g) => {
-                const ms = members.filter((m) => m.group_id === g.id);
-                const isMember = myGroupIds.has(g.id);
-                const isOwner = me?.id === g.created_by;
-                const cd = cooldowns[g.id];
-                const cdActive = !!cd && cd.until > nowTick;
-                const cdRemainingMs = cdActive ? cd.until - nowTick : 0;
-                const cdRemainingSec = Math.ceil(cdRemainingMs / 1000);
-                const cdPct = cdActive
-                  ? Math.max(
-                      0,
-                      Math.min(100, ((cd.total * 1000 - cdRemainingMs) / (cd.total * 1000)) * 100),
-                    )
-                  : 100;
-                const cdReadyAt = cdActive
-                  ? new Date(cd.until).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })
-                  : null;
-                return (
-                  <div key={g.id} className="p-4 border border-white/10 rounded-lg bg-white/[0.02]">
-                    <div className="flex items-center justify-between mb-2">
-                      {/* The whole name block is the expand target, not just
+                {groups.map((g) => {
+                  const ms = members.filter((m) => m.group_id === g.id);
+                  const isMember = myGroupIds.has(g.id);
+                  const isOwner = me?.id === g.created_by;
+                  const cd = cooldowns[g.id];
+                  const cdActive = !!cd && cd.until > nowTick;
+                  const cdRemainingMs = cdActive ? cd.until - nowTick : 0;
+                  const cdRemainingSec = Math.ceil(cdRemainingMs / 1000);
+                  const cdPct = cdActive
+                    ? Math.max(
+                        0,
+                        Math.min(
+                          100,
+                          ((cd.total * 1000 - cdRemainingMs) / (cd.total * 1000)) * 100,
+                        ),
+                      )
+                    : 100;
+                  const cdReadyAt = cdActive
+                    ? new Date(cd.until).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })
+                    : null;
+                  return (
+                    <div
+                      key={g.id}
+                      className="p-4 border border-white/10 rounded-lg bg-white/[0.02]"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        {/* The whole name block is the expand target, not just
                           the text: a 2-line row with a 1-word hit area is the
                           most common mis-click on this screen. */}
-                      <button
-                        onClick={() => setOpenGroup(openGroup === g.id ? null : g.id)}
-                        aria-expanded={openGroup === g.id}
-                        aria-label={`${g.name} — ${openGroup === g.id ? "hide" : "show"} members`}
-                        className={`flex-1 min-w-0 -m-2 p-2 rounded-lg text-left ${ROW_INTERACTIVE} cursor-pointer active:scale-[0.99]`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="font-medium truncate">{g.name}</div>
-                          {/* Membership and ownership are both real columns, so
+                        <button
+                          onClick={() => setOpenGroup(openGroup === g.id ? null : g.id)}
+                          aria-expanded={openGroup === g.id}
+                          aria-label={`${g.name} — ${openGroup === g.id ? "hide" : "show"} members`}
+                          className={`flex-1 min-w-0 -m-2 p-2 rounded-lg text-left ${ROW_INTERACTIVE} cursor-pointer active:scale-[0.99]`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium truncate">{g.name}</div>
+                            {/* Membership and ownership are both real columns, so
                               these say something the row otherwise hides. */}
-                          {isOwner ? (
-                            <BadgeHint tone="accent" title="You created this circle">
-                              Owner
-                            </BadgeHint>
-                          ) : isMember ? (
-                            <BadgeHint tone="positive" title="You are a member of this circle">
-                              Joined
-                            </BadgeHint>
-                          ) : null}
-                        </div>
-                        <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
-                          {ms.length} member{ms.length === 1 ? "" : "s"} · {g.total_group_xp} XP
-                        </div>
-                      </button>
-                      <div className="flex gap-2">
-                        {isMember ? (
-                          <>
-                            <button
-                              onClick={() => startGroupSprint(g)}
-                              disabled={sprintBusy || cdActive}
-                              aria-live="polite"
-                              aria-label={
-                                cdActive
-                                  ? `Rate limited. Retry in ${cdRemainingSec} seconds`
-                                  : "Start sprint"
-                              }
-                              className={`relative overflow-hidden bg-silver text-obsidian px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40 disabled:hover:filter-none min-w-[110px] ${INTERACTIVE_TIGHT}`}
-                            >
-                              {cdActive && (
-                                <span
-                                  aria-hidden
-                                  className="absolute inset-0 bg-breach/30 origin-left transition-transform duration-200 ease-linear"
-                                  style={{ transform: `scaleX(${(100 - cdPct) / 100})` }}
-                                />
-                              )}
-                              <span className="relative">
-                                {cdActive ? `Retry ${cdRemainingSec}s` : "Start Sprint"}
-                              </span>
-                            </button>
-                            {!isOwner && (
+                            {isOwner ? (
+                              <BadgeHint tone="accent" title="You created this circle">
+                                Owner
+                              </BadgeHint>
+                            ) : isMember ? (
+                              <BadgeHint tone="positive" title="You are a member of this circle">
+                                Joined
+                              </BadgeHint>
+                            ) : null}
+                          </div>
+                          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+                            {ms.length} member{ms.length === 1 ? "" : "s"} · {g.total_group_xp} XP
+                          </div>
+                        </button>
+                        <div className="flex gap-2">
+                          {isMember ? (
+                            <>
                               <button
-                                onClick={() => leave(g.id)}
-                                disabled={rowBusy === g.id}
-                                aria-busy={rowBusy === g.id}
-                                className={`border border-breach/40 text-breach px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-breach hover:text-obsidian transition-all ${INTERACTIVE_TIGHT}`}
+                                onClick={() => startGroupSprint(g)}
+                                disabled={sprintBusy || cdActive}
+                                aria-live="polite"
+                                aria-label={
+                                  cdActive
+                                    ? `Rate limited. Retry in ${cdRemainingSec} seconds`
+                                    : "Start sprint"
+                                }
+                                className={`relative overflow-hidden bg-silver text-obsidian px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40 disabled:hover:filter-none min-w-[110px] ${INTERACTIVE_TIGHT}`}
                               >
-                                Leave
+                                {cdActive && (
+                                  <span
+                                    aria-hidden
+                                    className="absolute inset-0 bg-breach/30 origin-left transition-transform duration-200 ease-linear"
+                                    style={{ transform: `scaleX(${(100 - cdPct) / 100})` }}
+                                  />
+                                )}
+                                <span className="relative">
+                                  {cdActive ? `Retry ${cdRemainingSec}s` : "Start Sprint"}
+                                </span>
                               </button>
-                            )}
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => join(g.id)}
-                            disabled={rowBusy === g.id}
-                            aria-busy={rowBusy === g.id}
-                            className={`border border-silver/30 px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-silver hover:text-obsidian transition-all ${INTERACTIVE_TIGHT}`}
-                          >
-                            Join
-                          </button>
-                        )}
+                              {!isOwner && (
+                                <button
+                                  onClick={() => leave(g.id)}
+                                  disabled={rowBusy === g.id}
+                                  aria-busy={rowBusy === g.id}
+                                  className={`border border-breach/40 text-breach px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-breach hover:text-obsidian transition-all ${INTERACTIVE_TIGHT}`}
+                                >
+                                  Leave
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => join(g.id)}
+                              disabled={rowBusy === g.id}
+                              aria-busy={rowBusy === g.id}
+                              className={`border border-silver/30 px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest hover:bg-silver hover:text-obsidian transition-all ${INTERACTIVE_TIGHT}`}
+                            >
+                              Join
+                            </button>
+                          )}
+                        </div>
                       </div>
+                      {cdActive && (
+                        <div
+                          role="status"
+                          aria-live="polite"
+                          className="mt-2 mb-1 flex items-center justify-between gap-3 px-2 py-1.5 rounded border border-breach/30 bg-breach/5 font-mono text-[10px] uppercase tracking-widest text-breach"
+                        >
+                          <span>Dispatch cooling · retry in {cdRemainingSec}s</span>
+                          <span className="text-muted-foreground normal-case tracking-normal">
+                            ready at {cdReadyAt}
+                          </span>
+                        </div>
+                      )}
+                      {openGroup === g.id && (
+                        <ul className="mt-3 pt-3 border-t border-white/5 space-y-1">
+                          {ms.map((m) => (
+                            <li
+                              key={m.profile_id}
+                              className="flex justify-between text-xs font-mono"
+                            >
+                              <span>{m.profiles?.display_name ?? "—"}</span>
+                              <span className="text-muted-foreground">
+                                {m.profiles?.lifetime_xp ?? 0} XP
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
-                    {cdActive && (
-                      <div
-                        role="status"
-                        aria-live="polite"
-                        className="mt-2 mb-1 flex items-center justify-between gap-3 px-2 py-1.5 rounded border border-breach/30 bg-breach/5 font-mono text-[10px] uppercase tracking-widest text-breach"
-                      >
-                        <span>Dispatch cooling · retry in {cdRemainingSec}s</span>
-                        <span className="text-muted-foreground normal-case tracking-normal">
-                          ready at {cdReadyAt}
-                        </span>
-                      </div>
-                    )}
-                    {openGroup === g.id && (
-                      <ul className="mt-3 pt-3 border-t border-white/5 space-y-1">
-                        {ms.map((m) => (
-                          <li key={m.profile_id} className="flex justify-between text-xs font-mono">
-                            <span>{m.profiles?.display_name ?? "—"}</span>
-                            <span className="text-muted-foreground">
-                              {m.profiles?.lifetime_xp ?? 0} XP
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
               </QueryBoundary>
             </div>
           </div>

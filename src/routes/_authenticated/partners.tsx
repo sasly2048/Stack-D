@@ -18,9 +18,17 @@ export const Route = createFileRoute("/_authenticated/partners")({
   head: () => ({
     meta: [
       { title: "Partners — Stack'd" },
-      { name: "description", content: "Pair with an accountability partner on Stack'd and keep a single, steady commitment to focused time." },
+      {
+        name: "description",
+        content:
+          "Pair with an accountability partner on Stack'd and keep a single, steady commitment to focused time.",
+      },
       { property: "og:title", content: "Partners — Stack'd" },
-      { property: "og:description", content: "Pair with an accountability partner on Stack'd and keep a single, steady commitment to focused time." },
+      {
+        property: "og:description",
+        content:
+          "Pair with an accountability partner on Stack'd and keep a single, steady commitment to focused time.",
+      },
     ],
   }),
   component: PartnersPage,
@@ -165,49 +173,48 @@ function PartnersPage() {
             isEmpty={rows.length === 0}
             empty={<p className="text-sm text-silver-dim">No partners yet.</p>}
           >
-          <ul className="space-y-2">
-            {rows.map((r) => (
-              <li
-                key={r.relationship_id}
-                className="glass rounded-md px-4 py-3 flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-sm">{r.display_name ?? "Anon"}</p>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-silver-dim">
-                    {r.role} · {r.status}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {r.incoming && (
-                    <>
-                      <button
-                        disabled={busy}
-                        onClick={() => respond(r.relationship_id, true)}
-                        className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full disabled:opacity-50"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        disabled={busy}
-                        onClick={() => respond(r.relationship_id, false)}
-                        className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-silver rounded-full disabled:opacity-50"
-                      >
-                        Decline
-                      </button>
-                    </>
-                  )}
-                  <button
-                    disabled={busy}
-                    onClick={() => drop(r.relationship_id)}
-                    className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-breach rounded-full disabled:opacity-50"
-                  >
-                    End
-                  </button>
-                </div>
-              </li>
-
-            ))}
-          </ul>
+            <ul className="space-y-2">
+              {rows.map((r) => (
+                <li
+                  key={r.relationship_id}
+                  className="glass rounded-md px-4 py-3 flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-sm">{r.display_name ?? "Anon"}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-silver-dim">
+                      {r.role} · {r.status}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {r.incoming && (
+                      <>
+                        <button
+                          disabled={busy}
+                          onClick={() => respond(r.relationship_id, true)}
+                          className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-ember/40 text-ember hover:bg-ember/10 rounded-full disabled:opacity-50"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          disabled={busy}
+                          onClick={() => respond(r.relationship_id, false)}
+                          className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-silver rounded-full disabled:opacity-50"
+                        >
+                          Decline
+                        </button>
+                      </>
+                    )}
+                    <button
+                      disabled={busy}
+                      onClick={() => drop(r.relationship_id)}
+                      className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-white/10 text-silver-dim hover:text-breach rounded-full disabled:opacity-50"
+                    >
+                      End
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </QueryBoundary>
         </section>
       </main>

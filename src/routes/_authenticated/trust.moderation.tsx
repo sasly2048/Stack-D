@@ -11,9 +11,17 @@ export const Route = createFileRoute("/_authenticated/trust/moderation")({
   head: () => ({
     meta: [
       { title: "Moderation — Stack'd" },
-      { name: "description", content: "Review and resolve reports filed on the Stack'd rooms you host, and keep your sessions safe." },
+      {
+        name: "description",
+        content:
+          "Review and resolve reports filed on the Stack'd rooms you host, and keep your sessions safe.",
+      },
       { property: "og:title", content: "Moderation — Stack'd" },
-      { property: "og:description", content: "Review and resolve reports filed on the Stack'd rooms you host, and keep your sessions safe." },
+      {
+        property: "og:description",
+        content:
+          "Review and resolve reports filed on the Stack'd rooms you host, and keep your sessions safe.",
+      },
     ],
   }),
   component: ModerationPage,

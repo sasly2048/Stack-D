@@ -75,7 +75,11 @@ describe("no AI budget consumed by non-AI endpoints", () => {
     expect(migration).toMatch(
       /REVOKE ALL ON FUNCTION public\.ai_refund\(uuid\) FROM PUBLIC, anon, authenticated/,
     );
-    expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.ai_refund\(uuid\) TO service_role/);
-    expect(migration).not.toMatch(/GRANT EXECUTE ON FUNCTION public\.ai_refund[^;]*TO authenticated/);
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.ai_refund\(uuid\) TO service_role/,
+    );
+    expect(migration).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.ai_refund[^;]*TO authenticated/,
+    );
   });
 });

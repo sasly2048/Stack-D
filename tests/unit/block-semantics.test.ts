@@ -15,17 +15,27 @@ const migration = readFileSync(
 
 describe("block semantics — sever existing + room block", () => {
   it("blockUser severs friendships in both directions (#29)", () => {
-    expect(trust).toMatch(/from\("friendships"\)[\s\S]*?\.eq\("requester_id", context\.userId\)[\s\S]*?\.eq\("addressee_id", data\.userId\)/);
-    expect(trust).toMatch(/from\("friendships"\)[\s\S]*?\.eq\("requester_id", data\.userId\)[\s\S]*?\.eq\("addressee_id", context\.userId\)/);
+    expect(trust).toMatch(
+      /from\("friendships"\)[\s\S]*?\.eq\("requester_id", context\.userId\)[\s\S]*?\.eq\("addressee_id", data\.userId\)/,
+    );
+    expect(trust).toMatch(
+      /from\("friendships"\)[\s\S]*?\.eq\("requester_id", data\.userId\)[\s\S]*?\.eq\("addressee_id", context\.userId\)/,
+    );
   });
 
   it("blockUser severs mentorships in both role arrangements (#29)", () => {
-    expect(trust).toMatch(/from\("mentor_relationships"\)[\s\S]*?\.eq\("mentor_id", context\.userId\)[\s\S]*?\.eq\("mentee_id", data\.userId\)/);
-    expect(trust).toMatch(/from\("mentor_relationships"\)[\s\S]*?\.eq\("mentor_id", data\.userId\)[\s\S]*?\.eq\("mentee_id", context\.userId\)/);
+    expect(trust).toMatch(
+      /from\("mentor_relationships"\)[\s\S]*?\.eq\("mentor_id", context\.userId\)[\s\S]*?\.eq\("mentee_id", data\.userId\)/,
+    );
+    expect(trust).toMatch(
+      /from\("mentor_relationships"\)[\s\S]*?\.eq\("mentor_id", data\.userId\)[\s\S]*?\.eq\("mentee_id", context\.userId\)/,
+    );
   });
 
   it("claim_room_seat rejects joining when blocked vs the host (#30)", () => {
-    expect(migration).toMatch(/blocks_exist\(_uid, _room\.host_id\)[\s\S]*?RAISE EXCEPTION 'blocked'/);
+    expect(migration).toMatch(
+      /blocks_exist\(_uid, _room\.host_id\)[\s\S]*?RAISE EXCEPTION 'blocked'/,
+    );
   });
 
   it("claim_room_seat rejects joining when blocked vs any seated participant (#30)", () => {

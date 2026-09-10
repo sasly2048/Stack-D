@@ -28,9 +28,9 @@ describe("classifyRouteError", () => {
     expect(classifyRouteError(new Error("Transition was aborted because of invalid state"))).toBe(
       "silent",
     );
-    expect(classifyRouteError(new TypeError("Cannot read properties of undefined (reading 'mount')"))).toBe(
-      "silent",
-    );
+    expect(
+      classifyRouteError(new TypeError("Cannot read properties of undefined (reading 'mount')")),
+    ).toBe("silent");
   });
 
   it("reloads once for a stale chunk after a redeploy", () => {
@@ -44,9 +44,9 @@ describe("classifyRouteError", () => {
   });
 
   it("still treats a genuine crash as fatal", () => {
-    expect(classifyRouteError(new TypeError("Cannot read properties of undefined (reading 'id')"))).toBe(
-      "fatal",
-    );
+    expect(
+      classifyRouteError(new TypeError("Cannot read properties of undefined (reading 'id')")),
+    ).toBe("fatal");
     expect(classifyRouteError(new Error("something specific broke in scoring"))).toBe("fatal");
   });
 

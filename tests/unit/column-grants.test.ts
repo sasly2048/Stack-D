@@ -69,7 +69,15 @@ describe("column-grant lockdown", () => {
 
   it("locks room lifecycle/ownership/aggregate columns", () => {
     const g = grantedCols("rooms");
-    for (const c of ["status", "started_at", "ended_at", "host_id", "code", "collective_seconds", "target_duration_seconds"]) {
+    for (const c of [
+      "status",
+      "started_at",
+      "ended_at",
+      "host_id",
+      "code",
+      "collective_seconds",
+      "target_duration_seconds",
+    ]) {
       expect(g).not.toContain(c);
     }
     expect(g).toContain("title"); // host may still edit meta
@@ -77,7 +85,16 @@ describe("column-grant lockdown", () => {
 
   it("locks profile progression columns", () => {
     const g = grantedCols("profiles");
-    for (const c of ["lifetime_xp", "current_focus_streak", "best_streak", "total_focus_seconds", "prestige_level", "productivity_dna", "title", "timezone"]) {
+    for (const c of [
+      "lifetime_xp",
+      "current_focus_streak",
+      "best_streak",
+      "total_focus_seconds",
+      "prestige_level",
+      "productivity_dna",
+      "title",
+      "timezone",
+    ]) {
       expect(g).not.toContain(c);
     }
     expect(g).toContain("display_name");
@@ -96,8 +113,12 @@ describe("column-grant lockdown", () => {
   it("adds a SECURITY DEFINER equip_title that verifies ownership", () => {
     expect(migration).toMatch(/CREATE OR REPLACE FUNCTION public\.equip_title\(_title_id text\)/);
     expect(migration).toMatch(/SECURITY DEFINER/);
-    expect(migration).toMatch(/FROM public\.user_titles ut[\s\S]*?WHERE ut\.user_id = _uid AND ut\.title_id = _title_id/);
+    expect(migration).toMatch(
+      /FROM public\.user_titles ut[\s\S]*?WHERE ut\.user_id = _uid AND ut\.title_id = _title_id/,
+    );
     expect(migration).toMatch(/RAISE EXCEPTION 'not_owned'/);
-    expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.equip_title\(text\) TO authenticated/);
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.equip_title\(text\) TO authenticated/,
+    );
   });
 });

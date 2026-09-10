@@ -26,9 +26,9 @@ describe("resolveBoundaryState", () => {
   });
 
   it("shows empty only once loaded, without error, and with empty UI supplied", () => {
-    expect(
-      resolveBoundaryState({ isPending: false, isEmpty: true, hasEmptyUi: true }),
-    ).toBe("empty");
+    expect(resolveBoundaryState({ isPending: false, isEmpty: true, hasEmptyUi: true })).toBe(
+      "empty",
+    );
   });
 
   it("falls through to content when a screen supplies no empty UI", () => {
@@ -38,8 +38,8 @@ describe("resolveBoundaryState", () => {
   });
 
   it("shows content when loaded with data", () => {
-    expect(
-      resolveBoundaryState({ isPending: false, isEmpty: false, hasEmptyUi: true }),
-    ).toBe("content");
+    expect(resolveBoundaryState({ isPending: false, isEmpty: false, hasEmptyUi: true })).toBe(
+      "content",
+    );
   });
 });

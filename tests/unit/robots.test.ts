@@ -21,8 +21,7 @@ describe("robots.txt", () => {
   });
 
   it("has only directives, comments and blank lines", () => {
-    const VALID =
-      /^(user-agent|allow|disallow|sitemap|crawl-delay|host)\s*:/i;
+    const VALID = /^(user-agent|allow|disallow|sitemap|crawl-delay|host)\s*:/i;
     const offenders = robots
       .split(/\r?\n/)
       .map((line, i) => ({ line: line.trim(), n: i + 1 }))
@@ -32,7 +31,9 @@ describe("robots.txt", () => {
   });
 
   it("declares a user-agent before any rule", () => {
-    const firstRule = robots.split(/\r?\n/).findIndex((l) => /^(allow|disallow)\s*:/i.test(l.trim()));
+    const firstRule = robots
+      .split(/\r?\n/)
+      .findIndex((l) => /^(allow|disallow)\s*:/i.test(l.trim()));
     const firstAgent = robots.split(/\r?\n/).findIndex((l) => /^user-agent\s*:/i.test(l.trim()));
     expect(firstAgent).toBeGreaterThanOrEqual(0);
     expect(firstAgent).toBeLessThan(firstRule);

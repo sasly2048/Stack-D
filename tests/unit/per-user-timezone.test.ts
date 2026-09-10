@@ -15,9 +15,7 @@ const migration = readFileSync(
 
 describe("per-user timezone", () => {
   it("adds the timezone column defaulting to UTC", () => {
-    expect(migration).toMatch(
-      /ADD COLUMN IF NOT EXISTS timezone text NOT NULL DEFAULT 'UTC'/,
-    );
+    expect(migration).toMatch(/ADD COLUMN IF NOT EXISTS timezone text NOT NULL DEFAULT 'UTC'/);
   });
 
   it("resolves the zone with a safe fallback (bad value never throws AT TIME ZONE)", () => {
@@ -50,6 +48,8 @@ describe("per-user timezone", () => {
     expect(migration).toMatch(
       /REVOKE ALL ON FUNCTION public\.set_my_timezone\(text\) FROM PUBLIC, anon/,
     );
-    expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.set_my_timezone\(text\) TO authenticated/);
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.set_my_timezone\(text\) TO authenticated/,
+    );
   });
 });

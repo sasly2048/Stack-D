@@ -128,7 +128,9 @@ export function Scene({
       */}
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col">
         <div className="mb-8 flex items-center gap-3 sm:mb-10">
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">{index}</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
+            {index}
+          </span>
           <span aria-hidden className="h-px w-8 bg-white/15" />
           <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
             {label}

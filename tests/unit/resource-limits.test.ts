@@ -22,9 +22,7 @@ describe("resource limits on other-user-controlled lists", () => {
   });
 
   it("caps room schedule events", () => {
-    expect(read("room-extras.functions.ts")).toMatch(
-      /room_scheduled_events[\s\S]*?\.limit\(100\)/,
-    );
+    expect(read("room-extras.functions.ts")).toMatch(/room_scheduled_events[\s\S]*?\.limit\(100\)/);
   });
 
   it("caps the per-session reaction fetch", () => {

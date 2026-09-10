@@ -66,9 +66,7 @@ export const listPartners = createServerFn({ method: "GET" })
 export const pairPartner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z
-      .object({ partnerId: z.string().uuid(), asRole: z.enum(["mentor", "mentee"]) })
-      .parse(input),
+    z.object({ partnerId: z.string().uuid(), asRole: z.enum(["mentor", "mentee"]) }).parse(input),
   )
   .handler(async ({ data, context }): Promise<{ id: string }> => {
     if (data.partnerId === context.userId) throw new Error("self");

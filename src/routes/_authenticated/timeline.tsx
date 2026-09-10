@@ -214,7 +214,6 @@ function TimelinePage() {
                 </div>
               </div>
             )}
-
           />
         )}
 
