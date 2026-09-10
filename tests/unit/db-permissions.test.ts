@@ -79,7 +79,13 @@ describe("SECURITY DEFINER permission hygiene", () => {
       .filter((fn) => !INTENTIONALLY_UNREVOKED.has(fn))
       // Trigger functions are recognisable by returning a trigger; they are
       // never client-callable regardless of grants.
-      .filter((fn) => !new RegExp(`FUNCTION public\\.${fn}\\s*\\(\\s*\\)[\\s\\S]{0,120}RETURNS\\s+trigger`, "i").test(allSql));
+      .filter(
+        (fn) =>
+          !new RegExp(
+            `FUNCTION public\\.${fn}\\s*\\(\\s*\\)[\\s\\S]{0,120}RETURNS\\s+trigger`,
+            "i",
+          ).test(allSql),
+      );
 
     expect(exposed).toEqual([]);
   });

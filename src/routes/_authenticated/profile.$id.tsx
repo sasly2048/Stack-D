@@ -15,9 +15,17 @@ export const Route = createFileRoute("/_authenticated/profile/$id")({
   head: () => ({
     meta: [
       { title: "Profile — Stack'd" },
-      { name: "description", content: "A witness's focus record on Stack'd: sessions held, streaks kept, titles earned and ties formed." },
+      {
+        name: "description",
+        content:
+          "A witness's focus record on Stack'd: sessions held, streaks kept, titles earned and ties formed.",
+      },
       { property: "og:title", content: "Profile — Stack'd" },
-      { property: "og:description", content: "A witness's focus record on Stack'd: sessions held, streaks kept, titles earned and ties formed." },
+      {
+        property: "og:description",
+        content:
+          "A witness's focus record on Stack'd: sessions held, streaks kept, titles earned and ties formed.",
+      },
     ],
   }),
   component: PublicProfileView,
@@ -63,7 +71,11 @@ function PublicProfileView() {
         <main className="app-page max-w-4xl" aria-busy="true" aria-label="Loading profile">
           <div className="flex items-center gap-5">
             <Skeleton className="size-20 shrink-0 rounded-full sm:size-24" />
-            <div className="w-full max-w-sm space-y-3"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /><Skeleton className="h-4 w-40" /></div>
+            <div className="w-full max-w-sm space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-4 w-40" />
+            </div>
           </div>
         </main>
       </div>
@@ -71,7 +83,18 @@ function PublicProfileView() {
   }
 
   if (error || !p) {
-    return <div className="min-h-screen bg-obsidian text-silver"><Nav /><main className="app-page max-w-3xl"><ErrorPanel title="Profile unavailable" message={error ?? "This profile could not be found."} onRetry={() => void refresh()} /></main></div>;
+    return (
+      <div className="min-h-screen bg-obsidian text-silver">
+        <Nav />
+        <main className="app-page max-w-3xl">
+          <ErrorPanel
+            title="Profile unavailable"
+            message={error ?? "This profile could not be found."}
+            onRetry={() => void refresh()}
+          />
+        </main>
+      </div>
+    );
   }
 
   const hours = Math.floor(p.total_focus_seconds / 3600);

@@ -41,7 +41,11 @@ describe.skipIf(!up)("RLS / IDOR — cross-user access is denied", () => {
     // Seed a room + Alice's participant row with service role (bypasses RLS).
     const { data: room } = await admin!
       .from("rooms")
-      .insert({ host_id: alice.id, code: `IDOR${Math.floor(performance.now()) % 100000}`, status: "lobby" })
+      .insert({
+        host_id: alice.id,
+        code: `IDOR${Math.floor(performance.now()) % 100000}`,
+        status: "lobby",
+      })
       .select("id")
       .single();
     await admin!
@@ -72,7 +76,11 @@ describe.skipIf(!up)("RLS / IDOR — cross-user access is denied", () => {
     // The column-freeze trigger fires for client callers regardless of RLS.
     const { data: room } = await admin!
       .from("rooms")
-      .insert({ host_id: alice.id, code: `FRZ${Math.floor(performance.now()) % 100000}`, status: "lobby" })
+      .insert({
+        host_id: alice.id,
+        code: `FRZ${Math.floor(performance.now()) % 100000}`,
+        status: "lobby",
+      })
       .select("id")
       .single();
     await admin!
@@ -98,17 +106,17 @@ describe.skipIf(!up)("RLS / IDOR — cross-user access is denied", () => {
   it("a non-host cannot change a room's lifecycle", async () => {
     const { data: room } = await admin!
       .from("rooms")
-      .insert({ host_id: alice.id, code: `LC${Math.floor(performance.now()) % 100000}`, status: "lobby" })
+      .insert({
+        host_id: alice.id,
+        code: `LC${Math.floor(performance.now()) % 100000}`,
+        status: "lobby",
+      })
       .select("id")
       .single();
 
     await bob.client.from("rooms").update({ status: "ended" }).eq("id", room!.id);
 
-    const { data: check } = await admin!
-      .from("rooms")
-      .select("status")
-      .eq("id", room!.id)
-      .single();
+    const { data: check } = await admin!.from("rooms").select("status").eq("id", room!.id).single();
     expect(check!.status).toBe("lobby");
   });
 
@@ -123,10 +131,7 @@ describe.skipIf(!up)("RLS / IDOR — cross-user access is denied", () => {
       .eq("id", alice.id)
       .single();
 
-    await alice.client
-      .from("profiles")
-      .update({ lifetime_xp: 999_999 })
-      .eq("id", alice.id);
+    await alice.client.from("profiles").update({ lifetime_xp: 999_999 }).eq("id", alice.id);
 
     const { data: after } = await admin!
       .from("profiles")

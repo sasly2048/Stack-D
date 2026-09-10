@@ -23,9 +23,7 @@ describe("vault + capsule RLS enforces Elite tier", () => {
   // semicolon. Both USING and WITH CHECK live inside it; asserting on the whole
   // block sidesteps trying to balance the parens of `auth.uid()` in a regex.
   function policyBlock(table: string): string {
-    const m = migration.match(
-      new RegExp(`CREATE POLICY[^;]*?ON public\\.${table}\\b[\\s\\S]*?;`),
-    );
+    const m = migration.match(new RegExp(`CREATE POLICY[^;]*?ON public\\.${table}\\b[\\s\\S]*?;`));
     expect(m, `${table} policy`).not.toBeNull();
     return m![0];
   }

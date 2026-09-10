@@ -32,7 +32,14 @@ describe("participants_protect_scoring INSERT guard", () => {
     const updateBranch = migration.match(/ELSE([\s\S]*?)END IF;/);
     expect(updateBranch, "UPDATE branch").not.toBeNull();
     const body = updateBranch![1];
-    for (const col of ["integrity", "breached", "breach_reason", "breach_at", "user_id", "room_id"]) {
+    for (const col of [
+      "integrity",
+      "breached",
+      "breach_reason",
+      "breach_at",
+      "user_id",
+      "room_id",
+    ]) {
       expect(body, col).toMatch(new RegExp(`NEW\\.${col}\\s*:=\\s*OLD\\.${col}`));
     }
   });

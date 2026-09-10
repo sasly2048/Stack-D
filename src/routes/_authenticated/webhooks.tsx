@@ -20,9 +20,17 @@ export const Route = createFileRoute("/_authenticated/webhooks")({
   head: () => ({
     meta: [
       { title: "Webhooks — Stack'd" },
-      { name: "description", content: "Stream Stack'd session, room and achievement events straight into your own systems and tooling." },
+      {
+        name: "description",
+        content:
+          "Stream Stack'd session, room and achievement events straight into your own systems and tooling.",
+      },
       { property: "og:title", content: "Webhooks — Stack'd" },
-      { property: "og:description", content: "Stream Stack'd session, room and achievement events straight into your own systems and tooling." },
+      {
+        property: "og:description",
+        content:
+          "Stream Stack'd session, room and achievement events straight into your own systems and tooling.",
+      },
     ],
   }),
   component: WebhooksPage,
@@ -164,7 +172,9 @@ function WebhooksPage() {
             skeleton={<SkeletonList rows={2} />}
             isEmpty={hooks.length === 0}
             empty={
-              <div className="text-sm text-muted-foreground text-center py-12">No webhooks yet.</div>
+              <div className="text-sm text-muted-foreground text-center py-12">
+                No webhooks yet.
+              </div>
             }
           >
             {hooks.map((h) => (

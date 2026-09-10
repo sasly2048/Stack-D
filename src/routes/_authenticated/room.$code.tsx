@@ -779,7 +779,9 @@ function Room() {
             )}
             {aborted && (
               <>
-                <div className="mb-3 font-mono text-5xl leading-none text-breach sm:text-6xl">ABORT</div>
+                <div className="mb-3 font-mono text-5xl leading-none text-breach sm:text-6xl">
+                  ABORT
+                </div>
                 <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
                   Session terminated by host
                 </div>
@@ -802,7 +804,9 @@ function Room() {
                   Invite
                 </p>
                 <p className="mt-2 text-sm text-silver-dim">Scan to join room</p>
-                <p className="mt-1 break-all font-mono text-xl tracking-[0.2em] text-silver sm:text-2xl sm:tracking-[0.3em]">{room.code}</p>
+                <p className="mt-1 break-all font-mono text-xl tracking-[0.2em] text-silver sm:text-2xl sm:tracking-[0.3em]">
+                  {room.code}
+                </p>
               </div>
             </div>
             <div className="mb-10 grid md:grid-cols-2 gap-4">

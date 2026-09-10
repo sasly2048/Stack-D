@@ -11,8 +11,18 @@
  *    deliberately lossy and must never be used for uniqueness or display.
  */
 
-/** Zero-width, joiners, BOM, bidi controls, soft hyphen, variation selectors. */
-const INVISIBLE = /[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0]/g;
+/**
+ * Zero-width, joiners, BOM, bidi controls, soft hyphen, variation selectors.
+ *
+ * The class deliberately lists variation-selector / combining code points
+ * (\u180B-\u180E, \uFE00-\uFE0F) so they can be STRIPPED individually; matching
+ * them as standalone code points is exactly the intent here, not a mistake \u2014 so
+ * no-misleading-character-class is suppressed on the declaration below.
+ */
+/* eslint-disable no-misleading-character-class */
+const INVISIBLE =
+  /[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0]/g;
+/* eslint-enable no-misleading-character-class */
 
 /** Anything that a human reads as a separator or decoration. */
 const SEPARATORS = /[\s._\-+~*'"`^|/\\()[\]{}<>,;:!?@#$%&=]/g;
@@ -20,26 +30,122 @@ const SEPARATORS = /[\s._\-+~*'"`^|/\\()[\]{}<>,;:!?@#$%&=]/g;
 /** Confusables / homoglyphs → ASCII. Applied after NFKC. */
 const CONFUSABLES: Record<string, string> = {
   // Cyrillic
-  а: "a", в: "b", с: "c", ԁ: "d", е: "e", ѕ: "s", і: "i", ј: "j", к: "k",
-  м: "m", н: "h", о: "o", р: "p", т: "t", у: "y", х: "x", г: "r", ѵ: "v",
-  ц: "u", ь: "b", я: "r", б: "b", д: "d", л: "n", п: "n", ч: "y", ш: "w",
+  а: "a",
+  в: "b",
+  с: "c",
+  ԁ: "d",
+  е: "e",
+  ѕ: "s",
+  і: "i",
+  ј: "j",
+  к: "k",
+  м: "m",
+  н: "h",
+  о: "o",
+  р: "p",
+  т: "t",
+  у: "y",
+  х: "x",
+  г: "r",
+  ѵ: "v",
+  ц: "u",
+  ь: "b",
+  я: "r",
+  б: "b",
+  д: "d",
+  л: "n",
+  п: "n",
+  ч: "y",
+  ш: "w",
   // Greek
-  α: "a", β: "b", γ: "y", ε: "e", ζ: "z", η: "n", ι: "i", κ: "k", ν: "v",
-  ο: "o", ρ: "p", σ: "o", τ: "t", υ: "u", χ: "x", ω: "w", θ: "o", µ: "u",
+  α: "a",
+  β: "b",
+  γ: "y",
+  ε: "e",
+  ζ: "z",
+  η: "n",
+  ι: "i",
+  κ: "k",
+  ν: "v",
+  ο: "o",
+  ρ: "p",
+  σ: "o",
+  τ: "t",
+  υ: "u",
+  χ: "x",
+  ω: "w",
+  θ: "o",
+  µ: "u",
   // Latin lookalikes / accents that NFKD alone misses
-  ı: "i", ł: "l", ø: "o", đ: "d", ð: "d", þ: "p", ß: "ss", æ: "ae", œ: "oe",
-  ƒ: "f", ѐ: "e", ĸ: "k", ɢ: "g", ʀ: "r", ɪ: "i", ᴀ: "a", ᴄ: "c", ᴇ: "e",
-  ᴏ: "o", ᴘ: "p", ᴛ: "t", ᴜ: "u", ᴠ: "v", ʏ: "y", ʙ: "b", ᴅ: "d", ʜ: "h",
-  ᴊ: "j", ᴋ: "k", ʟ: "l", ᴍ: "m", ɴ: "n", ꜱ: "s", ᴡ: "w", ᴢ: "z",
+  ı: "i",
+  ł: "l",
+  ø: "o",
+  đ: "d",
+  ð: "d",
+  þ: "p",
+  ß: "ss",
+  æ: "ae",
+  œ: "oe",
+  ƒ: "f",
+  ѐ: "e",
+  ĸ: "k",
+  ɢ: "g",
+  ʀ: "r",
+  ɪ: "i",
+  ᴀ: "a",
+  ᴄ: "c",
+  ᴇ: "e",
+  ᴏ: "o",
+  ᴘ: "p",
+  ᴛ: "t",
+  ᴜ: "u",
+  ᴠ: "v",
+  ʏ: "y",
+  ʙ: "b",
+  ᴅ: "d",
+  ʜ: "h",
+  ᴊ: "j",
+  ᴋ: "k",
+  ʟ: "l",
+  ᴍ: "m",
+  ɴ: "n",
+  ꜱ: "s",
+  ᴡ: "w",
+  ᴢ: "z",
   // Armenian / Hebrew / Arabic-indic shapes commonly used as lookalikes
-  օ: "o", ո: "n", ս: "u", գ: "q", ա: "a", ի: "h", ց: "g", ք: "p",
+  օ: "o",
+  ո: "n",
+  ս: "u",
+  գ: "q",
+  ա: "a",
+  ի: "h",
+  ց: "g",
+  ք: "p",
 };
 
 /** Leetspeak and symbol substitutions, undone for moderation only. */
 const LEET: Record<string, string> = {
-  "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "6": "g", "7": "t",
-  "8": "b", "9": "g", "2": "z", "$": "s", "€": "e", "£": "l", "¥": "y",
-  "@": "a", "!": "i", "|": "l", "+": "t", "(": "c", "¢": "c", "×": "x",
+  "0": "o",
+  "1": "i",
+  "3": "e",
+  "4": "a",
+  "5": "s",
+  "6": "g",
+  "7": "t",
+  "8": "b",
+  "9": "g",
+  "2": "z",
+  $: "s",
+  "€": "e",
+  "£": "l",
+  "¥": "y",
+  "@": "a",
+  "!": "i",
+  "|": "l",
+  "+": "t",
+  "(": "c",
+  "¢": "c",
+  "×": "x",
 };
 
 /** Strip diacritics, fold width/ligatures, drop invisible characters. */
@@ -76,7 +182,9 @@ export function foldedBase(input: string): string {
 
 /** Folded form with separators and non-alphanumerics removed (digits kept). */
 export function strippedForm(input: string): string {
-  return foldedBase(input).replace(SEPARATORS, "").replace(/[^a-z0-9]/g, "");
+  return foldedBase(input)
+    .replace(SEPARATORS, "")
+    .replace(/[^a-z0-9]/g, "");
 }
 
 /** Lossy: leetspeak undone, letters only. */
@@ -85,7 +193,6 @@ export function deleetForm(input: string): string {
     .replace(SEPARATORS, "")
     .replace(/[^a-z]/g, "");
 }
-
 
 /**
  * Uniqueness key: lowercase, separators removed, confusables folded so a
@@ -105,7 +212,9 @@ export function moderationForms(input: string): string[] {
   const base = baseNormalize(input);
   const folded = foldConfusables(base);
   const stripped = folded.replace(SEPARATORS, "").replace(/[^a-z0-9]/g, "");
-  const deleet = undoLeet(folded).replace(SEPARATORS, "").replace(/[^a-z]/g, "");
+  const deleet = undoLeet(folded)
+    .replace(SEPARATORS, "")
+    .replace(/[^a-z]/g, "");
   const forms = new Set<string>([
     input.toLowerCase(),
     base,

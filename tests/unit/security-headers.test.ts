@@ -94,9 +94,7 @@ describe("CSP keeps the dangerous directives locked", () => {
 
   it("is enforcing, not report-only", () => {
     expect(Object.keys(SECURITY_HEADERS)).toContain("Content-Security-Policy");
-    expect(Object.keys(SECURITY_HEADERS)).not.toContain(
-      "Content-Security-Policy-Report-Only",
-    );
+    expect(Object.keys(SECURITY_HEADERS)).not.toContain("Content-Security-Policy-Report-Only");
   });
 });
 

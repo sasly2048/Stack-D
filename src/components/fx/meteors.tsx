@@ -26,7 +26,6 @@ export function Meteors({ count = 20, className = "" }: { count?: number; classN
     }));
   }, [count]);
 
-
   return (
     <div
       aria-hidden="true"

@@ -28,6 +28,8 @@ describe("webhooks direct-DML lockdown", () => {
     const adminWrites = fn.match(/supabaseAdmin[\s\S]*?\.from\("webhooks"\)/g) ?? [];
     expect(adminWrites.length).toBeGreaterThanOrEqual(2);
     // toggle stays scoped to the owner (admin bypasses RLS)
-    expect(fn).toMatch(/\.update\(\{ active: data\.active \}\)[\s\S]*?\.eq\("user_id", context\.userId\)/);
+    expect(fn).toMatch(
+      /\.update\(\{ active: data\.active \}\)[\s\S]*?\.eq\("user_id", context\.userId\)/,
+    );
   });
 });

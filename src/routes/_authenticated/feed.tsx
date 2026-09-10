@@ -17,9 +17,17 @@ export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({
     meta: [
       { title: "Feed — Stack'd" },
-      { name: "description", content: "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with." },
+      {
+        name: "description",
+        content:
+          "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with.",
+      },
       { property: "og:title", content: "Feed — Stack'd" },
-      { property: "og:description", content: "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with." },
+      {
+        property: "og:description",
+        content:
+          "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with.",
+      },
     ],
   }),
   component: FeedPage,
@@ -85,7 +93,9 @@ function FeedPage() {
               /* An empty state that only states the problem is a dead end —
                  both routes out of it are one tap away, so offer them. */
               <div className="border border-white/10 rounded-md px-4 py-8 text-center">
-                <p className="text-silver-dim/60">No signal yet. Complete a session or add friends.</p>
+                <p className="text-silver-dim/60">
+                  No signal yet. Complete a session or add friends.
+                </p>
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                   <Link
                     to="/start"
