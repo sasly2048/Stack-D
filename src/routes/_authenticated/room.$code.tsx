@@ -303,13 +303,15 @@ function Room() {
         0,
         Math.round((elapsed / (room.target_duration_seconds || 1)) * 100),
       );
-      const { error } = await supabase.rpc("record_breach", {
-        _room_id: room.id,
-        _participant_id: myPart.id,
-        _reason: reason,
-        _severity: severity,
-        _integrity: integrity,
-      });
+      const { error } = await withSessionRetry(() =>
+        supabase.rpc("record_breach", {
+          _room_id: room.id,
+          _participant_id: myPart.id,
+          _reason: reason,
+          _severity: severity,
+          _integrity: integrity,
+        }),
+      );
       if (error) {
         toast.error("Breach not recorded — retrying", { description: error.message });
         return;
@@ -559,10 +561,9 @@ function Room() {
     if (!room || !isHost) return;
     if (completionLockRef.current) return;
     completionLockRef.current = true;
-    const { error } = await supabase.rpc("finish_focus_room", {
-      _room_id: room.id,
-      _outcome: "complete",
-    });
+    const { error } = await withSessionRetry(() =>
+      supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "complete" }),
+    );
     if (error) {
       completionLockRef.current = false;
       toast.error("Couldn't end the session. Try again.");
@@ -571,10 +572,9 @@ function Room() {
 
   const abortRitual = async () => {
     if (!room || !isHost) return;
-    const { error } = await supabase.rpc("finish_focus_room", {
-      _room_id: room.id,
-      _outcome: "aborted",
-    });
+    const { error } = await withSessionRetry(() =>
+      supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "aborted" }),
+    );
     if (error) toast.error("Couldn't cancel the session. Try again.");
   };
 
