@@ -32,6 +32,7 @@ import { track } from "@/lib/observability";
 import { RoomTimeline } from "@/components/rooms/room-timeline";
 import { RoomSchedule } from "@/components/rooms/room-schedule";
 import { useLockScreenTimer } from "@/hooks/use-lock-screen-timer";
+import { withSessionRetry } from "@/lib/session-recovery";
 
 export const Route = createFileRoute("/_authenticated/room/$code")({
   head: ({ params }) => ({
@@ -165,11 +166,9 @@ function Room() {
       if (!mounted) return;
       setRoom(r);
 
-      const { data: parts } = await supabase
-        .from("participants")
-        .select("*")
-        .eq("room_id", r.id)
-        .order("joined_at");
+      const { data: parts } = await withSessionRetry(() =>
+        supabase.from("participants").select("*").eq("room_id", r.id).order("joined_at"),
+      );
       const { data: brks } = await supabase
         .from("breaks")
         .select("id, user_id, display_name, reason, severity, at")
@@ -288,10 +287,9 @@ function Room() {
     if (completionLockRef.current) return;
     completionLockRef.current = true;
     (async () => {
-      const { error } = await supabase.rpc("finish_focus_room", {
-        _room_id: room.id,
-        _outcome: "complete",
-      });
+      const { error } = await withSessionRetry(() =>
+        supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "complete" }),
+      );
       if (error) completionLockRef.current = false;
     })();
   }, [isHost, room, remaining]);
@@ -305,13 +303,15 @@ function Room() {
         0,
         Math.round((elapsed / (room.target_duration_seconds || 1)) * 100),
       );
-      const { error } = await supabase.rpc("record_breach", {
-        _room_id: room.id,
-        _participant_id: myPart.id,
-        _reason: reason,
-        _severity: severity,
-        _integrity: integrity,
-      });
+      const { error } = await withSessionRetry(() =>
+        supabase.rpc("record_breach", {
+          _room_id: room.id,
+          _participant_id: myPart.id,
+          _reason: reason,
+          _severity: severity,
+          _integrity: integrity,
+        }),
+      );
       if (error) {
         toast.error("Breach not recorded — retrying", { description: error.message });
         return;
@@ -561,10 +561,9 @@ function Room() {
     if (!room || !isHost) return;
     if (completionLockRef.current) return;
     completionLockRef.current = true;
-    const { error } = await supabase.rpc("finish_focus_room", {
-      _room_id: room.id,
-      _outcome: "complete",
-    });
+    const { error } = await withSessionRetry(() =>
+      supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "complete" }),
+    );
     if (error) {
       completionLockRef.current = false;
       toast.error("Couldn't end the session. Try again.");
@@ -573,10 +572,9 @@ function Room() {
 
   const abortRitual = async () => {
     if (!room || !isHost) return;
-    const { error } = await supabase.rpc("finish_focus_room", {
-      _room_id: room.id,
-      _outcome: "aborted",
-    });
+    const { error } = await withSessionRetry(() =>
+      supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "aborted" }),
+    );
     if (error) toast.error("Couldn't cancel the session. Try again.");
   };
 
@@ -676,6 +674,10 @@ function Room() {
       <Nav />
       <main className="app-page max-w-2xl">
         <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 font-mono text-[10px] text-muted-foreground sm:mb-10">
+          {/* The copy button and its "Copied" confirmation share the first
+              grid column — as separate children the confirmation pushed the
+              status span onto an implicit second row and the header jumped. */}
+          <span className="flex min-w-0 items-center gap-2">
           <button
             type="button"
             onClick={copyCode}
@@ -692,11 +694,12 @@ function Room() {
           {copied && (
             <span
               aria-hidden="true"
-              className="font-mono text-[10px] uppercase tracking-widest text-pulse"
+              className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-pulse"
             >
               Copied
             </span>
           )}
+          </span>
           <span className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
             {/* Connection health sits next to the session status because the two
                 are read together: "LIVE SESSION" while the channel is down
