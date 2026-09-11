@@ -28,7 +28,7 @@ export function isAuthLapse(error: MaybeError | null | undefined): boolean {
  * error handling for every other failure.
  */
 export async function withSessionRetry<T extends { error: MaybeError | null }>(
-  run: () => Promise<T>,
+  run: () => PromiseLike<T>,
 ): Promise<T> {
   const first = await run();
   if (!isAuthLapse(first.error)) return first;
