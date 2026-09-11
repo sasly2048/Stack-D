@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/haptics";
+import { withSessionRetry } from "@/lib/session-recovery";
 
 export type PresenceState = "idle" | "ready" | "stacking" | "broke" | "disconnected";
 
@@ -88,11 +89,13 @@ export function PresenceRoster({
     const beat = async () => {
       if (cancelled) return;
       try {
-        await supabase
-          .from("participants")
-          .update({ last_heartbeat: new Date().toISOString() })
-          .eq("room_id", roomId)
-          .eq("user_id", myUserId);
+        await withSessionRetry(() =>
+          supabase
+            .from("participants")
+            .update({ last_heartbeat: new Date().toISOString() })
+            .eq("room_id", roomId)
+            .eq("user_id", myUserId),
+        );
       } catch {
         /* transient; next tick retries */
       }
