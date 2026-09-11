@@ -287,10 +287,9 @@ function Room() {
     if (completionLockRef.current) return;
     completionLockRef.current = true;
     (async () => {
-      const { error } = await supabase.rpc("finish_focus_room", {
-        _room_id: room.id,
-        _outcome: "complete",
-      });
+      const { error } = await withSessionRetry(() =>
+        supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "complete" }),
+      );
       if (error) completionLockRef.current = false;
     })();
   }, [isHost, room, remaining]);
