@@ -674,6 +674,10 @@ function Room() {
       <Nav />
       <main className="app-page max-w-2xl">
         <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 font-mono text-[10px] text-muted-foreground sm:mb-10">
+          {/* The copy button and its "Copied" confirmation share the first
+              grid column — as separate children the confirmation pushed the
+              status span onto an implicit second row and the header jumped. */}
+          <span className="flex min-w-0 items-center gap-2">
           <button
             type="button"
             onClick={copyCode}
@@ -690,11 +694,12 @@ function Room() {
           {copied && (
             <span
               aria-hidden="true"
-              className="font-mono text-[10px] uppercase tracking-widest text-pulse"
+              className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-pulse"
             >
               Copied
             </span>
           )}
+          </span>
           <span className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
             {/* Connection health sits next to the session status because the two
                 are read together: "LIVE SESSION" while the channel is down
