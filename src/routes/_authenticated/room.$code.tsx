@@ -166,11 +166,9 @@ function Room() {
       if (!mounted) return;
       setRoom(r);
 
-      const { data: parts } = await supabase
-        .from("participants")
-        .select("*")
-        .eq("room_id", r.id)
-        .order("joined_at");
+      const { data: parts } = await withSessionRetry(() =>
+        supabase.from("participants").select("*").eq("room_id", r.id).order("joined_at"),
+      );
       const { data: brks } = await supabase
         .from("breaks")
         .select("id, user_id, display_name, reason, severity, at")
