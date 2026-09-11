@@ -32,6 +32,7 @@ import { track } from "@/lib/observability";
 import { RoomTimeline } from "@/components/rooms/room-timeline";
 import { RoomSchedule } from "@/components/rooms/room-schedule";
 import { useLockScreenTimer } from "@/hooks/use-lock-screen-timer";
+import { withSessionRetry } from "@/lib/session-recovery";
 
 export const Route = createFileRoute("/_authenticated/room/$code")({
   head: ({ params }) => ({
