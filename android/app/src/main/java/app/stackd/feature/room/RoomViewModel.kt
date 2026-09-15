@@ -77,6 +77,13 @@ data class RoomUiState(
      */
     val ceremony: app.stackd.data.recap.SessionSummary? = null,
     val ceremonyDismissed: Boolean = false,
+    /**
+     * LLM-written narrative recap of the just-finished session (title, summary,
+     * reflections, next step). Pure LLM — no local fallback — so the recap card
+     * on the Ended screen renders only once this lands and stays hidden if the
+     * AI backend is unreachable.
+     */
+    val aiRecap: app.stackd.data.ai.SessionRecap? = null,
     val savingSessionMeta: Boolean = false,
     val sessionMetaSaved: Boolean = false,
     /** A device signal that isn't guarding the stack — surfaced as a warning. */
@@ -791,6 +798,18 @@ class RoomViewModel(
             )
             _state.value = _state.value.copy(result = result, phase = RoomPhase.ENDED)
 
+            fetchAiRecap(
+                app.stackd.data.ai.SessionRecapInput(
+                    roomId = room.id,
+                    score = result.score,
+                    xp = result.xp,
+                    durationSeconds = result.focusSecondsInt,
+                    breachesCount = myBreachCount,
+                    tier = result.tier.key,
+                    roomCode = room.code,
+                ),
+            )
+
             val abandonmentSeconds = (split.abandonmentMillis / 1000L).toInt().coerceAtLeast(0)
             val payload = FinalizePayload(
                 roomId = room.id,
@@ -841,6 +860,14 @@ class RoomViewModel(
                 finalizeLock = false
                 _state.value = _state.value.copy(resultQueuedOffline = true)
             }
+        }
+    }
+
+    /** Pulls the LLM narrative recap, best-effort; the card stays hidden if null. */
+    private fun fetchAiRecap(input: app.stackd.data.ai.SessionRecapInput) {
+        viewModelScope.launch {
+            val recap = container.ai.sessionRecap(input) ?: return@launch
+            _state.value = _state.value.copy(aiRecap = recap)
         }
     }
 

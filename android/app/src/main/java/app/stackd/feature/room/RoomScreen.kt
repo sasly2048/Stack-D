@@ -633,6 +633,14 @@ private fun Ended(
             }
         }
 
+        // LLM narrative recap — web's AI recap card. Renders only once the AI
+        // backend answers; there's no local fallback, so it stays hidden until
+        // then (or forever, if the backend is unreachable).
+        state.aiRecap?.let { recap ->
+            Spacer(Modifier.height(20.dp))
+            AiRecapCard(recap)
+        }
+
         // Post-session notes + tags, attached to this history row. Only after
         // finalize returns an id — the RPC needs a real row to stamp.
         if (state.historyId != null) {
@@ -649,6 +657,38 @@ private fun Ended(
 
     Spacer(Modifier.height(28.dp))
     EmberButton(text = "Back to Dashboard", onClick = onExit)
+}
+
+/** LLM narrative recap of the finished session — mirrors the web AI recap card. */
+@Composable
+private fun AiRecapCard(recap: app.stackd.data.ai.SessionRecap) {
+    val colors = Stackd.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.accent.copy(alpha = 0.06f), app.stackd.core.theme.Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.25f), app.stackd.core.theme.Radius2Xl)
+            .padding(20.dp),
+    ) {
+        Text("ATLAS RECAP", style = MonoLabelSmall, color = colors.accent)
+        Spacer(Modifier.height(10.dp))
+        Text(
+            recap.title,
+            style = MaterialTheme.typography.titleLarge,
+            color = colors.textPrimary,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(recap.summary, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        recap.reflections.forEach { line ->
+            Spacer(Modifier.height(6.dp))
+            Text("· $line", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        }
+        if (recap.nextStep.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Text("NEXT · ${recap.nextStep}", style = MonoLabelSmall, color = colors.accent)
+        }
+    }
 }
 
 /** Notes + comma-tags for the finished session — web's SessionMetaForm. */
