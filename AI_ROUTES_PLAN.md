@@ -77,6 +77,26 @@ Until then: build to green (kotlin compile + web lint/type/test), verify on
 device once live. Each Android surface must degrade gracefully so a 401/timeout
 never breaks the screen.
 
+## PROGRESS (resume here)
+Branch `web-ai-routes`, commit `be6a4bd`. **3 of 7 web routes DONE + verified**
+(build/typecheck/254 tests green, new files prettier-clean):
+- ✅ recommend → recommendNextSessionCore
+- ✅ dashboard-insights → generateDashboardInsightsCore
+- ✅ session-recap → generateSessionRecapCore (+ validateSessionRecapInput, SessionRecapInput)
+Shared: `src/lib/ai-public-auth.ts` (authenticate/unauthorized). `AiSupabase` type at top of ai.functions.ts.
+
+**REMAINING 4 — identical mechanical pattern** (extract handler body → exported
+`xCore(supabase, userId, input?)`, RPC becomes thin wrapper, add route file that
+authenticate()s then calls core):
+- getWeeklyStory (src/lib/ai-narrative.functions.ts) → routes/api/public/ai/weekly-story.ts (POST)
+- discoverPatterns (src/lib/ai-narrative.functions.ts) → .../discover-patterns.ts (POST)
+- getProactiveInsights (src/lib/proactive-ai.functions.ts, GET) → .../proactive.ts (GET)
+- askCompanion (src/lib/companion.functions.ts, POST body {question}) → .../companion.ts (POST, await request.json())
+- summarizeVaultItem (src/lib/memory-vault.functions.ts, POST body {itemId}) → .../vault-summarize.ts (POST)
+For files without `AiSupabase`, add `import type { SupabaseClient } from "@supabase/supabase-js"; import type { Database } from "@/integrations/supabase/types"; type AiSupabase = SupabaseClient<Database>;`.
+ALWAYS `bun run build` before typecheck (regenerates routeTree for new routes).
+Prettier-fix ONLY your new files (`bunx eslint --fix <files>`) — do NOT mass-fix main's pre-existing format debt (that's PR #16).
+
 ## Suggested order
 1. Web: extract cores + 7 routes + local verify (lint/type/test) → PR to main.
 2. Android: AiRepository + models → compile.
