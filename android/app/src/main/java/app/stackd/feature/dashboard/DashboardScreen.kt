@@ -64,7 +64,7 @@ fun DashboardRoute(
     onOpenRoom: (String) -> Unit,
     menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
     vm: DashboardViewModel = viewModel(
-        factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles, it.rooms, it.cache) },
+        factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles, it.rooms, it.ai, it.cache) },
     ),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -166,7 +166,10 @@ fun DashboardScreen(
             var atlasVisible by remember { mutableStateOf(true) }
             if (atlasVisible) {
                 AtlasCard(
-                    rec = app.stackd.feature.insights.recommendNextSession(state.history),
+                    // Prefer the LLM recommendation once it lands; until then (or
+                    // if the AI backend is unreachable) show the local heuristic.
+                    rec = state.aiRecommendation
+                        ?: app.stackd.feature.insights.recommendNextSession(state.history),
                     onDismiss = { atlasVisible = false },
                 )
                 Spacer(Modifier.height(16.dp))

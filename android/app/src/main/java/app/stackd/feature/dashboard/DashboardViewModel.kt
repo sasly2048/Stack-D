@@ -39,6 +39,12 @@ data class DashboardUiState(
     val claiming: Boolean = false,
     /** One-shot claim feedback line, e.g. "+40 XP · Day 3". */
     val claimNotice: String? = null,
+    /**
+     * LLM-written next-session recommendation from the web AI route. Null until
+     * it lands (or forever, if the AI backend is unreachable); the Atlas card
+     * falls back to the local heuristic over [history] in that case.
+     */
+    val aiRecommendation: app.stackd.feature.insights.SessionRecommendation? = null,
 ) {
     /** Lifetime focus, summed off the same rows the history table shows. */
     val totalSeconds: Int get() = history.sumOf { it.durationSeconds }
@@ -54,6 +60,7 @@ class DashboardViewModel(
     private val auth: AuthRepository,
     private val profiles: ProfileRepository,
     private val rooms: app.stackd.data.room.RoomRepository,
+    private val ai: app.stackd.data.ai.AiRepository,
     private val cache: app.stackd.core.cache.MemoryCache,
 ) : ViewModel() {
 
@@ -62,6 +69,27 @@ class DashboardViewModel(
 
     init {
         load()
+        fetchAiRecommendation()
+    }
+
+    /**
+     * Pulls the LLM recommendation for the Atlas card, best-effort. Fire-and-
+     * forget: the card already shows the local heuristic; this upgrades it if
+     * the AI backend answers, and silently no-ops if it doesn't.
+     */
+    private fun fetchAiRecommendation() {
+        viewModelScope.launch {
+            val rec = ai.recommendNextSession() ?: return@launch
+            _state.value = _state.value.copy(
+                aiRecommendation = app.stackd.feature.insights.SessionRecommendation(
+                    durationMinutes = rec.durationMinutes,
+                    topic = rec.topic,
+                    rationale = rec.rationale,
+                    confidence = rec.confidence,
+                    basedOnSessions = rec.basedOnSessions,
+                ),
+            )
+        }
     }
 
     private fun cacheKey(userId: String) = "dashboard:$userId"
