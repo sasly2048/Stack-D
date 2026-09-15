@@ -45,6 +45,12 @@ data class DashboardUiState(
      * falls back to the local heuristic over [history] in that case.
      */
     val aiRecommendation: app.stackd.feature.insights.SessionRecommendation? = null,
+    /**
+     * LLM-written ledger insights from the web AI route. Pure LLM (no local
+     * heuristic to fall back to), so the card only renders once this lands and
+     * stays hidden if the AI backend is unreachable.
+     */
+    val aiInsights: app.stackd.data.ai.DashboardInsights? = null,
 ) {
     /** Lifetime focus, summed off the same rows the history table shows. */
     val totalSeconds: Int get() = history.sumOf { it.durationSeconds }
@@ -70,6 +76,15 @@ class DashboardViewModel(
     init {
         load()
         fetchAiRecommendation()
+        fetchAiInsights()
+    }
+
+    /** Pulls the LLM ledger insights, best-effort; the card stays hidden if null. */
+    private fun fetchAiInsights() {
+        viewModelScope.launch {
+            val insights = ai.dashboardInsights() ?: return@launch
+            _state.value = _state.value.copy(aiInsights = insights)
+        }
     }
 
     /**

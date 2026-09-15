@@ -222,6 +222,10 @@ fun DashboardScreen(
                     StatTiles(state)
                     Spacer(Modifier.height(20.dp))
                 }
+                state.aiInsights?.takeIf { it.paragraphs.isNotEmpty() }?.let { insights ->
+                    InsightsCard(insights)
+                    Spacer(Modifier.height(20.dp))
+                }
                 if (state.live.isNotEmpty()) {
                     LiveNow(state.live, onOpenRoom)
                     Spacer(Modifier.height(20.dp))
@@ -566,6 +570,46 @@ private fun AtlasCard(
             Spacer(Modifier.height(12.dp))
             Text(
                 "${rec.durationMinutes} MIN · CONFIDENCE ${rec.confidence.uppercase()}",
+                style = MonoLabelSmall,
+                color = colors.accent,
+            )
+        }
+    }
+}
+
+/**
+ * LLM-written ledger insights. Mirrors the web dashboard's insights card:
+ * a headline over a few short paragraphs read off the caller's focus history.
+ * Only rendered when the AI backend returned content (no local fallback).
+ */
+@Composable
+private fun InsightsCard(insights: app.stackd.data.ai.DashboardInsights) {
+    val colors = Stackd.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(20.dp),
+    ) {
+        Text("LEDGER INSIGHTS", style = MonoLabelSmall, color = colors.accent)
+        if (insights.headline.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                insights.headline,
+                style = MaterialTheme.typography.titleLarge,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        insights.paragraphs.forEach { para ->
+            Spacer(Modifier.height(10.dp))
+            Text(para, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        }
+        if (insights.basedOnSessions > 0) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "BASED ON ${insights.basedOnSessions} SESSIONS",
                 style = MonoLabelSmall,
                 color = colors.accent,
             )
