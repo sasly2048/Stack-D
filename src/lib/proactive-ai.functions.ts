@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** Token-scoped client shared by the web RPC and the public Android route. */
+type AiSupabase = SupabaseClient<Database>;
 
 export type ProactiveInsight = {
   smartSchedule: { hour: number; label: string; rationale: string } | null;
@@ -23,10 +28,11 @@ const FALLBACK: ProactiveInsight = {
   generatedAt: new Date().toISOString(),
 };
 
-export const getProactiveInsights = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<ProactiveInsight> => {
-    const { supabase, userId } = context;
+export async function getProactiveInsightsCore(
+  supabase: AiSupabase,
+  userId: string,
+): Promise<ProactiveInsight> {
+  {
     const since = new Date(Date.now() - 21 * 86400_000).toISOString();
     const { data: rows } = await supabase
       .from("focus_history")
@@ -134,4 +140,12 @@ export const getProactiveInsights = createServerFn({ method: "GET" })
       burnout: { risk, signals, recommendation: burnoutRec },
       generatedAt: new Date().toISOString(),
     };
-  });
+  }
+}
+
+export const getProactiveInsights = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    ({ context }): Promise<ProactiveInsight> =>
+      getProactiveInsightsCore(context.supabase, context.userId),
+  );

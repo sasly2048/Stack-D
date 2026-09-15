@@ -51,9 +51,14 @@ import { Route as AuthenticatedTrustModerationRouteImport } from './routes/_auth
 import { Route as ApiPublicAuthGuardRouteImport } from './routes/api/public/auth-guard'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
+import { Route as ApiPublicAiCompanionRouteImport } from './routes/api/public/ai/companion'
 import { Route as ApiPublicAiDashboardInsightsRouteImport } from './routes/api/public/ai/dashboard-insights'
+import { Route as ApiPublicAiDiscoverPatternsRouteImport } from './routes/api/public/ai/discover-patterns'
+import { Route as ApiPublicAiProactiveRouteImport } from './routes/api/public/ai/proactive'
 import { Route as ApiPublicAiRecommendRouteImport } from './routes/api/public/ai/recommend'
 import { Route as ApiPublicAiSessionRecapRouteImport } from './routes/api/public/ai/session-recap'
+import { Route as ApiPublicAiVaultSummarizeRouteImport } from './routes/api/public/ai/vault-summarize'
+import { Route as ApiPublicAiWeeklyStoryRouteImport } from './routes/api/public/ai/weekly-story'
 import { Route as ApiPublicAuthGuardSigninRouteImport } from './routes/api/public/auth-guard.signin'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
@@ -274,12 +279,28 @@ const ApiPublicRazorpayWebhookRoute =
     path: '/api/public/razorpay-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAiCompanionRoute = ApiPublicAiCompanionRouteImport.update({
+  id: '/api/public/ai/companion',
+  path: '/api/public/ai/companion',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAiDashboardInsightsRoute =
   ApiPublicAiDashboardInsightsRouteImport.update({
     id: '/api/public/ai/dashboard-insights',
     path: '/api/public/ai/dashboard-insights',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAiDiscoverPatternsRoute =
+  ApiPublicAiDiscoverPatternsRouteImport.update({
+    id: '/api/public/ai/discover-patterns',
+    path: '/api/public/ai/discover-patterns',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicAiProactiveRoute = ApiPublicAiProactiveRouteImport.update({
+  id: '/api/public/ai/proactive',
+  path: '/api/public/ai/proactive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAiRecommendRoute = ApiPublicAiRecommendRouteImport.update({
   id: '/api/public/ai/recommend',
   path: '/api/public/ai/recommend',
@@ -288,6 +309,17 @@ const ApiPublicAiRecommendRoute = ApiPublicAiRecommendRouteImport.update({
 const ApiPublicAiSessionRecapRoute = ApiPublicAiSessionRecapRouteImport.update({
   id: '/api/public/ai/session-recap',
   path: '/api/public/ai/session-recap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAiVaultSummarizeRoute =
+  ApiPublicAiVaultSummarizeRouteImport.update({
+    id: '/api/public/ai/vault-summarize',
+    path: '/api/public/ai/vault-summarize',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicAiWeeklyStoryRoute = ApiPublicAiWeeklyStoryRouteImport.update({
+  id: '/api/public/ai/weekly-story',
+  path: '/api/public/ai/weekly-story',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAuthGuardSigninRoute =
@@ -345,9 +377,14 @@ export interface FileRoutesByFullPath {
   '/api/public/auth-guard': typeof ApiPublicAuthGuardRouteWithChildren
   '/api/public/health': typeof ApiPublicHealthRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/ai/companion': typeof ApiPublicAiCompanionRoute
   '/api/public/ai/dashboard-insights': typeof ApiPublicAiDashboardInsightsRoute
+  '/api/public/ai/discover-patterns': typeof ApiPublicAiDiscoverPatternsRoute
+  '/api/public/ai/proactive': typeof ApiPublicAiProactiveRoute
   '/api/public/ai/recommend': typeof ApiPublicAiRecommendRoute
   '/api/public/ai/session-recap': typeof ApiPublicAiSessionRecapRoute
+  '/api/public/ai/vault-summarize': typeof ApiPublicAiVaultSummarizeRoute
+  '/api/public/ai/weekly-story': typeof ApiPublicAiWeeklyStoryRoute
   '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
@@ -393,9 +430,14 @@ export interface FileRoutesByTo {
   '/api/public/auth-guard': typeof ApiPublicAuthGuardRouteWithChildren
   '/api/public/health': typeof ApiPublicHealthRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/ai/companion': typeof ApiPublicAiCompanionRoute
   '/api/public/ai/dashboard-insights': typeof ApiPublicAiDashboardInsightsRoute
+  '/api/public/ai/discover-patterns': typeof ApiPublicAiDiscoverPatternsRoute
+  '/api/public/ai/proactive': typeof ApiPublicAiProactiveRoute
   '/api/public/ai/recommend': typeof ApiPublicAiRecommendRoute
   '/api/public/ai/session-recap': typeof ApiPublicAiSessionRecapRoute
+  '/api/public/ai/vault-summarize': typeof ApiPublicAiVaultSummarizeRoute
+  '/api/public/ai/weekly-story': typeof ApiPublicAiWeeklyStoryRoute
   '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
@@ -443,9 +485,14 @@ export interface FileRoutesById {
   '/api/public/auth-guard': typeof ApiPublicAuthGuardRouteWithChildren
   '/api/public/health': typeof ApiPublicHealthRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/ai/companion': typeof ApiPublicAiCompanionRoute
   '/api/public/ai/dashboard-insights': typeof ApiPublicAiDashboardInsightsRoute
+  '/api/public/ai/discover-patterns': typeof ApiPublicAiDiscoverPatternsRoute
+  '/api/public/ai/proactive': typeof ApiPublicAiProactiveRoute
   '/api/public/ai/recommend': typeof ApiPublicAiRecommendRoute
   '/api/public/ai/session-recap': typeof ApiPublicAiSessionRecapRoute
+  '/api/public/ai/vault-summarize': typeof ApiPublicAiVaultSummarizeRoute
+  '/api/public/ai/weekly-story': typeof ApiPublicAiWeeklyStoryRoute
   '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
@@ -493,9 +540,14 @@ export interface FileRouteTypes {
     | '/api/public/auth-guard'
     | '/api/public/health'
     | '/api/public/razorpay-webhook'
+    | '/api/public/ai/companion'
     | '/api/public/ai/dashboard-insights'
+    | '/api/public/ai/discover-patterns'
+    | '/api/public/ai/proactive'
     | '/api/public/ai/recommend'
     | '/api/public/ai/session-recap'
+    | '/api/public/ai/vault-summarize'
+    | '/api/public/ai/weekly-story'
     | '/api/public/auth-guard/signin'
     | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
@@ -541,9 +593,14 @@ export interface FileRouteTypes {
     | '/api/public/auth-guard'
     | '/api/public/health'
     | '/api/public/razorpay-webhook'
+    | '/api/public/ai/companion'
     | '/api/public/ai/dashboard-insights'
+    | '/api/public/ai/discover-patterns'
+    | '/api/public/ai/proactive'
     | '/api/public/ai/recommend'
     | '/api/public/ai/session-recap'
+    | '/api/public/ai/vault-summarize'
+    | '/api/public/ai/weekly-story'
     | '/api/public/auth-guard/signin'
     | '/lovable/email/queue/process'
   id:
@@ -590,9 +647,14 @@ export interface FileRouteTypes {
     | '/api/public/auth-guard'
     | '/api/public/health'
     | '/api/public/razorpay-webhook'
+    | '/api/public/ai/companion'
     | '/api/public/ai/dashboard-insights'
+    | '/api/public/ai/discover-patterns'
+    | '/api/public/ai/proactive'
     | '/api/public/ai/recommend'
     | '/api/public/ai/session-recap'
+    | '/api/public/ai/vault-summarize'
+    | '/api/public/ai/weekly-story'
     | '/api/public/auth-guard/signin'
     | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
@@ -614,9 +676,14 @@ export interface RootRouteChildren {
   ApiPublicAuthGuardRoute: typeof ApiPublicAuthGuardRouteWithChildren
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
+  ApiPublicAiCompanionRoute: typeof ApiPublicAiCompanionRoute
   ApiPublicAiDashboardInsightsRoute: typeof ApiPublicAiDashboardInsightsRoute
+  ApiPublicAiDiscoverPatternsRoute: typeof ApiPublicAiDiscoverPatternsRoute
+  ApiPublicAiProactiveRoute: typeof ApiPublicAiProactiveRoute
   ApiPublicAiRecommendRoute: typeof ApiPublicAiRecommendRoute
   ApiPublicAiSessionRecapRoute: typeof ApiPublicAiSessionRecapRoute
+  ApiPublicAiVaultSummarizeRoute: typeof ApiPublicAiVaultSummarizeRoute
+  ApiPublicAiWeeklyStoryRoute: typeof ApiPublicAiWeeklyStoryRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
@@ -916,11 +983,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/ai/companion': {
+      id: '/api/public/ai/companion'
+      path: '/api/public/ai/companion'
+      fullPath: '/api/public/ai/companion'
+      preLoaderRoute: typeof ApiPublicAiCompanionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/ai/dashboard-insights': {
       id: '/api/public/ai/dashboard-insights'
       path: '/api/public/ai/dashboard-insights'
       fullPath: '/api/public/ai/dashboard-insights'
       preLoaderRoute: typeof ApiPublicAiDashboardInsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai/discover-patterns': {
+      id: '/api/public/ai/discover-patterns'
+      path: '/api/public/ai/discover-patterns'
+      fullPath: '/api/public/ai/discover-patterns'
+      preLoaderRoute: typeof ApiPublicAiDiscoverPatternsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai/proactive': {
+      id: '/api/public/ai/proactive'
+      path: '/api/public/ai/proactive'
+      fullPath: '/api/public/ai/proactive'
+      preLoaderRoute: typeof ApiPublicAiProactiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/ai/recommend': {
@@ -935,6 +1023,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/ai/session-recap'
       fullPath: '/api/public/ai/session-recap'
       preLoaderRoute: typeof ApiPublicAiSessionRecapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai/vault-summarize': {
+      id: '/api/public/ai/vault-summarize'
+      path: '/api/public/ai/vault-summarize'
+      fullPath: '/api/public/ai/vault-summarize'
+      preLoaderRoute: typeof ApiPublicAiVaultSummarizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai/weekly-story': {
+      id: '/api/public/ai/weekly-story'
+      path: '/api/public/ai/weekly-story'
+      fullPath: '/api/public/ai/weekly-story'
+      preLoaderRoute: typeof ApiPublicAiWeeklyStoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/auth-guard/signin': {
@@ -1062,9 +1164,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAuthGuardRoute: ApiPublicAuthGuardRouteWithChildren,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
+  ApiPublicAiCompanionRoute: ApiPublicAiCompanionRoute,
   ApiPublicAiDashboardInsightsRoute: ApiPublicAiDashboardInsightsRoute,
+  ApiPublicAiDiscoverPatternsRoute: ApiPublicAiDiscoverPatternsRoute,
+  ApiPublicAiProactiveRoute: ApiPublicAiProactiveRoute,
   ApiPublicAiRecommendRoute: ApiPublicAiRecommendRoute,
   ApiPublicAiSessionRecapRoute: ApiPublicAiSessionRecapRoute,
+  ApiPublicAiVaultSummarizeRoute: ApiPublicAiVaultSummarizeRoute,
+  ApiPublicAiWeeklyStoryRoute: ApiPublicAiWeeklyStoryRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
