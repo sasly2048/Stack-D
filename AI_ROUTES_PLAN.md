@@ -78,6 +78,23 @@ device once live. Each Android surface must degrade gracefully so a 401/timeout
 never breaks the screen.
 
 ## PROGRESS (resume here)
+### ✅ WEB SIDE COMPLETE — all 7 routes done (branch `web-ai-routes`, commit c384332)
+build/typecheck/254 tests green, new files prettier-clean. Routes:
+recommend, dashboard-insights, session-recap, weekly-story, discover-patterns,
+proactive (GET), companion, vault-summarize. Each = shared `xCore` +
+`ai-public-auth.ts`. **Next: open PR web-ai-routes → main; deploy needs
+LOVABLE_API_KEY in env.**
+
+### ▶ ANDROID SIDE — not started
+Build `data/ai/AiRepository.kt` (Ktor/supabase-kt POST/GET to
+`{BuildConfig.WEB_BASE_URL}/api/public/ai/*` with `Authorization: Bearer
+${auth.accessToken}`) + `@Serializable` response models per route, then wire each
+surface with graceful fallback (see the per-surface table above). Elite-gate the
+vault one. All on `worktree-android-phase1-work`.
+
+---
+### (original notes below)
+
 Branch `web-ai-routes`, commit `be6a4bd`. **3 of 7 web routes DONE + verified**
 (build/typecheck/254 tests green, new files prettier-clean):
 - ✅ recommend → recommendNextSessionCore
