@@ -76,4 +76,7 @@ class AppContainer(context: Context) {
     val recap: RecapRepository by lazy { RecapRepository(client) }
 
     val partners: PartnersRepository by lazy { PartnersRepository(client) }
+
+    /** Calls the web app's public AI routes; every method degrades to null. */
+    val ai: app.stackd.data.ai.AiRepository by lazy { app.stackd.data.ai.AiRepository(client) }
 }
