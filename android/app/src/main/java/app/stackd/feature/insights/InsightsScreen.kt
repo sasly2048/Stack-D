@@ -54,6 +54,15 @@ data class InsightsUiState(
     val streak: Int = 0,
     val bestStreak: Int = 0,
     val lifetimeXp: Long = 0,
+    /**
+     * Server-computed proactive insights (smart schedule, focus prediction,
+     * burnout). Deterministic on the server with optional LLM copy polish; the
+     * panel renders only once it lands and stays hidden if the backend is
+     * unreachable. No local fallback — the math needs the server's key.
+     */
+    val proactive: app.stackd.data.ai.ProactiveInsight? = null,
+    /** LLM-written weekly narrative. Renders only when the AI backend answers. */
+    val weeklyStory: String? = null,
 ) {
     val totals: AnalyticsEngine.Totals get() = AnalyticsEngine.totals(rows)
     val hourBuckets: List<AnalyticsEngine.HourBucket> get() = AnalyticsEngine.hourBuckets(rows)
@@ -99,6 +108,25 @@ class InsightsViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         load()
+        fetchAi()
+    }
+
+    /**
+     * Pulls the two AI panels (proactive insights, weekly narrative) best-effort.
+     * Each stays hidden if its route returns null. Kept separate from [load] so a
+     * slow AI backend never delays the deterministic 120-day charts.
+     */
+    private fun fetchAi() {
+        viewModelScope.launch {
+            container.ai.proactiveInsights()?.let {
+                _state.value = _state.value.copy(proactive = it)
+            }
+        }
+        viewModelScope.launch {
+            container.ai.weeklyStory()?.let {
+                _state.value = _state.value.copy(weeklyStory = it.story)
+            }
+        }
     }
 
     private fun cacheKey(userId: String) = "insights:$userId"
@@ -117,11 +145,19 @@ class InsightsViewModel(private val container: AppContainer) : ViewModel() {
                 Triple(rows, profile?.currentFocusStreak ?: 0, profile?.lifetimeXp ?: 0)
             }.fold(
                 onSuccess = { (rows, streak, lifetimeXp) ->
-                    val fresh = InsightsUiState(
-                        loading = false, rows = rows, streak = streak, lifetimeXp = lifetimeXp,
+                    // Preserve any AI panels fetchAi() may have already landed —
+                    // they run concurrently with this load and shouldn't be wiped.
+                    val fresh = _state.value.copy(
+                        loading = false, error = false,
+                        rows = rows, streak = streak, lifetimeXp = lifetimeXp,
                     )
                     _state.value = fresh
-                    container.cache.put(cacheKey(userId), fresh)
+                    // Cache the ledger only (AI panels are cheap to refetch and
+                    // shouldn't persist a stale narrative across sessions).
+                    container.cache.put(
+                        cacheKey(userId),
+                        fresh.copy(proactive = null, weeklyStory = null),
+                    )
                 },
                 onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
             )
@@ -268,6 +304,20 @@ fun InsightsScreen(
                     SectionLabel("GOAL FORECAST")
                     Spacer(Modifier.height(8.dp))
                     ForecastCard(state.forecast)
+
+                    // AI panels — render only when the backend answered.
+                    state.proactive?.let { p ->
+                        Spacer(Modifier.height(16.dp))
+                        SectionLabel("PROACTIVE")
+                        Spacer(Modifier.height(8.dp))
+                        ProactiveCard(p)
+                    }
+                    state.weeklyStory?.takeIf { it.isNotBlank() }?.let { story ->
+                        Spacer(Modifier.height(16.dp))
+                        SectionLabel("THIS WEEK")
+                        Spacer(Modifier.height(8.dp))
+                        WeeklyStoryCard(story)
+                    }
                 }
             }
 
@@ -411,5 +461,63 @@ private fun ForecastCard(f: Forecast) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Proactive insights — web's proactive panel: best focus window, next-score
+ * prediction, and burnout risk with signals. Server-computed; renders only when
+ * the AI backend answered.
+ */
+@Composable
+private fun ProactiveCard(p: app.stackd.data.ai.ProactiveInsight) {
+    val colors = Stackd.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(16.dp),
+    ) {
+        p.smartSchedule?.let { s ->
+            Text(s.label, style = MonoLabelSmall, color = colors.accent)
+            Spacer(Modifier.height(4.dp))
+            Text(s.rationale, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+            Spacer(Modifier.height(12.dp))
+        }
+        Text(
+            "NEXT SESSION ~${p.focusPrediction.nextScore}/100 · ${p.focusPrediction.confidence.uppercase()}",
+            style = MonoLabelSmall, color = colors.textPrimary,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(p.focusPrediction.note, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+
+        Spacer(Modifier.height(12.dp))
+        val riskColor = if (p.burnout.risk == "high") colors.breach else colors.accent
+        Text("BURNOUT · ${p.burnout.risk.uppercase()}", style = MonoLabelSmall, color = riskColor)
+        p.burnout.signals.forEach { sig ->
+            Spacer(Modifier.height(3.dp))
+            Text("· $sig", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            p.burnout.recommendation,
+            style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary,
+        )
+    }
+}
+
+/** LLM-written weekly narrative — web's weekly-story card. */
+@Composable
+private fun WeeklyStoryCard(story: String) {
+    val colors = Stackd.colors
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.accent.copy(alpha = 0.06f), Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.25f), Radius2Xl)
+            .padding(20.dp),
+    ) {
+        Text(story, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
     }
 }
