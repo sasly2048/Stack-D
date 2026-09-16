@@ -53,6 +53,8 @@ data class VaultUiState(
     val hasAccess: Boolean? = null,
     val items: List<VaultItem> = emptyList(),
     val saving: Boolean = false,
+    /** Item ids with an in-flight AI summarize call — drives the per-item spinner. */
+    val summarizing: Set<String> = emptySet(),
 )
 
 /** Memory Vault — web's `vault.tsx`, Elite-gated like `requireFeature("vault")`. */
@@ -118,6 +120,29 @@ class VaultViewModel(private val container: AppContainer) : ViewModel() {
         _state.value = _state.value.copy(items = _state.value.items.filterNot { it.id == id })
         viewModelScope.launch { runCatching { container.vault.deleteVaultItem(id) } }
     }
+
+    /**
+     * Generates the AI summary for one item via the public AI route (Elite-only,
+     * already gated by the screen). The route writes ai_summary back server-side;
+     * we also patch it into local state so the ✦ line appears without a reload.
+     * A failed/unreachable call just clears the spinner — the Summarize button
+     * stays, so the user can retry.
+     */
+    fun summarize(id: String) {
+        if (id in _state.value.summarizing) return
+        _state.value = _state.value.copy(summarizing = _state.value.summarizing + id)
+        viewModelScope.launch {
+            val summary = container.ai.summarizeVaultItem(id)?.summary
+            _state.value = _state.value.copy(
+                summarizing = _state.value.summarizing - id,
+                items = if (summary.isNullOrBlank()) _state.value.items else {
+                    _state.value.items.map {
+                        if (it.id == id) it.copy(aiSummary = summary) else it
+                    }
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -132,6 +157,7 @@ fun VaultRoute(
         state = state,
         onAdd = vm::add,
         onDelete = vm::delete,
+        onSummarize = vm::summarize,
         onRetry = vm::load,
         onBack = onBack,
         onUpgrade = onUpgrade,
@@ -144,6 +170,7 @@ fun VaultScreen(
     state: VaultUiState,
     onAdd: (title: String, body: String, url: String, tags: String) -> Unit,
     onDelete: (String) -> Unit,
+    onSummarize: (String) -> Unit,
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onUpgrade: () -> Unit,
@@ -314,6 +341,29 @@ fun VaultScreen(
                                 Text(
                                     item.tags.joinToString("  ") { "#$it" },
                                     style = MonoLabelSmall, color = colors.accent,
+                                )
+                            }
+                            // AI summary — web parity: show the ✦ line when it
+                            // exists, otherwise a Summarize action that calls the
+                            // Elite-gated AI route and writes the summary back.
+                            val summary = item.aiSummary?.takeIf { it.isNotBlank() }
+                            Spacer(Modifier.height(8.dp))
+                            when {
+                                summary != null -> Text(
+                                    "✦ $summary",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.accent,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                )
+                                item.id in state.summarizing -> Text(
+                                    "Summarizing…",
+                                    style = MonoLabelSmall, color = colors.textMuted,
+                                )
+                                else -> Text(
+                                    "✦ SUMMARIZE",
+                                    style = MonoLabelSmall,
+                                    color = colors.accent,
+                                    modifier = Modifier.clickable { onSummarize(item.id) },
                                 )
                             }
                         }
