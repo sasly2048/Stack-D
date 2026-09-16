@@ -69,6 +69,8 @@ fun StackdNavHost(
                 onStart = { navController.navigate(Dest.Start.route) },
                 onOpenRoom = { code -> navController.navigate(Dest.Room.of(code)) },
                 menuEntries = listOf(
+                    // Web nav labels the companion chat "Atlas" (to: "/companion").
+                    "Atlas" to Dest.Companion,
                     "Premium" to Dest.Premium,
                     "Feed" to Dest.Feed,
                     "Timeline" to Dest.Timeline,
