@@ -241,8 +241,10 @@ fun StackdNavHost(
             ModerationRoute(onBack = { navController.popBackStack() })
         }
 
-        // Assistant — AI wiring deferred, shell ships first
-        placeholder(Dest.Companion, "Companion", "AI wiring deferred.")
+        // Assistant — the AI study companion chat, backed by the public AI route.
+        composable(Dest.Companion.route) {
+            app.stackd.feature.companion.CompanionRoute(onBack = { navController.popBackStack() })
+        }
 
         // Misc
         composable(Dest.Integrations.route) {
