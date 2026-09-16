@@ -149,8 +149,13 @@ class DashboardViewModel(
                 }
             }.fold(
                 onSuccess = { (profile, history, live, reward, myRooms) ->
-                    val fresh = DashboardUiState(
+                    // Copy over current state (not a fresh instance) so the
+                    // concurrently-fetched AI fields aren't wiped if they landed
+                    // before this load's fan-out returned. Clear the transient
+                    // claim/error flags a completed load implies.
+                    val fresh = _state.value.copy(
                         loading = false,
+                        error = false,
                         name = profile?.displayName?.takeIf { it.isNotBlank() }
                             ?: auth.currentEmail?.substringBefore("@") ?: "You",
                         lifetimeXp = profile?.lifetimeXp ?: 0,
@@ -161,7 +166,12 @@ class DashboardViewModel(
                         myRooms = myRooms,
                     )
                     _state.value = fresh
-                    cache.put(cacheKey(userId), fresh)
+                    // Cache the ledger only — AI cards are cheap to refetch and a
+                    // stale recommendation/insight shouldn't persist across sessions.
+                    cache.put(
+                        cacheKey(userId),
+                        fresh.copy(aiRecommendation = null, aiInsights = null),
+                    )
                 },
                 onFailure = {
                     // Keep showing stale data if we have it; only surface the
