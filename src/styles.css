@@ -61,6 +61,19 @@
   --space-20: 5rem; /* 80px */
   --space-24: 6rem; /* 96px */
 
+  /* Layout and type measures. These are intentionally fewer than the route
+     max-widths: screens choose density, while gutters and readable copy stay
+     consistent. */
+  --page-gutter: clamp(1rem, 3vw, 2rem);
+  --page-nav-clearance: calc(clamp(5.5rem, 9vh, 7rem) + env(safe-area-inset-top));
+  --page-bottom-clearance: clamp(4rem, 8vh, 6rem);
+  --measure-copy: 65ch;
+  --measure-narrow: 48ch;
+  --control-height: 2.75rem;
+  --control-height-sm: 2.25rem;
+  --control-height-lg: 3rem;
+  --overlay-gutter: 1rem;
+
   /* Dot indicator — the ember period after "luxury", live nodes,
      status dots. One source of truth so mobile/tablet/desktop
      never drift. */
@@ -544,18 +557,59 @@
 @utility app-page {
   width: 100%;
   margin-inline: auto;
-  padding-top: calc(clamp(5.5rem, 9vh, 7rem) + env(safe-area-inset-top));
-  padding-right: clamp(1rem, 3vw, 2rem);
-  padding-bottom: clamp(4rem, 8vh, 6rem);
-  padding-left: clamp(1rem, 3vw, 2rem);
+  min-width: 0;
+  padding-top: var(--page-nav-clearance);
+  padding-right: var(--page-gutter);
+  padding-bottom: var(--page-bottom-clearance);
+  padding-left: var(--page-gutter);
 }
 
 @utility page-title {
   font-size: clamp(2.25rem, 7vw, 3.75rem);
-  line-height: 0.96;
+  line-height: 1;
   font-weight: 800;
   letter-spacing: 0;
   text-wrap: balance;
+}
+
+@utility page-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: clamp(2rem, 5vw, 3rem);
+}
+
+@utility page-copy {
+  max-width: var(--measure-copy);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-muted-foreground);
+}
+
+@utility page-copy-narrow {
+  max-width: var(--measure-narrow);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-muted-foreground);
+}
+
+@utility section-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: clamp(1.5rem, 4vw, 2rem);
+}
+
+@utility action-row {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  @media (min-width: 40rem) {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 @utility ritual-label {
@@ -564,6 +618,7 @@
   line-height: 1.5;
   letter-spacing: 0.3em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 @utility panel {
@@ -774,8 +829,13 @@
   }
   h1,
   h2,
-  h3,
+  h3 {
+    line-height: 1.15;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
   p {
+    line-height: 1.6;
     overflow-wrap: break-word;
   }
   ::selection {
