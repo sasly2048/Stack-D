@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { withAiBudget } from "@/lib/require-ai-budget";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** Token-scoped client shared by the web RPCs and the public Android routes. */
+type AiSupabase = SupabaseClient<Database>;
 
 /**
  * AI narrative functions: pattern discovery, weekly story, group coach.
@@ -28,14 +33,16 @@ async function ai(prompt: string, system: string): Promise<string> {
   return j.choices?.[0]?.message?.content ?? "";
 }
 
-export const getWeeklyStory = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ story: string }> => {
+export async function getWeeklyStoryCore(
+  supabase: AiSupabase,
+  userId: string,
+): Promise<{ story: string }> {
+  {
     const since = new Date(Date.now() - 7 * 86400_000).toISOString();
-    const { data: hist } = await context.supabase
+    const { data: hist } = await supabase
       .from("focus_history")
       .select("duration_seconds,score,breaches_count,created_at")
-      .eq("profile_id", context.userId)
+      .eq("profile_id", userId)
       .gte("created_at", since);
     const rows = hist ?? [];
     if (rows.length === 0)
@@ -49,25 +56,35 @@ export const getWeeklyStory = createServerFn({ method: "POST" })
     }
     const strongest = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
     const summary = `Sessions: ${rows.length}. Total minutes: ${totalMin}. Avg score: ${avg}. Strongest day: ${strongest}.`;
-    const story = await withAiBudget(context.supabase, context.userId, () =>
+    const story = await withAiBudget(supabase, userId, () =>
       ai(
         `Data:\n${summary}\n\nWrite a 3-sentence narrative recap. No stats-dump. Warm, poetic, decisive.`,
         "You are Stack'd, a focus companion. Reply in short poetic sentences, no bullet points.",
       ),
     );
     return { story: story.trim() };
-  });
+  }
+}
 
-export const discoverPatterns = createServerFn({ method: "POST" })
+export const getWeeklyStory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ patterns: string[] }> => {
+  .handler(
+    ({ context }): Promise<{ story: string }> =>
+      getWeeklyStoryCore(context.supabase, context.userId),
+  );
+
+export async function discoverPatternsCore(
+  supabase: AiSupabase,
+  userId: string,
+): Promise<{ patterns: string[] }> {
+  {
     // No AI-gateway call here — this is pure local heuristics, so it must not
     // consume AI budget (it used to call requireAiBudget and burn a unit for
     // nothing).
-    const { data: hist } = await context.supabase
+    const { data: hist } = await supabase
       .from("focus_history")
       .select("duration_seconds,score,created_at")
-      .eq("profile_id", context.userId)
+      .eq("profile_id", userId)
       .order("created_at", { ascending: false })
       .limit(60);
     const rows = hist ?? [];
@@ -93,4 +110,12 @@ export const discoverPatterns = createServerFn({ method: "POST" })
     const streak = rows.filter((r) => (r.score ?? 0) >= 90).length;
     if (streak >= 3) patterns.push(`${streak} flow-tier sessions in your recent history.`);
     return { patterns };
-  });
+  }
+}
+
+export const discoverPatterns = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    ({ context }): Promise<{ patterns: string[] }> =>
+      discoverPatternsCore(context.supabase, context.userId),
+  );

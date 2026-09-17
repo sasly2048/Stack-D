@@ -66,7 +66,10 @@ describe("no AI budget consumed by non-AI endpoints", () => {
     // getWeeklyStory — no bare requireAiBudget CALL remains (a comment may
     // still mention the old name).
     expect(narrative).not.toMatch(/await requireAiBudget\(/);
-    expect(narrative).toMatch(/withAiBudget\(context\.supabase/);
+    // getWeeklyStory still meters AI via withAiBudget. (The handler body was
+    // extracted into getWeeklyStoryCore(supabase, userId), so the call now
+    // reads `withAiBudget(supabase` rather than `withAiBudget(context.supabase`.)
+    expect(narrative).toMatch(/withAiBudget\(supabase/);
   });
 
   it("ai_refund is service-role only (not client-callable) and floored/guarded", () => {

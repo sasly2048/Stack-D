@@ -5,6 +5,11 @@ import { requireFeature } from "@/lib/require-tier";
 import { withAiBudget } from "@/lib/require-ai-budget";
 import { z } from "zod";
 import { httpUrl } from "@/lib/zod-url";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** Token-scoped client shared by the web RPC and the public Android route. */
+type AiSupabase = SupabaseClient<Database>;
 
 export interface VaultItem {
   id: string;
@@ -122,24 +127,27 @@ export const deleteVaultItem = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const summarizeVaultItem = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }): Promise<{ summary: string }> => {
+/** Shared body — web RPC + public route both call this. */
+export async function summarizeVaultItemCore(
+  supabase: AiSupabase,
+  userId: string,
+  data: { id: string },
+): Promise<{ summary: string }> {
+  {
     // Vault access is Elite; the summary also spends one AI action (Elite = 200).
-    await requireFeature(context.supabase, "vault");
-    const { data: item } = await context.supabase
+    await requireFeature(supabase, "vault");
+    const { data: item } = await supabase
       .from("memory_vault_items")
       .select("title, body")
       .eq("id", data.id)
-      .eq("user_id", context.userId)
+      .eq("user_id", userId)
       .maybeSingle();
     if (!item) throw new Error("not_found");
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     // Reserve the AI action around the gateway call so a provider failure
     // refunds the unit instead of burning it.
-    const summary = await withAiBudget(context.supabase, context.userId, async () => {
+    const summary = await withAiBudget(supabase, userId, async () => {
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
@@ -159,10 +167,19 @@ export const summarizeVaultItem = createServerFn({ method: "POST" })
       const j = await res.json();
       return String(j.choices?.[0]?.message?.content ?? "").trim();
     });
-    await context.supabase
+    await supabase
       .from("memory_vault_items")
       .update({ ai_summary: summary })
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("user_id", userId);
     return { summary };
-  });
+  }
+}
+
+export const summarizeVaultItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(
+    ({ data, context }): Promise<{ summary: string }> =>
+      summarizeVaultItemCore(context.supabase, context.userId, data),
+  );
