@@ -38,11 +38,9 @@ const AUTHED_ITEMS: NavItem[] = [
   { to: "/profile", label: "Profile", visibility: "hidden lg:inline" },
 ];
 
-
 /** Shared hover treatment: text + icon ember glow, no background box/border. */
 const NAV_GLOW =
   "px-2 py-1 transition-[color,text-shadow] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[text-shadow:0_0_12px_var(--text-glow-ember)]";
-
 
 const TIER_LABEL: Record<NavTier, string> = {
   starter: "Starter",
@@ -61,7 +59,9 @@ export function Nav() {
   // user "Ctrl" (or the reverse) is worse than showing nothing.
   const [modKeyLabel, setModKeyLabel] = useState("Ctrl ");
   useEffect(() => {
-    setModKeyLabel(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl ");
+    setModKeyLabel(
+      /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl ",
+    );
   }, []);
 
   // Every signed-in user gets the identical menu. Tier is a progression signal,
@@ -71,7 +71,6 @@ export function Nav() {
     to: item.to,
     label: item.label,
   }));
-
 
   const signOut = async () => {
     // Guarded because sign-out is a network call: a second click while the
@@ -92,7 +91,10 @@ export function Nav() {
   return (
     <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-obsidian/80 backdrop-blur-md safe-top">
       <div className="mx-auto grid h-16 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 sm:gap-8 sm:px-6 lg:px-8">
-        <Link to={user ? "/dashboard" : "/"} className="mr-auto flex min-w-0 items-center gap-2 sm:gap-3">
+        <Link
+          to={user ? "/dashboard" : "/"}
+          className="mr-auto flex min-w-0 items-center gap-2 sm:gap-3"
+        >
           <Logo className="size-7 shrink-0" />
           <span className="whitespace-nowrap font-mono text-xs tracking-[0.3em] uppercase">
             Stack&apos;d{" "}
@@ -114,7 +116,8 @@ export function Nav() {
                     // sighted users only.
                     className={`relative ${NAV_GLOW} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian ${item.visibility}`}
                     activeProps={{
-                      className: "text-ember hover:text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
+                      className:
+                        "text-ember hover:text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
                       "aria-current": "page",
                     }}
                   >
@@ -161,13 +164,18 @@ export function Nav() {
               <Link
                 to="/philosophy"
                 className={`relative hidden sm:inline-flex items-center gap-2 ${NAV_GLOW}`}
-                activeProps={{ className: "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]" }}
+                activeProps={{
+                  className:
+                    "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
+                }}
               >
                 {({ isActive }) => (
                   <>
                     <span
                       className={`size-1 rounded-full transition-[background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] ${
-                        isActive ? "bg-ember [box-shadow:0_0_8px_var(--icon-glow-ember)] scale-100" : "bg-transparent scale-0"
+                        isActive
+                          ? "bg-ember [box-shadow:0_0_8px_var(--icon-glow-ember)] scale-100"
+                          : "bg-transparent scale-0"
                       }`}
                     />
                     Philosophy
@@ -177,7 +185,10 @@ export function Nav() {
               <Link
                 to="/philosophy"
                 className={`sm:hidden ${NAV_GLOW}`}
-                activeProps={{ className: "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]" }}
+                activeProps={{
+                  className:
+                    "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
+                }}
               >
                 Philosophy
               </Link>

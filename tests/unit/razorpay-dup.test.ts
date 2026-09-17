@@ -25,7 +25,6 @@ describe("razorpay duplicate-checkout guard", () => {
     expect(fn).toMatch(/startsAt:/);
   });
 
-
   it("rate-limits checkout starts per user", () => {
     expect(fn).toMatch(/isRateLimited\(`checkout:\$\{context\.userId\}`/);
     expect(fn).toMatch(/Too many checkout attempts/i);

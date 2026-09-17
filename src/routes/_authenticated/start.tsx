@@ -163,9 +163,7 @@ function Start() {
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-2xl">
-        <div className="ritual-label mb-4 text-muted-foreground">
-          NEW / CONFIGURE
-        </div>
+        <div className="ritual-label mb-4 text-muted-foreground">NEW / CONFIGURE</div>
         <h1 className="page-title mb-10 sm:mb-12">Set the protocol.</h1>
 
         {showIntro && (
@@ -174,19 +172,19 @@ function Start() {
               A room is a shared timer — everyone stacks their phones face-down and holds the
               silence until it runs out.
             </p>
-              <Button
+            <Button
               type="button"
-                variant="ghost"
-                size="sm"
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 dismissTip("start-intro");
                 setShowIntro(false);
               }}
               aria-label="Dismiss the explainer"
-                className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-silver"
+              className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-silver"
             >
               Got it
-              </Button>
+            </Button>
           </div>
         )}
 

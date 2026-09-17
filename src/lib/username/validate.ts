@@ -57,7 +57,14 @@ export type UsernameCheck =
       reason: UsernameRejection;
       message: string;
       /** Internal debugging only — never rendered. */
-      debug?: { category: string; term: string; mode: string; form: string; confidence: number; listVersion: number };
+      debug?: {
+        category: string;
+        term: string;
+        mode: string;
+        form: string;
+        confidence: number;
+        listVersion: number;
+      };
     };
 
 function fail(reason: UsernameRejection): UsernameCheck {

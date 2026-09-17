@@ -85,9 +85,12 @@ export const joinSeason = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     // XP is server-derived: clients can no longer write season_participants
     // directly, only enroll at zero through this SECURITY DEFINER RPC.
-    const { error } = await context.supabase.rpc("join_season" as never, {
-      _season_id: data.seasonId,
-    } as never);
+    const { error } = await context.supabase.rpc(
+      "join_season" as never,
+      {
+        _season_id: data.seasonId,
+      } as never,
+    );
     if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

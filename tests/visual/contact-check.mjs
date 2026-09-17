@@ -58,13 +58,22 @@ for (const [path, width] of [
     const a = document.querySelector('a[href^="mailto:"]');
     if (!a) return null;
     const r = a.getBoundingClientRect();
-    return { overflowsViewport: r.right > document.documentElement.clientWidth + 1, width: Math.round(r.width) };
+    return {
+      overflowsViewport: r.right > document.documentElement.clientWidth + 1,
+      width: Math.round(r.width),
+    };
   });
   if (clipped) {
-    report(`${label}: address stays inside the viewport`, !clipped.overflowsViewport, `${clipped.width}px wide`);
+    report(
+      `${label}: address stays inside the viewport`,
+      !clipped.overflowsViewport,
+      `${clipped.width}px wide`,
+    );
   }
 
-  await page.screenshot({ path: `${OUT}/contact-${path.replace(/\//g, "_") || "home"}-${width}.png` });
+  await page.screenshot({
+    path: `${OUT}/contact-${path.replace(/\//g, "_") || "home"}-${width}.png`,
+  });
   await ctx.close();
 }
 

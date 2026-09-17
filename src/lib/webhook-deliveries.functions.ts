@@ -4,7 +4,6 @@ import { z } from "zod";
 import { assertPublicUrl } from "@/lib/safe-url.server";
 import { publicDbError } from "@/lib/db-error";
 
-
 export interface Delivery {
   id: string;
   webhook_id: string;
@@ -51,7 +50,6 @@ export const testWebhook = createServerFn({ method: "POST" })
     // resolve DNS so a public hostname pointing at an internal IP is rejected
     // before fetch connects. Throws an error code string on any failure.
     await assertPublicUrl(wh.url);
-
 
     const payload = JSON.stringify({
       event: "session.complete",

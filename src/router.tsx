@@ -33,7 +33,6 @@ export const getRouter = () => {
           description: message.slice(0, 140),
         });
       },
-
     }),
     defaultOptions: {
       queries: {
@@ -67,7 +66,6 @@ export const getRouter = () => {
     // instead of a bare error screen.
     defaultErrorComponent: RouteErrorBoundary,
   });
-
 
   return router;
 };

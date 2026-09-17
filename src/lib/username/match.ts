@@ -107,15 +107,9 @@ export function buildRuleset(
  * Returns the strongest hit at or above the confidence threshold, or null when
  * the name is clean.
  */
-export function screenUsername(
-  raw: string,
-  ruleset: ModerationRuleset,
-): ModerationHit | null {
+export function screenUsername(raw: string, ruleset: ModerationRuleset): ModerationHit | null {
   const canonical = canonicalUsername(raw);
-  if (
-    ruleset.allowlist.has(canonical) ||
-    ruleset.allowlist.has(digitsTrimmed(canonical))
-  ) {
+  if (ruleset.allowlist.has(canonical) || ruleset.allowlist.has(digitsTrimmed(canonical))) {
     return null;
   }
 
@@ -191,7 +185,6 @@ export function screenUsername(
         consider({ ...t, form: form.name, confidence: CONFIDENCE.word });
       }
     }
-
   }
 
   return best;

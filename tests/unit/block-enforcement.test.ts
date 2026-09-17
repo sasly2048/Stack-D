@@ -30,7 +30,9 @@ describe("block enforcement on friendships", () => {
   });
 
   it("revokes the helper from anon and the guard from everyone", () => {
-    expect(migration).toMatch(/REVOKE ALL ON FUNCTION public\.blocks_exist\(uuid, uuid\) FROM PUBLIC, anon/);
+    expect(migration).toMatch(
+      /REVOKE ALL ON FUNCTION public\.blocks_exist\(uuid, uuid\) FROM PUBLIC, anon/,
+    );
     expect(migration).toMatch(
       /REVOKE ALL ON FUNCTION public\.friendship_block_guard\(\) FROM PUBLIC, anon, authenticated/,
     );

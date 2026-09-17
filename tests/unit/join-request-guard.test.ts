@@ -10,12 +10,7 @@ import { describe, expect, it } from "vitest";
  * bypass the approval gate for request-only rooms.
  */
 const migration = readFileSync(
-  join(
-    process.cwd(),
-    "supabase",
-    "migrations",
-    "20260823210000_join_request_no_self_approve.sql",
-  ),
+  join(process.cwd(), "supabase", "migrations", "20260823210000_join_request_no_self_approve.sql"),
   "utf8",
 );
 

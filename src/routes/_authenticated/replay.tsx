@@ -10,9 +10,17 @@ export const Route = createFileRoute("/_authenticated/replay")({
   head: () => ({
     meta: [
       { title: "Replay — Stack'd" },
-      { name: "description", content: "Play back any day of focus minute by minute and see exactly where your attention held or broke." },
+      {
+        name: "description",
+        content:
+          "Play back any day of focus minute by minute and see exactly where your attention held or broke.",
+      },
       { property: "og:title", content: "Replay — Stack'd" },
-      { property: "og:description", content: "Play back any day of focus minute by minute and see exactly where your attention held or broke." },
+      {
+        property: "og:description",
+        content:
+          "Play back any day of focus minute by minute and see exactly where your attention held or broke.",
+      },
     ],
   }),
   component: ReplayPage,

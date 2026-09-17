@@ -31,10 +31,7 @@ function report(name, pass, detail = "") {
 // 2. Returning user: seed the pref the way a real sign-in would.
 for (const provider of ["google", "email"]) {
   const ctx = await browser.newContext({ viewport: { width: 420, height: 900 } });
-  await ctx.addInitScript(
-    (p) => localStorage.setItem("stackd:last-auth-provider", p),
-    provider,
-  );
+  await ctx.addInitScript((p) => localStorage.setItem("stackd:last-auth-provider", p), provider);
   const page = await ctx.newPage();
   await page.goto(`${BASE}/auth`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
@@ -66,12 +63,18 @@ for (const provider of ["google", "email"]) {
       if (!text || !badge) return null;
       const t = text.getBoundingClientRect();
       const b = badge.getBoundingClientRect();
-      return { overlaps: t.right > b.left + 1, textRight: Math.round(t.right), badgeLeft: Math.round(b.left) };
+      return {
+        overlaps: t.right > b.left + 1,
+        textRight: Math.round(t.right),
+        badgeLeft: Math.round(b.left),
+      };
     });
     report(
       "google: badge does not overlap the label",
       overlap ? !overlap.overlaps : false,
-      overlap ? `text ends ${overlap.textRight}, badge starts ${overlap.badgeLeft}` : "not measured",
+      overlap
+        ? `text ends ${overlap.textRight}, badge starts ${overlap.badgeLeft}`
+        : "not measured",
     );
   }
 
@@ -124,7 +127,11 @@ for (const provider of ["google", "email"]) {
   await page.locator('button:has-text("Show")').click();
   await page.waitForTimeout(150);
   const after = await pw.getAttribute("type");
-  report("password reveal toggles type", before === "password" && after === "text", `${before}→${after}`);
+  report(
+    "password reveal toggles type",
+    before === "password" && after === "text",
+    `${before}→${after}`,
+  );
 
   const req = await page.locator('label:has-text("Email") .sr-only').textContent();
   report("required field is announced", /required/i.test(req ?? ""), req ?? "(none)");

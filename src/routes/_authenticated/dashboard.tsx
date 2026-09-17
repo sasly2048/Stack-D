@@ -246,10 +246,17 @@ function Dashboard() {
           </div>
           <div className="hidden shrink-0 items-center gap-3 sm:flex">
             <CsvExportButton />
-            <Button asChild variant="outline" className="font-mono text-xs font-bold uppercase tracking-widest">
+            <Button
+              asChild
+              variant="outline"
+              className="font-mono text-xs font-bold uppercase tracking-widest"
+            >
               <Link to="/leaderboard">Leaderboard</Link>
             </Button>
-            <Button asChild className="bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90">
+            <Button
+              asChild
+              className="bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90"
+            >
               <Link to="/start">New Session</Link>
             </Button>
           </div>

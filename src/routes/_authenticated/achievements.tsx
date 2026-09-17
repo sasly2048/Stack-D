@@ -13,9 +13,17 @@ export const Route = createFileRoute("/_authenticated/achievements")({
   head: () => ({
     meta: [
       { title: "Achievements — Stack'd" },
-      { name: "description", content: "Track every Stack'd unlock, tier and milestone you have earned, and see the marks still waiting ahead of you." },
+      {
+        name: "description",
+        content:
+          "Track every Stack'd unlock, tier and milestone you have earned, and see the marks still waiting ahead of you.",
+      },
       { property: "og:title", content: "Achievements — Stack'd" },
-      { property: "og:description", content: "Track every Stack'd unlock, tier and milestone you have earned, and see the marks still waiting ahead of you." },
+      {
+        property: "og:description",
+        content:
+          "Track every Stack'd unlock, tier and milestone you have earned, and see the marks still waiting ahead of you.",
+      },
     ],
   }),
   component: AchievementsPage,
@@ -45,7 +53,10 @@ function AchievementsPage() {
     },
   });
   const rows: Achievement[] = achievementsQuery.data?.rows ?? [];
-  const stats = { unlocked: achievementsQuery.data?.unlocked ?? 0, total: achievementsQuery.data?.total ?? 0 };
+  const stats = {
+    unlocked: achievementsQuery.data?.unlocked ?? 0,
+    total: achievementsQuery.data?.total ?? 0,
+  };
   const xp = achievementsQuery.data?.xp ?? 0;
 
   const chapter = chapterForXp(xp);
@@ -130,47 +141,48 @@ function AchievementsPage() {
         >
           <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {rows.map((a) => {
-            const locked = !a.unlocked_at;
-            // Fresh marks are what the user came to see; without this they are
-            // indistinguishable from ones earned months ago.
-            const fresh =
-              !!a.unlocked_at && Date.now() - new Date(a.unlocked_at).getTime() < 24 * 60 * 60 * 1000;
-            return (
-              <li
-                key={a.id}
-                className={`border rounded-md p-5 transition-all ${
-                  locked
-                    ? "border-white/5 opacity-40 hover:opacity-70"
-                    : `${TIER_STYLE[a.tier] ?? TIER_STYLE.bronze} hover:shadow-[0_0_30px_-10px_currentColor]`
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <p
-                    className={`font-mono text-[9px] tracking-[0.3em] uppercase ${locked ? "text-silver-dim" : ""}`}
-                  >
-                    {a.tier}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {fresh && <BadgeHint tone="positive">New</BadgeHint>}
-                    <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-silver-dim">
-                      +{a.xp_reward} XP
-                    </p>
-                  </div>
-                </div>
-                <h3
-                  className={`mt-3 text-xl font-serif ${locked ? "text-silver-dim" : "text-silver"}`}
+              const locked = !a.unlocked_at;
+              // Fresh marks are what the user came to see; without this they are
+              // indistinguishable from ones earned months ago.
+              const fresh =
+                !!a.unlocked_at &&
+                Date.now() - new Date(a.unlocked_at).getTime() < 24 * 60 * 60 * 1000;
+              return (
+                <li
+                  key={a.id}
+                  className={`border rounded-md p-5 transition-all ${
+                    locked
+                      ? "border-white/5 opacity-40 hover:opacity-70"
+                      : `${TIER_STYLE[a.tier] ?? TIER_STYLE.bronze} hover:shadow-[0_0_30px_-10px_currentColor]`
+                  }`}
                 >
-                  {a.name}
-                </h3>
-                <p className="mt-1 text-sm text-silver-dim">{a.description}</p>
-                {a.unlocked_at && (
-                  <p className="mt-3 font-mono text-[9px] tracking-[0.2em] uppercase text-silver-dim/60">
-                    Unlocked {new Date(a.unlocked_at).toLocaleDateString()}
-                  </p>
-                )}
-              </li>
-            );
-          })}
+                  <div className="flex items-start justify-between">
+                    <p
+                      className={`font-mono text-[9px] tracking-[0.3em] uppercase ${locked ? "text-silver-dim" : ""}`}
+                    >
+                      {a.tier}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {fresh && <BadgeHint tone="positive">New</BadgeHint>}
+                      <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-silver-dim">
+                        +{a.xp_reward} XP
+                      </p>
+                    </div>
+                  </div>
+                  <h3
+                    className={`mt-3 text-xl font-serif ${locked ? "text-silver-dim" : "text-silver"}`}
+                  >
+                    {a.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-silver-dim">{a.description}</p>
+                  {a.unlocked_at && (
+                    <p className="mt-3 font-mono text-[9px] tracking-[0.2em] uppercase text-silver-dim/60">
+                      Unlocked {new Date(a.unlocked_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </QueryBoundary>
       </main>

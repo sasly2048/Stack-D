@@ -43,8 +43,16 @@ describe("false positives", () => {
 
   it("accepts alphanumeric names with long numeric suffixes", () => {
     for (const n of [
-      "Sasly204800", "sasly2048", "Milan13370", "Tarun500700", "kiran8008",
-      "Neha1010101", "arjun404", "Bhavya1337", "dev8000", "zoya007",
+      "Sasly204800",
+      "sasly2048",
+      "Milan13370",
+      "Tarun500700",
+      "kiran8008",
+      "Neha1010101",
+      "arjun404",
+      "Bhavya1337",
+      "dev8000",
+      "zoya007",
     ]) {
       expect(reason(n), n).toBe("ok");
     }
@@ -52,13 +60,42 @@ describe("false positives", () => {
 
   it("accepts legitimate names that embed blocked stems", () => {
     for (const n of [
-      "Cassandra", "cassandra99", "Scunthorpe", "grasshopper", "bassist",
-      "Hancock", "peacock_dev", "cocktail99", "Dickens", "analyst",
-      "therapist", "classical", "Titanium", "Assange", "Sussex",
-      "Mongolia", "pakistan", "japanese", "raccoon99", "unisex_lab",
-      "debugger", "scrapyard", "Lynch", "Randy", "Fannie", "grapevine",
-      "sextant", "spice_dev", "negroni", "firecracker", "homosapien",
-      "Nagasaki", "Curry_House", "camel_case", "abolition", "Lundberg",
+      "Cassandra",
+      "cassandra99",
+      "Scunthorpe",
+      "grasshopper",
+      "bassist",
+      "Hancock",
+      "peacock_dev",
+      "cocktail99",
+      "Dickens",
+      "analyst",
+      "therapist",
+      "classical",
+      "Titanium",
+      "Assange",
+      "Sussex",
+      "Mongolia",
+      "pakistan",
+      "japanese",
+      "raccoon99",
+      "unisex_lab",
+      "debugger",
+      "scrapyard",
+      "Lynch",
+      "Randy",
+      "Fannie",
+      "grapevine",
+      "sextant",
+      "spice_dev",
+      "negroni",
+      "firecracker",
+      "homosapien",
+      "Nagasaki",
+      "Curry_House",
+      "camel_case",
+      "abolition",
+      "Lundberg",
     ]) {
       expect(reason(n), n).toBe("ok");
     }

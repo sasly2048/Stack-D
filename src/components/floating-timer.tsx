@@ -81,7 +81,9 @@ export function FloatingTimer() {
         {done ? "READY" : "LIVE"}
       </span>
       <span className="tabular-nums text-silver">{fmt(remaining)}</span>
-      <span className="hidden text-[10px] tracking-widest text-muted-foreground min-[360px]:inline">· {session.code}</span>
+      <span className="hidden text-[10px] tracking-widest text-muted-foreground min-[360px]:inline">
+        · {session.code}
+      </span>
     </Link>
   );
 }

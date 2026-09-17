@@ -4,7 +4,6 @@ import { z } from "zod";
 import { isPublicHttpUrl } from "@/lib/safe-url";
 import { publicDbError } from "@/lib/db-error";
 
-
 export interface Webhook {
   id: string;
   url: string;

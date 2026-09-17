@@ -11,9 +11,17 @@ export const Route = createFileRoute("/_authenticated/trust")({
   head: () => ({
     meta: [
       { title: "Trust & Safety — Stack'd" },
-      { name: "description", content: "Manage blocked accounts and review the reports you have filed across your Stack'd sessions." },
+      {
+        name: "description",
+        content:
+          "Manage blocked accounts and review the reports you have filed across your Stack'd sessions.",
+      },
       { property: "og:title", content: "Trust & Safety — Stack'd" },
-      { property: "og:description", content: "Manage blocked accounts and review the reports you have filed across your Stack'd sessions." },
+      {
+        property: "og:description",
+        content:
+          "Manage blocked accounts and review the reports you have filed across your Stack'd sessions.",
+      },
     ],
   }),
   component: TrustPage,
@@ -81,7 +89,10 @@ function TrustPage() {
             skeleton={<SkeletonList rows={2} className="mt-4" />}
             isEmpty={blockRows.length === 0}
             empty={
-              <EmptyState title="Nobody blocked" description="You're on good terms with everyone." />
+              <EmptyState
+                title="Nobody blocked"
+                description="You're on good terms with everyone."
+              />
             }
           >
             <ul className="mt-4 space-y-2">

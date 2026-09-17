@@ -246,7 +246,8 @@ export const promoteModerator = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("room_moderators")
       .insert({ room_id: data.roomId, user_id: data.userId });
-    if (error && !error.message.includes("duplicate")) throw publicDbError(error, "db_write_failed");
+    if (error && !error.message.includes("duplicate"))
+      throw publicDbError(error, "db_write_failed");
     await context.supabase.rpc("record_room_event", {
       _room_id: data.roomId,
       _kind: "moderator_added",

@@ -1,0 +1,17 @@
+# Normalize line endings to LF for all text so CI (Linux) and Windows
+# checkouts agree. Without this, a Windows clone with core.autocrlf=true can
+# commit CRLF, and the web lint step (prettier) fails on every carriage return.
+* text=auto eol=lf
+
+# Binaries: never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.jar binary
+*.keystore binary
+*.apk binary

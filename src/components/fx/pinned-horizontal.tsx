@@ -83,7 +83,6 @@ export function PinnedHorizontal({
       };
     }
 
-
     const ctx = gsap.context(() => {
       // ScrollTrigger's own pinSpacing reserves exactly the scroll length the
       // pin consumes. Setting the wrapper height by hand on top of that added
@@ -94,7 +93,6 @@ export function PinnedHorizontal({
         pin.style.height = `${window.innerHeight}px`;
         return distance;
       };
-
 
       let distance = setSize();
 
@@ -134,11 +132,7 @@ export function PinnedHorizontal({
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>
-      <div
-        ref={pinRef}
-        className="flex h-screen w-full items-center overflow-hidden"
-      >
-
+      <div ref={pinRef} className="flex h-screen w-full items-center overflow-hidden">
         <div ref={trackRef} className={`flex will-change-transform ${trackClassName}`}>
           {children}
         </div>

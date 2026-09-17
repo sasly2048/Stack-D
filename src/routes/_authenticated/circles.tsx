@@ -12,9 +12,17 @@ export const Route = createFileRoute("/_authenticated/circles")({
   head: () => ({
     meta: [
       { title: "Study Circles — Stack'd" },
-      { name: "description", content: "Weekly rankings across your Stack'd study circles, so you can see how your group holds focus together." },
+      {
+        name: "description",
+        content:
+          "Weekly rankings across your Stack'd study circles, so you can see how your group holds focus together.",
+      },
       { property: "og:title", content: "Study Circles — Stack'd" },
-      { property: "og:description", content: "Weekly rankings across your Stack'd study circles, so you can see how your group holds focus together." },
+      {
+        property: "og:description",
+        content:
+          "Weekly rankings across your Stack'd study circles, so you can see how your group holds focus together.",
+      },
     ],
   }),
   component: CirclesPage,
@@ -143,56 +151,56 @@ function CirclesPage() {
                 }
               >
                 {detail && (
-                <>
-                  <div className="flex items-baseline justify-between mb-6">
-                    <h2 className="text-2xl font-serif">{detail.name}</h2>
-                    <div className="text-xs font-mono text-muted-foreground">
-                      {detail.member_count} members · {detail.total_xp.toLocaleString()} XP
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {detail.members.map((m, i) => (
-                      <div
-                        key={m.user_id}
-                        className="glass rounded-lg px-4 py-3 flex items-center gap-4"
-                      >
-                        <div className="font-serif text-xl w-8 text-center text-muted-foreground">
-                          {i + 1}
-                        </div>
-                        <div className="relative">
-                          {m.avatar_url ? (
-                            <img
-                              src={m.avatar_url}
-                              alt=""
-                              className="size-9 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="size-9 rounded-full bg-white/10 flex items-center justify-center text-xs font-mono">
-                              {(m.display_name ?? "?").slice(0, 2).toUpperCase()}
-                            </div>
-                          )}
-                          {m.is_online && (
-                            <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-ember ring-2 ring-obsidian" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm truncate">{m.display_name ?? "Anon"}</div>
-                          <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                            {m.current_streak}🔥 streak · {m.weekly_minutes}m this week
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-mono text-ember">
-                            {m.weekly_xp.toLocaleString()}
-                          </div>
-                          <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
-                            Weekly XP
-                          </div>
-                        </div>
+                  <>
+                    <div className="flex items-baseline justify-between mb-6">
+                      <h2 className="text-2xl font-serif">{detail.name}</h2>
+                      <div className="text-xs font-mono text-muted-foreground">
+                        {detail.member_count} members · {detail.total_xp.toLocaleString()} XP
                       </div>
-                    ))}
-                  </div>
-                </>
+                    </div>
+                    <div className="space-y-2">
+                      {detail.members.map((m, i) => (
+                        <div
+                          key={m.user_id}
+                          className="glass rounded-lg px-4 py-3 flex items-center gap-4"
+                        >
+                          <div className="font-serif text-xl w-8 text-center text-muted-foreground">
+                            {i + 1}
+                          </div>
+                          <div className="relative">
+                            {m.avatar_url ? (
+                              <img
+                                src={m.avatar_url}
+                                alt=""
+                                className="size-9 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="size-9 rounded-full bg-white/10 flex items-center justify-center text-xs font-mono">
+                                {(m.display_name ?? "?").slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            {m.is_online && (
+                              <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-ember ring-2 ring-obsidian" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm truncate">{m.display_name ?? "Anon"}</div>
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                              {m.current_streak}🔥 streak · {m.weekly_minutes}m this week
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-mono text-ember">
+                              {m.weekly_xp.toLocaleString()}
+                            </div>
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
+                              Weekly XP
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </QueryBoundary>
             </section>

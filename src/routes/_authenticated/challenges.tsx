@@ -11,9 +11,17 @@ export const Route = createFileRoute("/_authenticated/challenges")({
   head: () => ({
     meta: [
       { title: "Challenges — Stack'd" },
-      { name: "description", content: "Daily and weekly focus challenges: small, deliberate targets that keep your Stack'd streak moving forward." },
+      {
+        name: "description",
+        content:
+          "Daily and weekly focus challenges: small, deliberate targets that keep your Stack'd streak moving forward.",
+      },
       { property: "og:title", content: "Challenges — Stack'd" },
-      { property: "og:description", content: "Daily and weekly focus challenges: small, deliberate targets that keep your Stack'd streak moving forward." },
+      {
+        property: "og:description",
+        content:
+          "Daily and weekly focus challenges: small, deliberate targets that keep your Stack'd streak moving forward.",
+      },
     ],
   }),
   component: ChallengesPage,
@@ -45,7 +53,12 @@ function ChallengesPage() {
           </p>
         </header>
 
-        <Group title="Today" rows={daily} query={challengesQuery} emptyLabel="No daily rites today" />
+        <Group
+          title="Today"
+          rows={daily}
+          query={challengesQuery}
+          emptyLabel="No daily rites today"
+        />
         <Group
           title="This week"
           rows={weekly}
@@ -100,66 +113,66 @@ function Group({
           />
         }
       >
-      <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {rows.map((c) => {
-          const pct = Math.min(100, Math.round((c.progress / c.target) * 100));
-          const done = !!c.completed_at;
-          return (
-            <li
-              key={c.id}
-              className={`border rounded-md p-5 transition-colors ${
-                done ? "border-ember/40 bg-ember/[0.04]" : "border-white/10"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-serif text-xl">{c.name}</h3>
-                    {/* Colour alone carried "done" before — a tinted border is
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {rows.map((c) => {
+            const pct = Math.min(100, Math.round((c.progress / c.target) * 100));
+            const done = !!c.completed_at;
+            return (
+              <li
+                key={c.id}
+                className={`border rounded-md p-5 transition-colors ${
+                  done ? "border-ember/40 bg-ember/[0.04]" : "border-white/10"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-serif text-xl">{c.name}</h3>
+                      {/* Colour alone carried "done" before — a tinted border is
                         invisible to a colour-blind user and to a screen reader
                         entirely. completed_at is real, so name the state. */}
-                    {done ? (
-                      <BadgeHint tone="positive" title="You have completed this challenge">
-                        Completed
-                      </BadgeHint>
-                    ) : (
-                      c.progress > 0 && (
-                        <BadgeHint tone="neutral" title="You have started this challenge">
-                          In progress
+                      {done ? (
+                        <BadgeHint tone="positive" title="You have completed this challenge">
+                          Completed
                         </BadgeHint>
-                      )
-                    )}
+                      ) : (
+                        c.progress > 0 && (
+                          <BadgeHint tone="neutral" title="You have started this challenge">
+                            In progress
+                          </BadgeHint>
+                        )
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm text-silver-dim">{c.description}</p>
                   </div>
-                  <p className="mt-1 text-sm text-silver-dim">{c.description}</p>
+                  <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-ember shrink-0">
+                    +{c.xp_reward} XP
+                  </span>
                 </div>
-                <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-ember shrink-0">
-                  +{c.xp_reward} XP
-                </span>
-              </div>
-              {/* Bare styled div announced nothing; role="progressbar" gives
+                {/* Bare styled div announced nothing; role="progressbar" gives
                   assistive tech the same progress the bar shows visually. */}
-              <div
-                role="progressbar"
-                aria-valuenow={Math.min(c.progress, c.target)}
-                aria-valuemin={0}
-                aria-valuemax={c.target}
-                aria-label={c.name}
-                className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden"
-              >
                 <div
-                  className={`h-full transition-[width] duration-700 ${done ? "bg-ember" : "bg-silver"}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <p className="mt-2 font-mono text-[10px] tracking-[0.2em] uppercase text-silver-dim">
-                {done
-                  ? "Completed"
-                  : `${c.progress} / ${c.target}${c.metric === "focus_minutes" ? " min" : ""}`}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
+                  role="progressbar"
+                  aria-valuenow={Math.min(c.progress, c.target)}
+                  aria-valuemin={0}
+                  aria-valuemax={c.target}
+                  aria-label={c.name}
+                  className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden"
+                >
+                  <div
+                    className={`h-full transition-[width] duration-700 ${done ? "bg-ember" : "bg-silver"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <p className="mt-2 font-mono text-[10px] tracking-[0.2em] uppercase text-silver-dim">
+                  {done
+                    ? "Completed"
+                    : `${c.progress} / ${c.target}${c.metric === "focus_minutes" ? " min" : ""}`}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
       </QueryBoundary>
     </section>
   );

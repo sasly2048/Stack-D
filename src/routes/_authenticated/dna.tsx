@@ -41,7 +41,12 @@ function Radar({ traits }: { traits: { label: string; value: number }[] }) {
   const rings = [0.25, 0.5, 0.75, 1];
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto block h-auto w-full max-w-80" role="img" aria-label="Productivity traits radar chart">
+    <svg
+      viewBox={`0 0 ${size} ${size}`}
+      className="mx-auto block h-auto w-full max-w-80"
+      role="img"
+      aria-label="Productivity traits radar chart"
+    >
       {rings.map((r) => (
         <polygon
           key={r}
@@ -97,9 +102,7 @@ function DnaPage() {
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-4xl">
-        <div className="ritual-label text-muted-foreground">
-          Productivity DNA
-        </div>
+        <div className="ritual-label text-muted-foreground">Productivity DNA</div>
         <h1 className="page-title mb-8 mt-2">Your focus signature</h1>
 
         <PremiumGate feature="focus_dna">
@@ -135,7 +138,9 @@ function DnaPage() {
                     <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                       Signature
                     </div>
-                    <div className="mt-1 break-all font-mono text-xl sm:text-2xl">{dna.signature}</div>
+                    <div className="mt-1 break-all font-mono text-xl sm:text-2xl">
+                      {dna.signature}
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <Stat

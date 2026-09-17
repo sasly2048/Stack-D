@@ -56,7 +56,9 @@ describe("trigger guards use auth.uid(), not current_user", () => {
 
   it("mentorship: invitee-only activation + immutable identities, no dropped fn", () => {
     expect(migration).toMatch(/mentorship_freeze_parties/);
-    expect(migration).toMatch(/_uid = OLD\.initiator_id[\s\S]*?RAISE EXCEPTION 'inviter_cannot_accept'/);
+    expect(migration).toMatch(
+      /_uid = OLD\.initiator_id[\s\S]*?RAISE EXCEPTION 'inviter_cannot_accept'/,
+    );
     expect(migration).not.toMatch(/created_by_uid_placeholder/);
     expect(migration).toMatch(/NEW\.mentor_id\s*:=\s*OLD\.mentor_id/);
   });

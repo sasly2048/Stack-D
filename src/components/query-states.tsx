@@ -40,7 +40,13 @@ export function SkeletonList({ rows = 4, className = "" }: { rows?: number; clas
 }
 
 /** Stand-in for a stat/card grid. */
-export function SkeletonCards({ count = 3, className = "" }: { count?: number; className?: string }) {
+export function SkeletonCards({
+  count = 3,
+  className = "",
+}: {
+  count?: number;
+  className?: string;
+}) {
   return (
     <div className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ${className}`} aria-hidden="true">
       {Array.from({ length: count }).map((_, i) => (
