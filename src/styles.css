@@ -73,6 +73,13 @@
   --control-height-sm: 2.25rem;
   --control-height-lg: 3rem;
   --overlay-gutter: 1rem;
+  --z-nav: 50;
+  --z-status: 60;
+  --z-overlay: 70;
+  --z-dialog: 71;
+  --z-popover: 72;
+  --z-critical: 80;
+  --z-ceremony: 100;
 
   /* Dot indicator — the ember period after "luxury", live nodes,
      status dots. One source of truth so mobile/tablet/desktop
@@ -561,6 +568,11 @@
   padding-top: var(--page-nav-clearance);
   padding-right: var(--page-gutter);
   padding-bottom: var(--page-bottom-clearance);
+  padding-left: var(--page-gutter);
+}
+
+@utility app-gutter {
+  padding-right: var(--page-gutter);
   padding-left: var(--page-gutter);
 }
 

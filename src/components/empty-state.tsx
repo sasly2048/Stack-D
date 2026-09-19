@@ -18,7 +18,7 @@ export function EmptyState({
       <div aria-hidden="true" className="mb-3 text-4xl leading-none">
         {icon}
       </div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+      <div className="ritual-label text-muted-foreground">
         A quiet space
       </div>
       <div className="mx-auto mt-2 max-w-md text-lg font-semibold leading-snug text-silver">{title}</div>
