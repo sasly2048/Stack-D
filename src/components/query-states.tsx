@@ -85,7 +85,7 @@ export function ErrorPanel({
       role="alert"
       className={`glass mx-auto w-full rounded-lg border border-breach/20 px-5 py-8 text-center sm:p-8 ${className}`}
     >
-      <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-breach">
+      <div className="ritual-label text-breach">
         Signal lost
       </div>
       <p className="mx-auto mt-3 max-w-md text-sm font-medium leading-relaxed text-silver">{title}</p>
