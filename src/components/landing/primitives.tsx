@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { DESIGN_TOKENS } from "@/lib/design-tokens";
 
 /**
  * SectionContainer — Wraps landing page sections with responsive padding and max-width
