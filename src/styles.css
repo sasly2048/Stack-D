@@ -633,6 +633,57 @@
   overflow-wrap: anywhere;
 }
 
+@utility public-page {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: var(--color-obsidian);
+  color: var(--color-silver);
+}
+
+@utility public-main {
+  padding-top: var(--page-nav-clearance);
+  padding-bottom: calc(var(--page-bottom-clearance) + env(safe-area-inset-bottom));
+}
+
+@utility auth-input {
+  width: 100%;
+  min-height: var(--control-height-lg);
+  border: 1px solid var(--color-input);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--color-silver) 5%, transparent);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-silver);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  outline: none;
+  transition:
+    border-color 0.25s var(--ease-ritual),
+    box-shadow 0.25s var(--ease-ritual),
+    background-color 0.25s var(--ease-ritual);
+  &:focus-visible {
+    border-color: color-mix(in oklab, var(--color-ember) 60%, transparent);
+    background: color-mix(in oklab, var(--color-silver) 7%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-ember) 8%, transparent);
+  }
+  &[aria-invalid="true"] {
+    border-color: color-mix(in oklab, var(--color-breach) 65%, transparent);
+  }
+}
+
+@utility skip-link {
+  position: fixed;
+  top: calc(var(--space-2) + env(safe-area-inset-top));
+  left: calc(var(--space-2) + env(safe-area-inset-left));
+  z-index: var(--z-critical);
+  border-radius: var(--radius-md);
+  background: var(--color-ember);
+  color: var(--color-obsidian);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 @utility panel {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);

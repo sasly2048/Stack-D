@@ -3,6 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 
 import { reportLovableError } from "@/lib/lovable-error-reporting";
 import { classifyRouteError, reloadOnceForStaleChunk } from "@/lib/error-recovery";
+import { Button } from "@/components/ui/button";
 
 const MAX_SILENT_ATTEMPTS = 2;
 
@@ -66,7 +67,7 @@ export function RouteErrorBoundary({ error, reset }: { error: Error; reset: () =
   if (phase === "recovering") return <RecoveringScreen />;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-obsidian px-4 text-silver">
+    <div className="app-gutter flex min-h-screen items-center justify-center bg-obsidian py-12 text-silver safe-y">
       <div className="max-w-md text-center">
         <div className="font-mono text-[10px] tracking-[0.3em] text-breach uppercase mb-6">
           RUNTIME_EXCEPTION
@@ -75,24 +76,21 @@ export function RouteErrorBoundary({ error, reset }: { error: Error; reset: () =
         <p className="mt-2 text-sm text-muted-foreground">
           {error.message || "Something went off-protocol."}
         </p>
-        <div className="mt-8 flex gap-3 justify-center">
-          <button
+        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <Button
             onClick={() => {
               attempts.current = 0;
               lastError.current = null;
               setPhase("recovering");
               void router.invalidate().finally(() => reset());
             }}
-            className="bg-silver text-obsidian px-6 py-2.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all"
+            className="w-full px-6 font-mono text-xs font-bold uppercase tracking-widest sm:w-auto"
           >
             Retry
-          </button>
-          <a
-            href="/"
-            className="border border-silver/20 px-6 py-2.5 rounded-lg font-mono text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
-          >
-            Origin
-          </a>
+          </Button>
+          <Button asChild variant="outline" className="w-full px-6 font-mono text-xs uppercase tracking-widest sm:w-auto">
+            <a href="/">Origin</a>
+          </Button>
         </div>
       </div>
     </div>

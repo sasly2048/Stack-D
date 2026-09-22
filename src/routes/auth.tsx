@@ -31,6 +31,8 @@ export const Route = createFileRoute("/auth")({
         content: "Sign in or enter a room code to join a shared focus session on Stack'd.",
       },
       { property: "og:url", content: siteUrl("/auth") },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex" },
     ],
     links: [{ rel: "canonical", href: siteUrl("/auth") }],
@@ -230,14 +232,14 @@ function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver flex flex-col">
+    <div className="public-page flex flex-col">
       <a
         href="#auth-main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:bg-ember focus:text-obsidian focus:px-3 focus:py-2 focus:font-mono focus:text-xs focus:rounded"
+        className="sr-only focus:not-sr-only focus:skip-link"
       >
         Skip to sign-in
       </a>
-      <header className="px-6 py-6">
+      <header className="app-gutter py-6 safe-top">
         <Link to="/" className="flex items-center gap-3">
           <Logo className="size-7" />
           <span className="font-mono text-xs tracking-[0.3em] uppercase">
@@ -246,12 +248,12 @@ function Auth() {
         </Link>
       </header>
 
-      <main id="auth-main" className="flex-1 flex items-center justify-center px-6 py-12">
+      <main id="auth-main" className="app-gutter flex flex-1 items-center justify-center py-12">
         <div className="w-full max-w-md animate-entrance">
-          <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember mb-4">
+          <div className="ritual-label mb-4 text-ember">
             {mode === "sign-in" ? "AUTH / RETURN" : "AUTH / CREATE"}
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tighter mb-10">
+          <h1 className="mb-10 text-4xl font-extrabold leading-[1.05] tracking-tighter">
             {mode === "sign-in" ? "Re-enter the protocol." : "Claim your presence."}
           </h1>
 
@@ -384,7 +386,7 @@ function Auth() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-                className="auth-input pr-20"
+                className="auth-input pr-16"
                 placeholder="••••••••"
                 autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
                 aria-invalid={passwordInvalid || undefined}
@@ -482,7 +484,6 @@ function Auth() {
           </button>
         </div>
       </main>
-      <style>{`.auth-input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.5rem;padding:.875rem 1rem;color:#E2E2E2;font-size:.875rem;outline:none;transition:border-color .25s, box-shadow .25s, background .25s}.auth-input:focus{border-color:rgba(201,135,74,.6);box-shadow:0 0 0 4px rgba(201,135,74,.08);background:rgba(255,255,255,.07)}`}</style>
     </div>
   );
 }
@@ -568,8 +569,8 @@ function VerifyStep({
   };
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver flex flex-col">
-      <header className="px-6 py-6">
+    <div className="public-page flex flex-col">
+      <header className="app-gutter py-6 safe-top">
         <Link to="/" className="flex items-center gap-3">
           <Logo className="size-7" />
           <span className="font-mono text-xs tracking-[0.3em] uppercase">
@@ -577,7 +578,7 @@ function VerifyStep({
           </span>
         </Link>
       </header>
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
+      <main className="app-gutter flex flex-1 items-center justify-center py-12">
         <div
           className="w-full max-w-md animate-entrance"
           role="region"
@@ -692,7 +693,6 @@ function VerifyStep({
           )}
         </div>
       </main>
-      <style>{`.auth-input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.5rem;padding:.875rem 1rem;color:#E2E2E2;font-size:.875rem;outline:none;transition:border-color .25s, box-shadow .25s, background .25s}.auth-input:focus{border-color:rgba(201,135,74,.6);box-shadow:0 0 0 4px rgba(201,135,74,.08);background:rgba(255,255,255,.07)}`}</style>
     </div>
   );
 }
