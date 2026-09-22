@@ -72,16 +72,19 @@ const TENETS = [
 function Philosophy() {
   const { data: prose } = useBrandProse();
   return (
-    <div className="min-h-screen bg-obsidian text-silver overflow-x-hidden">
+    <div className="public-page">
+      <a href="#main" className="sr-only focus:not-sr-only focus:skip-link">
+        Skip to content
+      </a>
       <Nav />
 
       {/* Single per-page landmark: everything between the nav and the footer. */}
-      <main>
-        <header className="pt-40 pb-20 px-6 max-w-6xl mx-auto animate-entrance">
-          <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember mb-8">
+      <main id="main">
+        <header className="app-gutter public-main mx-auto max-w-6xl animate-entrance">
+          <div className="ritual-label mb-8 text-ember">
             Manifesto / Protocol.00
           </div>
-          <h1 className="text-5xl sm:text-6xl lg:text-[88px] font-extrabold leading-[0.9] tracking-tighter mb-10 text-balance max-w-4xl">
+          <h1 className="mb-10 max-w-4xl text-balance text-5xl font-extrabold leading-[0.94] tracking-tighter sm:text-6xl lg:text-[88px]">
             We did not lose
             <br /> our attention.
             <br />
@@ -98,7 +101,7 @@ function Philosophy() {
         </header>
 
         <section className="py-20 border-t border-white/5 bg-neutral-900/30">
-          <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-3 gap-12">
+          <div className="app-gutter mx-auto grid max-w-6xl gap-12 md:grid-cols-3">
             {PILLARS.map((f) => (
               <div key={f.k} className="border-t border-white/10 pt-8">
                 <div className="font-mono text-[10px] tracking-[0.3em] text-ember mb-6">{f.k}</div>
@@ -118,7 +121,7 @@ function Philosophy() {
           />
         </div>
 
-        <section className="py-24 px-6 max-w-5xl mx-auto">
+        <section className="app-gutter mx-auto max-w-5xl py-24">
           <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-10">
             Tenets / Read aloud before the session
           </div>
@@ -137,7 +140,7 @@ function Philosophy() {
           </ol>
         </section>
 
-        <section className="py-24 px-6 border-t border-white/5 bg-neutral-900/30">
+        <section className="app-gutter border-t border-white/5 bg-neutral-900/30 py-24">
           <div className="max-w-4xl mx-auto text-center">
             <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember mb-6">
               The Invitation
@@ -158,7 +161,7 @@ function Philosophy() {
         </section>
       </main>
 
-      <footer className="py-12 px-6 border-t border-white/5">
+      <footer className="app-gutter border-t border-white/5 py-12 safe-bottom">
         <div className="max-w-7xl mx-auto text-[10px] font-mono text-muted-foreground uppercase tracking-[0.5em] text-center">
           Non-digital space is a human right.
         </div>

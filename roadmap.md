@@ -12,7 +12,7 @@
 
 ## UI/UX consistency audit
 - [x] Phase 1: audit and normalize shared typography, spacing, widths, and shells
-- [ ] Phase 2: polish public and system screens across mobile, tablet, and desktop
+- [x] Phase 2: polish public and system screens across mobile, tablet, and desktop
 - [ ] Phase 3: polish authenticated screens and dynamic room/profile layouts
 - [ ] Phase 4: polish overlays, dialogs, menus, loading, empty, and error states
 - [ ] Phase 5: run the complete responsive visual regression matrix and fix regressions

@@ -86,7 +86,7 @@ export function Scene({
     <section
       id={id}
       data-scene={index}
-      className={`relative isolate flex scroll-mt-20 flex-col justify-center overflow-hidden border-t border-white/5 px-6 ${
+      className={`app-gutter relative isolate flex scroll-mt-20 flex-col justify-center overflow-hidden border-t border-white/5 ${
         compact ? "scene-pad-y-compact" : "min-h-[100svh] scene-pad-y"
       } ${toneClass} ${className}`}
     >
@@ -166,7 +166,7 @@ export function SceneTitle({
 }) {
   return (
     <Tag
-      className={`text-balance text-[clamp(2.75rem,7vw,5rem)] font-extrabold leading-[0.9] tracking-tighter ${className}`}
+      className={`text-balance text-[clamp(2.25rem,7vw,5rem)] font-extrabold leading-[0.94] tracking-tighter ${className}`}
     >
       {children}
     </Tag>

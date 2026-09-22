@@ -101,10 +101,13 @@ const SECTIONS: Array<{ k: string; title: string; body: React.ReactNode }> = [
 
 function Privacy() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-obsidian text-silver">
+    <div className="public-page">
+      <a href="#main" className="sr-only focus:not-sr-only focus:skip-link">
+        Skip to content
+      </a>
       <Nav />
 
-      <main id="main" className="px-6 pb-24 pt-32">
+      <main id="main" className="app-gutter public-main">
         <header className="mx-auto max-w-3xl">
           <div className="mb-6 font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
             Protocol / Privacy
@@ -156,7 +159,7 @@ function Privacy() {
         </div>
       </main>
 
-      <footer className="border-t border-white/5 px-6 py-12">
+      <footer className="app-gutter border-t border-white/5 py-12 safe-bottom">
         <div className="mx-auto max-w-7xl text-center font-mono text-[10px] uppercase tracking-[0.5em] text-muted-foreground">
           Non-digital space is a human right.
         </div>

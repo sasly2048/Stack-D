@@ -25,10 +25,11 @@ import { useXpSync, XP_DERIVED_QUERY_KEYS } from "@/lib/xp-sync";
 import { OfflineBanner } from "@/components/offline-banner";
 import { SessionCeremony } from "@/components/session-ceremony";
 import { siteUrl, SOCIAL_PROFILES, X_HANDLE } from "@/lib/site";
+import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-obsidian px-4 text-silver">
+    <div className="app-gutter flex min-h-screen items-center justify-center bg-obsidian py-12 text-silver safe-y">
       <div className="max-w-md text-center">
         <div className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-6">
           ERR / 404 / PATH_NOT_FOUND
@@ -38,19 +39,17 @@ function NotFoundComponent() {
         {/* Two ways out, not one: someone who mistyped a room code wants to go
             back, not to the marketing page. */}
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            to="/"
-            className="inline-block cursor-pointer rounded-lg bg-silver px-8 py-3 font-mono text-xs font-bold uppercase tracking-widest text-obsidian transition-all duration-200 ease-[var(--ease-ritual)] hover:invert active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
-          >
-            Return to Origin
-          </Link>
-          <button
+          <Button asChild className="w-full px-8 font-mono text-xs font-bold uppercase tracking-widest sm:w-auto">
+            <Link to="/">Return to Origin</Link>
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => window.history.back()}
-            className="inline-block cursor-pointer rounded-lg border border-silver/20 px-8 py-3 font-mono text-xs uppercase tracking-widest text-silver transition-all duration-200 ease-[var(--ease-ritual)] hover:bg-white/5 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+            className="w-full px-8 font-mono text-xs uppercase tracking-widest sm:w-auto"
           >
             Go Back
-          </button>
+          </Button>
         </div>
       </div>
     </div>
