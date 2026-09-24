@@ -91,7 +91,7 @@ export const listBlocks = createServerFn({ method: "GET" })
       const ids = (blocks ?? []).map((b) => b.blocked_id);
       if (ids.length === 0) return { rows: [] };
       const { data: profs } = await context.supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id,display_name")
         .in("id", ids);
       const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));

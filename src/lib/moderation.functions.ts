@@ -42,7 +42,7 @@ export const listRoomReports = createServerFn({ method: "GET" })
     }
     const { data: profs } = profileIds.size
       ? await context.supabase
-          .from("profiles")
+          .from("public_profiles")
           .select("id, display_name")
           .in("id", [...profileIds])
       : { data: [] };

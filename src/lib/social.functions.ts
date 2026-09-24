@@ -31,7 +31,7 @@ export const listFeed = createServerFn({ method: "GET" })
     let profs: Record<string, { display_name: string | null; avatar_url: string | null }> = {};
     if (ids.length) {
       const { data: p } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, display_name, avatar_url")
         .in("id", ids);
       profs = Object.fromEntries((p ?? []).map((r) => [r.id, r]));
@@ -87,7 +87,7 @@ export const friendsPresence = createServerFn({ method: "GET" })
 
     const [{ data: profs }, { data: activeParts }] = await Promise.all([
       supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, display_name, avatar_url, lifetime_xp, current_focus_streak, last_active_at")
         .in("id", friendIds),
       supabase

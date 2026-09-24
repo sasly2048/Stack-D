@@ -216,7 +216,7 @@ export const listRoomModerators = createServerFn({ method: "POST" })
     let profileMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
     if (ids.length) {
       const { data: profs } = await context.supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, display_name, avatar_url")
         .in("id", ids);
       profileMap = new Map(

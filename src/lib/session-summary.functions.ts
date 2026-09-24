@@ -81,7 +81,7 @@ export const getSessionSummary = createServerFn({ method: "POST" })
     // Rank = number of profiles strictly ahead + 1, before and after this session.
     const countAhead = async (xp: number) => {
       const { count } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id", { count: "exact", head: true })
         .gt("lifetime_xp", xp);
       return (count ?? 0) + 1;
@@ -144,7 +144,7 @@ export const getSessionSummary = createServerFn({ method: "POST" })
       }
       if (seen.size) {
         const { data: profs } = await supabase
-          .from("profiles")
+          .from("public_profiles")
           .select("id, display_name, avatar_url")
           .in("id", [...seen.keys()]);
         friendsFinished = (profs ?? []).map((p) => ({

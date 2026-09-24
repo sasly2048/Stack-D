@@ -36,7 +36,7 @@ export const listFriends = createServerFn({ method: "GET" })
     let profiles: Record<string, { display_name: string | null; avatar_url: string | null }> = {};
     if (otherIds.length) {
       const { data: profs } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, display_name, avatar_url")
         .in("id", otherIds);
       profiles = Object.fromEntries((profs ?? []).map((p) => [p.id, p]));
@@ -66,7 +66,7 @@ export const searchPeople = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: rows, error } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, display_name, avatar_url")
       .ilike("display_name", `%${data.q}%`)
       .neq("id", userId)
