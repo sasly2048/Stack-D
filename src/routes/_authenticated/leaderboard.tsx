@@ -58,7 +58,7 @@ function Leaderboard() {
       const [{ data: people, error: peopleErr }, { data: grps, error: grpsErr }] =
         await Promise.all([
           supabase
-            .from("profiles")
+            .from("public_profiles")
             .select("id, display_name, avatar_url, lifetime_xp, current_focus_streak")
             .order("lifetime_xp", { ascending: false })
             .limit(100),

@@ -69,10 +69,10 @@ export const getWrapped = createServerFn({ method: "GET" })
 
     const lifetimeXp = (prof?.lifetime_xp as number) ?? 0;
     const { count: total } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id", { count: "exact", head: true });
     const { count: below } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id", { count: "exact", head: true })
       .lt("lifetime_xp", lifetimeXp);
     const percentile = total ? Math.round(((below ?? 0) / total) * 100) : 0;

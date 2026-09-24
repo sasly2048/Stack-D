@@ -35,7 +35,7 @@ export const listPartners = createServerFn({ method: "GET" })
       new Set(rows.map((r) => (r.mentor_id === context.userId ? r.mentee_id : r.mentor_id))),
     );
     const { data: profs } = await context.supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id,display_name,avatar_url")
       .in("id", partnerIds);
     const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
