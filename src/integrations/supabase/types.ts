@@ -925,6 +925,63 @@ export type Database = {
         }
         Relationships: []
       }
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          banner_gradient: string | null
+          banner_url: string | null
+          best_streak: number
+          bio: string | null
+          created_at: string
+          current_focus_streak: number
+          display_name: string
+          id: string
+          last_active_at: string | null
+          lifetime_xp: number
+          pinned_showcase: Json
+          prestige_level: number
+          title: string | null
+          total_focus_seconds: number
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          banner_gradient?: string | null
+          banner_url?: string | null
+          best_streak?: number
+          bio?: string | null
+          created_at: string
+          current_focus_streak?: number
+          display_name: string
+          id: string
+          last_active_at?: string | null
+          lifetime_xp?: number
+          pinned_showcase?: Json
+          prestige_level?: number
+          title?: string | null
+          total_focus_seconds?: number
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          banner_gradient?: string | null
+          banner_url?: string | null
+          best_streak?: number
+          bio?: string | null
+          created_at?: string
+          current_focus_streak?: number
+          display_name?: string
+          id?: string
+          last_active_at?: string | null
+          lifetime_xp?: number
+          pinned_showcase?: Json
+          prestige_level?: number
+          title?: string | null
+          total_focus_seconds?: number
+          username?: string | null
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           hits: string[]
