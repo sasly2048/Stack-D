@@ -106,10 +106,10 @@ function IntegrationsPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-5xl mx-auto px-6 pt-28 pb-24 space-y-12">
-        <header>
-          <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Ecosystem</p>
-          <h1 className="mt-3 text-4xl md:text-6xl font-serif">Integrations</h1>
+      <main className="app-page max-w-5xl space-y-12">
+        <header className="page-heading">
+          <p className="ritual-label text-ember">Ecosystem</p>
+          <h1 className="page-title font-serif">Integrations</h1>
           <p className="mt-3 text-silver-dim max-w-xl">
             Stack'd is a small, well-behaved neighbor. Wire it into the tools you already use.
           </p>
