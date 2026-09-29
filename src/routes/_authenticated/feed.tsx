@@ -63,11 +63,11 @@ function FeedPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-5xl mx-auto px-6 pt-28 pb-24 grid gap-10 md:grid-cols-[1fr_260px]">
+      <main className="app-page grid max-w-5xl gap-10 md:grid-cols-[minmax(0,1fr)_260px]">
         <section className="space-y-6">
-          <header>
-            <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Signal</p>
-            <h1 className="mt-3 text-4xl md:text-5xl font-serif">Feed</h1>
+          <header className="page-heading">
+            <p className="ritual-label text-ember">Signal</p>
+            <h1 className="page-title font-serif">Feed</h1>
           </header>
           {/* Loading is checked before emptiness. This screen used to render
               "No signal yet" during the very first fetch, so an active circle

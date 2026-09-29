@@ -105,12 +105,12 @@ function PartnersPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-3xl mx-auto px-6 pt-28 pb-24 space-y-10">
-        <header>
-          <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">
+      <main className="app-page max-w-3xl space-y-10">
+        <header className="page-heading">
+          <p className="ritual-label text-ember">
             Accountability
           </p>
-          <h1 className="mt-3 text-4xl md:text-5xl font-serif">Partners</h1>
+          <h1 className="page-title font-serif">Partners</h1>
           <p className="mt-3 text-silver-dim max-w-lg">
             Pair with a mentor or mentee. Keep each other honest.
           </p>

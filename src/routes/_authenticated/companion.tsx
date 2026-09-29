@@ -64,9 +64,9 @@ function CompanionPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver flex flex-col">
       <Nav />
-      <div className="pt-24 flex-1 max-w-3xl w-full mx-auto px-6 pb-6 flex flex-col">
+      <main className="app-page flex max-w-3xl flex-1 flex-col !pb-6">
         <div className="mb-4">
-          <h1 className="text-3xl font-serif">Study Companion</h1>
+          <h1 className="page-title font-serif">Study Companion</h1>
           <p className="text-xs text-muted-foreground font-mono mt-1">
             Private coach · reads your protocol · never leaves your account
           </p>
@@ -143,7 +143,7 @@ function CompanionPage() {
             {busy ? "…" : "Send"}
           </button>
         </form>
-      </div>
+      </main>
     </div>
   );
 }
