@@ -139,6 +139,28 @@ class ProgressionRepository(private val client: SupabaseClient) {
             },
         ).decodeList()
 
+    /**
+     * The caller's own standing when they're outside the top-N board (web
+     * getActiveSeason fallback): own-row select for XP + `my_season_rank`.
+     * Null when not enrolled.
+     */
+    suspend fun myStanding(seasonId: String, userId: String): SeasonStanding? {
+        val row = client.postgrest.from("season_participants")
+            .select(Columns.list("user_id", "xp")) {
+                filter {
+                    eq("season_id", seasonId)
+                    eq("user_id", userId)
+                }
+            }
+            .decodeList<SeasonStanding>()
+            .firstOrNull() ?: return null
+        val rank = client.postgrest.rpc(
+            "my_season_rank",
+            buildJsonObject { put("_season_id", seasonId) },
+        ).data.trim().toIntOrNull() ?: 0
+        return row.copy(rank = rank)
+    }
+
     suspend fun joinSeason(seasonId: String) {
         client.postgrest.rpc(
             "join_season",

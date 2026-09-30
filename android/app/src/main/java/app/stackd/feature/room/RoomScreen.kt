@@ -163,6 +163,7 @@ fun RoomRoute(
             onAddSchedule = vm::addScheduledEvent,
             onSaveSessionMeta = vm::saveSessionMeta,
             onInteraction = vm::onInteraction,
+            onRequestJoin = vm::requestJoin,
         )
         SnackbarHost(
             hostState = snackbarHost,
@@ -176,6 +177,56 @@ fun RoomRoute(
                 SessionCeremony(summary = summary, onContinue = vm::dismissCeremony)
             }
         }
+    }
+}
+
+/** Approval-room gate — web JoinRequestGate. */
+@Composable
+private fun JoinGate(gate: String, onRequest: (String) -> Unit, onExit: () -> Unit) {
+    val colors = Stackd.colors
+    var note by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    Column(Modifier.fillMaxWidth()) {
+        Text("APPROVAL REQUIRED", style = MonoLabel, color = colors.textMuted)
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "This room is invite-by-request.",
+            style = MaterialTheme.typography.headlineSmall,
+            color = colors.textPrimary,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(8.dp))
+        when (gate) {
+            "pending" -> Text(
+                "Request sent. You'll enter automatically once the host approves.",
+                style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+            )
+            "denied" -> Text(
+                "The host declined this request.",
+                style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+            )
+            else -> {
+                Text("Ask the host to let you in.", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                Spacer(Modifier.height(16.dp))
+                app.stackd.core.ui.StackdField(
+                    label = "Note for the host",
+                    value = note,
+                    onValueChange = { note = it.take(280) },
+                    placeholder = "Optional",
+                )
+                Spacer(Modifier.height(16.dp))
+                app.stackd.core.ui.EmberButton(
+                    text = if (gate == "sending") "Sending…" else "Request to join",
+                    onClick = { onRequest(note) },
+                    enabled = gate != "sending",
+                )
+                if (gate == "failed") {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Couldn't send the request. Try again.", style = MonoLabelSmall, color = colors.breach)
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        app.stackd.core.ui.GhostButton(text = "Back", onClick = onExit)
     }
 }
 
@@ -195,6 +246,7 @@ fun RoomScreen(
     onAddSchedule: (String, String, Int) -> Unit = { _, _, _ -> },
     onSaveSessionMeta: (String, String) -> Unit = { _, _ -> },
     onInteraction: () -> Unit = {},
+    onRequestJoin: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -219,7 +271,11 @@ fun RoomScreen(
 
         when (state.phase) {
             RoomPhase.LOADING -> Loading()
-            RoomPhase.ERROR -> ErrorBanner(state.error ?: "Something went wrong.", onRetry = onExit)
+            RoomPhase.ERROR -> if (state.joinGate != null) {
+                JoinGate(state.joinGate, onRequestJoin, onExit)
+            } else {
+                ErrorBanner(state.error ?: "Something went wrong.", onRetry = onExit)
+            }
             RoomPhase.LOBBY -> Lobby(
                 state, onStart, onAbort, onExit, onToggleReady, onRespondJoin,
                 onSaveMeta, onAddSchedule,

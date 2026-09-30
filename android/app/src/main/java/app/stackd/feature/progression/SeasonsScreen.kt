@@ -54,8 +54,10 @@ data class SeasonsUiState(
     val standings: List<SeasonStanding> = emptyList(),
     val joining: Boolean = false,
     val meId: String? = null,
+    /** Own standing when ranked below the top-50 board. */
+    val outside: SeasonStanding? = null,
 ) {
-    val mine: SeasonStanding? get() = standings.firstOrNull { it.userId == meId }
+    val mine: SeasonStanding? get() = standings.firstOrNull { it.userId == meId } ?: outside
 }
 
 /** Seasonal competition — web's `seasons.tsx` over `getActiveSeason`. */
@@ -83,14 +85,19 @@ class SeasonsViewModel(private val container: AppContainer) : ViewModel() {
                 val standings = season?.let {
                     runCatching { container.progression.standings(it.id) }.getOrDefault(emptyList())
                 } ?: emptyList()
-                season to standings
+                val me = container.auth.currentUserId
+                val outside = if (season != null && me != null && standings.none { it.userId == me }) {
+                    runCatching { container.progression.myStanding(season.id, me) }.getOrNull()
+                } else null
+                Triple(season, standings, outside)
             }.fold(
-                onSuccess = { (season, standings) ->
+                onSuccess = { (season, standings, outside) ->
                     val fresh = SeasonsUiState(
                         loading = false,
                         season = season,
                         standings = standings,
                         meId = container.auth.currentUserId,
+                        outside = outside,
                     )
                     _state.value = fresh
                     container.cache.put(cacheKey, fresh)

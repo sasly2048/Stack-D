@@ -40,6 +40,11 @@ enum class ConnectionState { CONNECTING, LIVE, RECONNECTING }
 data class RoomUiState(
     val phase: RoomPhase = RoomPhase.LOADING,
     val error: String? = null,
+    /**
+     * Approval-room gate (phase ERROR): "needs" | "sending" | "pending" |
+     * "denied" | "failed". Null when the error isn't a join-approval block.
+     */
+    val joinGate: String? = null,
     val room: RoomRow? = null,
     val participants: List<ParticipantRow> = emptyList(),
     val breaks: List<BreakRow> = emptyList(),
@@ -176,6 +181,42 @@ class RoomViewModel(
         enter()
     }
 
+    /**
+     * Approval rooms: file the request, then poll the same idempotent RPC until
+     * the host answers. Approval makes claim_room_seat succeed, so re-enter.
+     */
+    fun requestJoin(message: String) {
+        if (_state.value.joinGate != "needs" && _state.value.joinGate != "failed") return
+        _state.value = _state.value.copy(joinGate = "sending")
+        viewModelScope.launch {
+            var first = true
+            while (true) {
+                val status = runCatching { rooms.requestRoomJoin(code, message.takeIf { first }) }
+                    .getOrNull()
+                when (status) {
+                    "approved", "open" -> {
+                        _state.value = _state.value.copy(phase = RoomPhase.LOADING, joinGate = null)
+                        enter()
+                        return@launch
+                    }
+                    "pending" -> _state.value = _state.value.copy(joinGate = "pending")
+                    "denied" -> {
+                        _state.value = _state.value.copy(joinGate = "denied")
+                        return@launch
+                    }
+                    else -> if (first) {
+                        _state.value = _state.value.copy(joinGate = "failed")
+                        return@launch
+                    }
+                }
+                first = false
+                // ponytail: 10s poll; realtime on the caller's request row if
+                // hosts expect instant entry. Stops with viewModelScope.
+                kotlinx.coroutines.delay(10_000)
+            }
+        }
+    }
+
     private fun enter() {
         viewModelScope.launch {
             mode = if (container.settings.enforcementMode.first() == EnforcementMode.GENTLE.wire) {
@@ -198,6 +239,10 @@ class RoomViewModel(
                 // claim_room_seat raises named errors; map the ones a user can
                 // act on to real copy instead of a generic "not found".
                 val raw = claim.exceptionOrNull()?.message ?: ""
+                if ("needs_approval" in raw) {
+                    _state.value = _state.value.copy(phase = RoomPhase.ERROR, joinGate = "needs")
+                    return@launch
+                }
                 val message = when {
                     "needs_approval" in raw ->
                         "This room requires the host's approval to join. Ask the host to approve your request."

@@ -81,6 +81,9 @@ fun PresenceRoster(state: RoomUiState, onToggleReady: () -> Unit) {
     val colors = Stackd.colors
     val now = System.currentTimeMillis()
     val openProfile = LocalOpenProfile.current
+    // Leaving the room mid-session would abandon the stack; profiles open
+    // only from the lobby or the recap.
+    val canOpen = state.phase == RoomPhase.LOBBY || state.phase == RoomPhase.ENDED
     Panel {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -96,7 +99,7 @@ fun PresenceRoster(state: RoomUiState, onToggleReady: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
-                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { openProfile(p.userId) },
+                    .clickable(enabled = canOpen, role = androidx.compose.ui.semantics.Role.Button) { openProfile(p.userId) },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {

@@ -40,6 +40,20 @@ class RoomRepository(private val client: SupabaseClient) {
             parameters = buildJsonObject { put("_code", code.uppercase()) },
         ).decodeAsOrNull<RoomRow>()
 
+    /**
+     * Files (or re-reads) a join request for a 'request' room — web
+     * requestToJoinRoom. Definer RPC because the room row is invisible to a
+     * non-member. Returns "open" | "pending" | "approved" | "denied".
+     */
+    suspend fun requestRoomJoin(code: String, message: String? = null): String =
+        client.postgrest.rpc(
+            function = "request_room_join",
+            parameters = buildJsonObject {
+                put("_code", code.uppercase())
+                put("_message", message?.takeIf { it.isNotBlank() })
+            },
+        ).decodeAs<String>()
+
     suspend fun getRoom(roomId: String): RoomRow? =
         client.postgrest.from("rooms")
             .select { filter { eq("id", roomId) } }
