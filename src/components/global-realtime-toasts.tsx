@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { haptic } from "@/lib/haptics";
+import { feedback } from "@/lib/feedback";
 import { copy } from "@/lib/copy";
 
 interface ActivityEvent {
@@ -38,25 +38,25 @@ export function GlobalRealtimeToasts() {
             const evt = payload.new as ActivityEvent;
             switch (evt.kind) {
               case "achievement_unlock":
-                haptic("success");
+                feedback("achievement");
                 toast.success("🏅 Achievement unlocked", {
                   description: String(evt.payload.id ?? ""),
                   id: evt.id,
                 });
                 break;
               case "challenge_complete":
-                haptic("success");
+                feedback("achievement");
                 toast.success("🎯 Challenge complete", {
                   description: `${evt.payload.name ?? ""} · +${evt.payload.xp ?? 0} XP`,
                   id: evt.id,
                 });
                 break;
               case "friend_add":
-                haptic("select");
+                feedback("notify");
                 toast(`🤝 ${copy.realtime.friendAdded}`, { id: evt.id });
                 break;
               case "session_complete":
-                haptic("select");
+                feedback("success");
                 toast(`✅ ${copy.realtime.sessionComplete(Number(evt.payload.xp ?? 0))}`, {
                   id: evt.id,
                 });

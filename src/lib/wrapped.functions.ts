@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { fetchMyPrivateProfile } from "./private-profile.server";
 
 export interface WrappedStats {
   year: number;
@@ -60,16 +61,18 @@ export const getWrapped = createServerFn({ method: "GET" })
 
     const { data: prof } = await supabase
       .from("profiles")
-      .select("display_name, lifetime_xp, best_streak, productivity_dna")
+      .select("display_name, lifetime_xp, best_streak")
       .eq("id", userId)
       .maybeSingle();
 
+    const privateProfile = await fetchMyPrivateProfile(supabase);
+
     const lifetimeXp = (prof?.lifetime_xp as number) ?? 0;
     const { count: total } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id", { count: "exact", head: true });
     const { count: below } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id", { count: "exact", head: true })
       .lt("lifetime_xp", lifetimeXp);
     const percentile = total ? Math.round(((below ?? 0) / total) * 100) : 0;
@@ -106,7 +109,7 @@ export const getWrapped = createServerFn({ method: "GET" })
       peakHour: hours.indexOf(Math.max(...hours)),
       perfectSessions: hist.filter((r) => (r.breaches_count as number) === 0).length,
       flowSessions: hist.filter((r) => (r.score as number) >= 95).length,
-      personality: (prof?.productivity_dna as string) ?? null,
+      personality: privateProfile?.productivity_dna ?? null,
       percentile,
       topCollaborator,
       monthly: monthly.map((h, i) => ({ month: MONTHS[i], hours: Math.round(h * 10) / 10 })),

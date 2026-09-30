@@ -116,10 +116,10 @@ function FriendsPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-4xl mx-auto px-6 pt-28 pb-24 space-y-12">
-        <header>
-          <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Circle · 01</p>
-          <h1 className="mt-3 text-4xl md:text-5xl font-serif">Friends</h1>
+      <main className="app-page max-w-4xl space-y-12">
+        <header className="page-heading">
+          <p className="ritual-label text-ember">Circle · 01</p>
+          <h1 className="page-title font-serif">Friends</h1>
           <p className="mt-3 text-silver-dim max-w-lg">
             Presence is quieter with witnesses. Curate a small, deliberate circle.
           </p>

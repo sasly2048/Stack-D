@@ -7,25 +7,29 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { RouteErrorBoundary } from "@/components/route-error-boundary";
+import { clearStaleChunkFlag } from "@/lib/error-recovery";
 import { supabase } from "@/integrations/supabase/client";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { CommandPalette } from "@/components/command-palette";
 import { FloatingTimer } from "@/components/floating-timer";
 import { GlobalRealtimeToasts } from "@/components/global-realtime-toasts";
+import { CelebrationHost } from "@/components/premium/celebration-host";
+import { primeAudio } from "@/lib/sfx";
 import { QueueBadge } from "@/components/queue-badge";
 import { useXpSync, XP_DERIVED_QUERY_KEYS } from "@/lib/xp-sync";
 import { OfflineBanner } from "@/components/offline-banner";
 import { SessionCeremony } from "@/components/session-ceremony";
 import { siteUrl, SOCIAL_PROFILES, X_HANDLE } from "@/lib/site";
+import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-obsidian px-4 text-silver">
+    <div className="app-gutter flex min-h-screen items-center justify-center bg-obsidian py-12 text-silver safe-y">
       <div className="max-w-md text-center">
         <div className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-6">
           ERR / 404 / PATH_NOT_FOUND
@@ -35,19 +39,17 @@ function NotFoundComponent() {
         {/* Two ways out, not one: someone who mistyped a room code wants to go
             back, not to the marketing page. */}
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            to="/"
-            className="inline-block cursor-pointer rounded-lg bg-silver px-8 py-3 font-mono text-xs font-bold uppercase tracking-widest text-obsidian transition-all duration-200 ease-[var(--ease-ritual)] hover:invert active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
-          >
-            Return to Origin
-          </Link>
-          <button
+          <Button asChild className="w-full px-8 font-mono text-xs font-bold uppercase tracking-widest sm:w-auto">
+            <Link to="/">Return to Origin</Link>
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => window.history.back()}
-            className="inline-block cursor-pointer rounded-lg border border-silver/20 px-8 py-3 font-mono text-xs uppercase tracking-widest text-silver transition-all duration-200 ease-[var(--ease-ritual)] hover:bg-white/5 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+            className="w-full px-8 font-mono text-xs uppercase tracking-widest sm:w-auto"
           >
             Go Back
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -55,41 +57,7 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-obsidian px-4 text-silver">
-      <div className="max-w-md text-center">
-        <div className="font-mono text-[10px] tracking-[0.3em] text-breach uppercase mb-6">
-          RUNTIME_EXCEPTION
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">Session interrupted</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {error.message || "Something went off-protocol."}
-        </p>
-        <div className="mt-8 flex gap-3 justify-center">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="bg-silver text-obsidian px-6 py-2.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all"
-          >
-            Retry
-          </button>
-          <a
-            href="/"
-            className="border border-silver/20 px-6 py-2.5 rounded-lg font-mono text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
-          >
-            Origin
-          </a>
-        </div>
-      </div>
-    </div>
-  );
+  return <RouteErrorBoundary error={error} reset={reset} />;
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -203,8 +171,24 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+// Fallback QueryClient. During hydration or an aborted route transition,
+// Route.useRouteContext() can briefly return a context whose queryClient is
+// undefined — passing client={undefined} to QueryClientProvider throws
+// "Cannot read properties of undefined (reading 'mount')" and, intermittently
+// on refresh, escalates to the route error boundary. A stable module-level
+// fallback guarantees the provider always gets a real client.
+let fallbackQueryClient: QueryClient | null = null;
+function getFallbackQueryClient(): QueryClient {
+  fallbackQueryClient ??= new QueryClient();
+  return fallbackQueryClient;
+}
+
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+  const ctx = Route.useRouteContext();
+  const queryClient = useMemo(
+    () => ctx?.queryClient ?? getFallbackQueryClient(),
+    [ctx?.queryClient],
+  );
   const router = useRouter();
 
   // One subscriber for every XP-derived surface. Screens used to opt in
@@ -217,6 +201,20 @@ function RootComponent() {
       queryClient.invalidateQueries({ queryKey: [key] });
     }
   });
+
+  // The app booted, so whatever chunk was stale is no longer stale: re-arm the
+  // one-shot reload for the next deploy.
+  useEffect(() => {
+    clearStaleChunkFlag();
+  }, []);
+
+  // Arm the audio unlock from app start so UI sound effects (which often fire
+  // programmatically, not from a direct click) can play after the user's first
+  // interaction. Must be eager — installing it lazily on the first sound would
+  // miss that first gesture.
+  useEffect(() => {
+    primeAudio();
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
@@ -298,6 +296,7 @@ function RootComponent() {
       <QueueBadge />
       <OfflineBanner />
       <SessionCeremony />
+      <CelebrationHost />
       <Toaster
         theme="dark"
         position="top-center"

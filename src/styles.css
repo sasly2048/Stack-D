@@ -40,6 +40,11 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
 
+  /* Shared surface geometry. Pages may vary in density, but equivalent
+     controls and panels should always feel cut from the same system. */
+  --shadow-panel: 0 18px 60px -32px color-mix(in oklab, var(--color-obsidian) 86%, transparent);
+  --shadow-overlay: 0 24px 80px -24px color-mix(in oklab, var(--color-obsidian) 92%, transparent);
+
   /* ============================================================
      Spacing scale — 4px baseline. Use across mobile/tablet/desktop
      so section rhythm stays proportional at every breakpoint.
@@ -55,6 +60,26 @@
   --space-16: 4rem; /* 64px */
   --space-20: 5rem; /* 80px */
   --space-24: 6rem; /* 96px */
+
+  /* Layout and type measures. These are intentionally fewer than the route
+     max-widths: screens choose density, while gutters and readable copy stay
+     consistent. */
+  --page-gutter: clamp(1rem, 3vw, 2rem);
+  --page-nav-clearance: calc(clamp(5.5rem, 9vh, 7rem) + env(safe-area-inset-top));
+  --page-bottom-clearance: clamp(4rem, 8vh, 6rem);
+  --measure-copy: 65ch;
+  --measure-narrow: 48ch;
+  --control-height: 2.75rem;
+  --control-height-sm: 2.25rem;
+  --control-height-lg: 3rem;
+  --overlay-gutter: 1rem;
+  --z-nav: 50;
+  --z-status: 60;
+  --z-overlay: 70;
+  --z-dialog: 71;
+  --z-popover: 72;
+  --z-critical: 80;
+  --z-ceremony: 100;
 
   /* Dot indicator — the ember period after "luxury", live nodes,
      status dots. One source of truth so mobile/tablet/desktop
@@ -291,6 +316,46 @@
     transform: scale(1.15);
   }
 }
+/* Pro celebration — a single ember scan line crossing the viewport once. */
+@keyframes pro-scan {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+/* Elite celebration — ignition flash: a bright bloom that fades fast. */
+@keyframes elite-ignite {
+  0% {
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, transparent 40%);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    background: radial-gradient(circle at center, rgba(255, 196, 138, 0) 0%, transparent 60%);
+    opacity: 0;
+  }
+}
+/* Elite crest wordmark shimmer sweep. */
+@keyframes elite-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
 @keyframes ripple-pulse {
   0% {
     transform: scale(0.85);
@@ -468,6 +533,162 @@
   .animate-pulse {
     animation: none;
   }
+}
+
+/* Fluid vertical padding for full-height landing sections. Fixed pt-36/pb-28
+   (144/112px) left large empty bands on shorter viewports (e.g. a ~800px-tall
+   MacBook) while looking right on a tall desktop. clamp() scales the padding
+   with the viewport so every height feels intentional: tighter on laptops,
+   more generous on large screens — never a marooned block of centered text. */
+@utility scene-pad-y {
+  padding-top: clamp(6rem, 10vh, 9rem);
+  padding-bottom: clamp(5rem, 7vh, 7rem);
+}
+@utility scene-pad-y-compact {
+  padding-top: clamp(5.5rem, 8vh, 8rem);
+  padding-bottom: clamp(2rem, 4vh, 2.5rem);
+}
+
+/* Top padding that clears the fixed 64px nav (+ its safe-area inset) with a
+   little breathing room, scaling down on short viewports. Replaces scattered
+   fixed pt-24/28/32 (96/112/128px) that wasted ~a quarter of the height on
+   short screens like a foldable's flip cover (~748px tall). Floor keeps clear
+   of the nav; the vh term adds proportional breathing space on taller screens. */
+@utility pt-nav {
+  padding-top: calc(clamp(5.25rem, 8vh, 8rem) + env(safe-area-inset-top));
+}
+
+/* Product-page foundations. Keeping these as utilities lets focused and
+   data-dense routes choose their own max-width without drifting on gutters,
+   nav clearance, or vertical rhythm. */
+@utility app-page {
+  width: 100%;
+  margin-inline: auto;
+  min-width: 0;
+  padding-top: var(--page-nav-clearance);
+  padding-right: var(--page-gutter);
+  padding-bottom: var(--page-bottom-clearance);
+  padding-left: var(--page-gutter);
+}
+
+@utility app-gutter {
+  padding-right: var(--page-gutter);
+  padding-left: var(--page-gutter);
+}
+
+@utility page-title {
+  font-size: clamp(2.25rem, 7vw, 3.75rem);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+@utility page-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: clamp(2rem, 5vw, 3rem);
+}
+
+@utility page-copy {
+  max-width: var(--measure-copy);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-muted-foreground);
+}
+
+@utility page-copy-narrow {
+  max-width: var(--measure-narrow);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-muted-foreground);
+}
+
+@utility section-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: clamp(1.5rem, 4vw, 2rem);
+}
+
+@utility action-row {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  @media (min-width: 40rem) {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+@utility ritual-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  line-height: 1.5;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+@utility public-page {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: var(--color-obsidian);
+  color: var(--color-silver);
+}
+
+@utility public-main {
+  padding-top: var(--page-nav-clearance);
+  padding-bottom: calc(var(--page-bottom-clearance) + env(safe-area-inset-bottom));
+}
+
+@utility auth-input {
+  width: 100%;
+  min-height: var(--control-height-lg);
+  border: 1px solid var(--color-input);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--color-silver) 5%, transparent);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-silver);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  outline: none;
+  transition:
+    border-color 0.25s var(--ease-ritual),
+    box-shadow 0.25s var(--ease-ritual),
+    background-color 0.25s var(--ease-ritual);
+  &:focus-visible {
+    border-color: color-mix(in oklab, var(--color-ember) 60%, transparent);
+    background: color-mix(in oklab, var(--color-silver) 7%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-ember) 8%, transparent);
+  }
+  &[aria-invalid="true"] {
+    border-color: color-mix(in oklab, var(--color-breach) 65%, transparent);
+  }
+}
+
+@utility skip-link {
+  position: fixed;
+  top: calc(var(--space-2) + env(safe-area-inset-top));
+  left: calc(var(--space-2) + env(safe-area-inset-left));
+  z-index: var(--z-critical);
+  border-radius: var(--radius-md);
+  background: var(--color-ember);
+  color: var(--color-obsidian);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+@utility panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--color-card) 78%, transparent);
+  box-shadow: var(--shadow-panel);
 }
 
 @utility animate-breathing {
@@ -666,6 +887,19 @@
     /* Reserve room for hardware cutouts at the page edges. */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+    min-width: 0;
+    overflow-x: clip;
+  }
+  h1,
+  h2,
+  h3 {
+    line-height: 1.15;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  p {
+    line-height: 1.6;
+    overflow-wrap: break-word;
   }
   ::selection {
     background: var(--color-ember);

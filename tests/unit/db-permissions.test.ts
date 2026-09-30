@@ -87,8 +87,10 @@ describe("SECURITY DEFINER permission hygiene", () => {
   it("never grants a privileged function directly to anon", () => {
     // GRANT ... TO anon on a SECURITY DEFINER routine hands unauthenticated
     // callers owner-level rights. There is no legitimate use here.
+    // Constrain the span to a single statement ([^;]) so a GRANT can't
+    // "reach" into a following comment/statement that merely contains "anon".
     const grantsToAnon = allSql.match(
-      /GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.[a-z0-9_]+[\s\S]{0,200}?TO\s+[^;]*\banon\b/gi,
+      /GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.[a-z0-9_]+[^;]{0,200}?TO\s+[^;]*\banon\b/gi,
     );
     expect(grantsToAnon).toBeNull();
   });

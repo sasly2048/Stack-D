@@ -70,13 +70,13 @@ function ReplayPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <div ref={swipeRef} className="pt-24 max-w-3xl mx-auto px-6 pb-24">
+      <main ref={swipeRef} className="app-page max-w-3xl">
         <h1 className="text-3xl font-serif mb-2">Focus Replay</h1>
         <p className="text-sm text-muted-foreground mb-6">
           Scrub through any day. Swipe left/right on mobile to change days.
         </p>
 
-        <div className="flex items-center gap-3 mb-6">
+        <div className="mb-6 grid grid-cols-2 gap-2 min-[400px]:grid-cols-[auto_minmax(0,1fr)_auto] sm:flex sm:items-center sm:gap-3">
           <button
             onClick={() => shift(-1)}
             className="text-xs font-mono px-3 py-2 border border-white/10 rounded-md hover:border-ember/40"
@@ -87,7 +87,7 @@ function ReplayPage() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm"
+            className="min-w-0 bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm max-[399px]:col-span-2 max-[399px]:row-start-1"
           />
           <button
             onClick={() => shift(1)}
@@ -101,7 +101,7 @@ function ReplayPage() {
               if (!playing && cursor >= events.length) setCursor(0);
             }}
             disabled={events.length === 0}
-            className="ml-auto btn-ember px-4 py-2 border border-silver/20 rounded-full text-silver text-xs font-mono uppercase tracking-widest disabled:opacity-50"
+            className="btn-ember col-span-2 border border-silver/20 px-4 py-2 text-xs font-mono uppercase tracking-widest text-silver disabled:opacity-50 min-[400px]:col-span-1 min-[400px]:ml-auto max-[399px]:w-full rounded-full"
           >
             {playing ? "Pause" : cursor >= events.length ? "Replay" : "Play"}
           </button>
@@ -181,7 +181,7 @@ function ReplayPage() {
             ))}
           </ol>
         )}
-      </div>
+      </main>
     </div>
   );
 }

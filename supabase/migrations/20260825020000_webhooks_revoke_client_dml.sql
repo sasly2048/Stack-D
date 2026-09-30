@@ -1,0 +1,21 @@
+-- =========================================================
+-- P1 (Codex #25): webhooks — revoke client INSERT/UPDATE so direct writes
+-- can't bypass server-side SSRF URL validation
+-- =========================================================
+-- createWebhook validates the URL with isPublicHttpUrl() (blocks internal/
+-- metadata hosts), but the table granted INSERT/UPDATE directly to
+-- authenticated with an owner-only RLS policy. So a client could bypass the
+-- server function entirely:
+--     supabase.from('webhooks').insert({ url: 'http://169.254.169.254', ... })
+-- and later trigger a test delivery against an internal host.
+--
+-- Revoke INSERT/UPDATE from clients; creation/toggle now go through the server
+-- functions, which validate then write via the service-role client. SELECT and
+-- DELETE stay client-side (reading and deleting your OWN rows is safe and still
+-- governed by the owner RLS policy).
+--
+-- Idempotent: REVOKE is declarative.
+
+REVOKE INSERT, UPDATE ON public.webhooks FROM authenticated, anon;
+-- SELECT + DELETE remain granted to authenticated (owner RLS still applies).
+-- service_role keeps ALL (the server functions write through it).

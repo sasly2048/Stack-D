@@ -70,27 +70,30 @@ function CodeBlock({ code }: { code: string }) {
 
 function SdkPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-obsidian text-silver">
+    <div className="public-page">
+      <a href="#main" className="sr-only focus:not-sr-only focus:skip-link">
+        Skip to content
+      </a>
       <Nav />
-      <main className="max-w-4xl mx-auto px-6 pt-28 pb-24 space-y-12">
+      <main id="main" className="app-gutter public-main mx-auto max-w-4xl space-y-16">
         <header>
           <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Developers</p>
-          <h1 className="mt-3 text-4xl md:text-6xl font-serif">Stack'd SDK</h1>
-          <p className="mt-3 text-silver-dim max-w-xl">
+          <h1 className="mt-4 text-4xl font-extrabold leading-[1.05] tracking-tighter md:text-6xl">Stack'd SDK</h1>
+          <p className="mt-4 max-w-xl text-silver-dim">
             Tiny, zero-dependency TypeScript client for the Stack'd webhook surface. Runs in Node,
             Deno, Bun, browsers, and edge workers.
           </p>
         </header>
 
         <section>
-          <h2 className="font-serif text-2xl">Install</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Install</h2>
           <div className="mt-4">
             <CodeBlock code={INSTALL} />
           </div>
         </section>
 
         <section>
-          <h2 className="font-serif text-2xl">Verify a webhook</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Verify a webhook</h2>
           <p className="mt-2 text-sm text-silver-dim">
             HMAC-SHA256, timing-safe compare, WebCrypto under the hood.
           </p>
@@ -100,10 +103,10 @@ function SdkPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-2xl">Event types</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Event types</h2>
           <ul className="mt-4 border border-white/10 rounded-md divide-y divide-white/5">
             {EVENTS.map(([name, desc]) => (
-              <li key={name} className="p-4 flex justify-between items-center text-sm">
+              <li key={name} className="flex flex-col items-start gap-1 p-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                 <code className="font-mono text-ember">{name}</code>
                 <span className="text-silver-dim">{desc}</span>
               </li>
@@ -112,7 +115,7 @@ function SdkPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-2xl">Endpoints</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Endpoints</h2>
           <ul className="mt-4 space-y-2 text-sm">
             <li className="border border-white/10 rounded p-3 font-mono text-xs text-silver-dim">
               <span className="text-ember">GET</span> /api/public/health · liveness
@@ -133,6 +136,11 @@ function SdkPage() {
           </p>
         </section>
       </main>
+      <footer className="app-gutter border-t border-white/5 py-12 safe-bottom">
+        <div className="ritual-label mx-auto max-w-7xl text-center text-muted-foreground">
+          Non-digital space is a human right.
+        </div>
+      </footer>
     </div>
   );
 }

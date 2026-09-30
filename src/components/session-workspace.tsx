@@ -8,6 +8,7 @@ import {
   type WorkspaceItem,
 } from "@/lib/session-interactions.functions";
 import { Button } from "@/components/ui/button";
+import { isHttpScheme } from "@/lib/safe-url";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { haptic } from "@/lib/haptics";
@@ -165,7 +166,7 @@ export function SessionWorkspace({ sessionId, roomId }: Props) {
               </span>
             )}
             <div className="flex-1 min-w-0">
-              {i.kind === "link" && i.url ? (
+              {i.kind === "link" && i.url && isHttpScheme(i.url) ? (
                 <a
                   href={i.url}
                   target="_blank"

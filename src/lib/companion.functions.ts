@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** Token-scoped client shared by the web RPC and the public Android route. */
+type AiSupabase = SupabaseClient<Database>;
 
 export type CompanionMessage = { role: "user" | "assistant"; content: string };
 
@@ -9,26 +14,33 @@ const MessageSchema = z.object({
   content: z.string().min(1).max(4000),
 });
 
-export const askCompanion = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
-    z
-      .object({
-        history: z.array(MessageSchema).max(30).default([]),
-        message: z.string().min(1).max(2000),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data, context }): Promise<{ reply: string }> => {
+const CompanionInputSchema = z.object({
+  history: z.array(MessageSchema).max(30).default([]),
+  message: z.string().min(1).max(2000),
+});
+export type CompanionInput = z.infer<typeof CompanionInputSchema>;
+
+/** Coerces raw input; shared by the RPC validator and the public route. */
+export function validateCompanionInput(d: unknown): CompanionInput {
+  return CompanionInputSchema.parse(d);
+}
+
+/** Shared body — web RPC + public route both call this. */
+export async function askCompanionCore(
+  supabase: AiSupabase,
+  userId: string,
+  data: CompanionInput,
+): Promise<{ reply: string }> {
+  {
     // Pull light user context so the coach can reference actual behaviour.
-    const uid = context.userId;
+    const uid = userId;
     const [{ data: profile }, { data: recent }] = await Promise.all([
-      context.supabase
+      supabase
         .from("profiles")
         .select("display_name, lifetime_xp, current_focus_streak")
         .eq("id", uid)
         .maybeSingle(),
-      context.supabase
+      supabase
         .from("focus_history")
         .select("score, tier, duration_seconds, created_at")
         .eq("profile_id", uid)
@@ -69,4 +81,13 @@ export const askCompanion = createServerFn({ method: "POST" })
     });
 
     return { reply: out.reply?.slice(0, 2000) ?? "" };
-  });
+  }
+}
+
+export const askCompanion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(validateCompanionInput)
+  .handler(
+    ({ data, context }): Promise<{ reply: string }> =>
+      askCompanionCore(context.supabase, context.userId, data),
+  );

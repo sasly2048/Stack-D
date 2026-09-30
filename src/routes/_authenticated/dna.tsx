@@ -3,15 +3,24 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
 import { QueryBoundary } from "@/components/query-states";
+import { PremiumGate } from "@/components/premium/premium-gate";
 import { getProductivityDna, type DnaProfile } from "@/lib/dna.functions";
 
 export const Route = createFileRoute("/_authenticated/dna")({
   head: () => ({
     meta: [
       { title: "Productivity DNA — Stack'd" },
-      { name: "description", content: "Your unique focus signature, mapped from every Stack'd session into traits you can actually act on." },
+      {
+        name: "description",
+        content:
+          "Your unique focus signature, mapped from every Stack'd session into traits you can actually act on.",
+      },
       { property: "og:title", content: "Productivity DNA — Stack'd" },
-      { property: "og:description", content: "Your unique focus signature, mapped from every Stack'd session into traits you can actually act on." },
+      {
+        property: "og:description",
+        content:
+          "Your unique focus signature, mapped from every Stack'd session into traits you can actually act on.",
+      },
     ],
   }),
   component: DnaPage,
@@ -32,7 +41,7 @@ function Radar({ traits }: { traits: { label: string; value: number }[] }) {
   const rings = [0.25, 0.5, 0.75, 1];
 
   return (
-    <svg width={size} height={size} className="mx-auto">
+    <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto block h-auto w-full max-w-80" role="img" aria-label="Productivity traits radar chart">
       {rings.map((r) => (
         <polygon
           key={r}
@@ -77,82 +86,88 @@ function Radar({ traits }: { traits: { label: string; value: number }[] }) {
 function DnaPage() {
   const load = useServerFn(getProductivityDna);
 
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const dnaQuery = useQuery({
-    queryKey: ["productivity-dna"],
-    queryFn: () => load() as Promise<DnaProfile>,
+    queryKey: ["productivity-dna", tz],
+    queryFn: () => load({ data: { tz } }) as Promise<DnaProfile>,
   });
   const dna = dnaQuery.data;
 
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <div className="pt-24 max-w-4xl mx-auto px-6 pb-24">
-        <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+      <main className="app-page max-w-4xl">
+        <div className="ritual-label text-muted-foreground">
           Productivity DNA
         </div>
-        <h1 className="text-4xl font-serif mt-2 mb-8">Your focus signature</h1>
+        <h1 className="page-title mb-8 mt-2">Your focus signature</h1>
 
-        {/* The previous `.catch(() => {})` meant a failed load sat on
+        <PremiumGate feature="focus_dna">
+          {/* The previous `.catch(() => {})` meant a failed load sat on
             "Analyzing 60 days of focus…" indefinitely — a loading state that
             could never resolve. Errors now surface with a retry. */}
-        <QueryBoundary
-          isPending={dnaQuery.isPending}
-          isError={dnaQuery.isError}
-          error={dnaQuery.error}
-          onRetry={() => dnaQuery.refetch()}
-          errorTitle="Couldn't read your focus signature."
-          loadingLabel="Analyzing 60 days of focus"
-          skeleton={
-            <div className="text-sm text-muted-foreground">Analyzing 60 days of focus…</div>
-          }
-        >
-          {dna && (
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="glass rounded-2xl p-6">
-              <Radar traits={dna.traits} />
-            </div>
-            <div className="space-y-6">
-              <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                  Archetype
+          <QueryBoundary
+            isPending={dnaQuery.isPending}
+            isError={dnaQuery.isError}
+            error={dnaQuery.error}
+            onRetry={() => dnaQuery.refetch()}
+            errorTitle="Couldn't read your focus signature."
+            loadingLabel="Analyzing 60 days of focus"
+            skeleton={
+              <div className="text-sm text-muted-foreground">Analyzing 60 days of focus…</div>
+            }
+          >
+            {dna && (
+              <div className="grid gap-8 md:grid-cols-2">
+                <div className="panel min-w-0 p-3 sm:p-6">
+                  <Radar traits={dna.traits} />
                 </div>
-                <div className="text-3xl font-serif text-ember mt-1">
-                  {dna.personality ?? dna.archetype}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                  Signature
-                </div>
-                <div className="text-2xl font-mono tracking-[0.4em] mt-1">{dna.signature}</div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Stat label="Peak Hour" value={`${dna.peakHour.toString().padStart(2, "0")}:00`} />
-                <Stat label="Consistency" value={`${dna.consistencyScore}%`} />
-                <Stat label="Sessions" value={dna.totalSessions.toString()} />
-                <Stat label="Traits" value={dna.traits.length.toString()} />
-              </div>
-              <div className="space-y-2 pt-2">
-                {dna.traits.map((t) => (
-                  <div key={t.label}>
-                    <div className="flex justify-between text-[11px] font-mono text-muted-foreground mb-1">
-                      <span>{t.label}</span>
-                      <span>{t.value}</span>
+                <div className="space-y-6">
+                  <div>
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                      Archetype
                     </div>
-                    <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-ember transition-all duration-700"
-                        style={{ width: `${t.value}%` }}
-                      />
+                    <div className="text-3xl font-serif text-ember mt-1">
+                      {dna.personality ?? dna.archetype}
                     </div>
                   </div>
-                ))}
+                  <div>
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                      Signature
+                    </div>
+                    <div className="mt-1 break-all font-mono text-xl sm:text-2xl">{dna.signature}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Stat
+                      label="Peak Hour"
+                      value={`${dna.peakHour.toString().padStart(2, "0")}:00`}
+                    />
+                    <Stat label="Consistency" value={`${dna.consistencyScore}%`} />
+                    <Stat label="Sessions" value={dna.totalSessions.toString()} />
+                    <Stat label="Traits" value={dna.traits.length.toString()} />
+                  </div>
+                  <div className="space-y-2 pt-2">
+                    {dna.traits.map((t) => (
+                      <div key={t.label}>
+                        <div className="flex justify-between text-[11px] font-mono text-muted-foreground mb-1">
+                          <span>{t.label}</span>
+                          <span>{t.value}</span>
+                        </div>
+                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-ember transition-all duration-700"
+                            style={{ width: `${t.value}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          )}
-        </QueryBoundary>
-      </div>
+            )}
+          </QueryBoundary>
+        </PremiumGate>
+      </main>
     </div>
   );
 }

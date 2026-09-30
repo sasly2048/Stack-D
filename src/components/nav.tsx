@@ -9,31 +9,35 @@ import { routeVisible } from "@/lib/feature-flags";
 import { useNavTier, type NavTier } from "@/hooks/use-nav-tier";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
 
-type NavItem = { to: string; label: string; visibility: string };
+type NavItem = { to: string; label: string; visibility?: string };
 
-// Tablet and below show only "New Session" + the drawer trigger, so every link
-// here is desktop-only (`lg`). The drawer is the single source of truth for
-// tablet/phone navigation.
+/**
+ * Ordered by real usage priority, Profile intentionally last (Exit follows it
+ * in the drawer). Only the handful with a `visibility` class render inline on
+ * desktop — everything else lives in the drawer, which keeps the logo clear
+ * and stops the bar from crowding at mid widths.
+ */
 const AUTHED_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "Analytics", visibility: "hidden lg:inline" },
   { to: "/groups", label: "Circles", visibility: "hidden lg:inline" },
-  { to: "/seasons", label: "Seasons", visibility: "hidden xl:inline" },
-  { to: "/leaderboard", label: "Ranks", visibility: "hidden lg:inline" },
-  { to: "/challenges", label: "Rites", visibility: "hidden xl:inline" },
-  { to: "/insights", label: "Insights", visibility: "hidden xl:inline" },
-  { to: "/timeline", label: "Timeline", visibility: "hidden 2xl:inline" },
-  { to: "/feed", label: "Feed", visibility: "hidden 2xl:inline" },
-  { to: "/friends", label: "Friends", visibility: "hidden xl:inline" },
-  { to: "/achievements", label: "Marks", visibility: "hidden 2xl:inline" },
-  { to: "/wrapped", label: "Wrapped", visibility: "hidden 2xl:inline" },
-  { to: "/vault", label: "Vault", visibility: "hidden 2xl:inline" },
-  { to: "/dna", label: "DNA", visibility: "hidden 2xl:inline" },
-  { to: "/replay", label: "Replay", visibility: "hidden 2xl:inline" },
-  { to: "/partners", label: "Partners", visibility: "hidden 2xl:inline" },
-  { to: "/capsule", label: "Capsule", visibility: "hidden 2xl:inline" },
+  { to: "/leaderboard", label: "Ranks", visibility: "hidden xl:inline" },
+  { to: "/insights", label: "Insights", visibility: "hidden 2xl:inline" },
+  { to: "/timeline", label: "Timeline" },
+  { to: "/challenges", label: "Rites" },
+  { to: "/seasons", label: "Seasons" },
+  { to: "/friends", label: "Friends" },
+  { to: "/feed", label: "Feed" },
+  { to: "/achievements", label: "Marks" },
+  { to: "/wrapped", label: "Wrapped" },
+  { to: "/dna", label: "DNA" },
+  { to: "/replay", label: "Replay" },
+  { to: "/vault", label: "Vault" },
+  { to: "/capsule", label: "Capsule" },
+  { to: "/partners", label: "Partners" },
+  { to: "/companion", label: "Atlas" },
   { to: "/profile", label: "Profile", visibility: "hidden lg:inline" },
-  { to: "/companion", label: "Atlas", visibility: "hidden 2xl:inline" },
 ];
+
 
 /** Shared hover treatment: text + icon ember glow, no background box/border. */
 const NAV_GLOW =
@@ -86,8 +90,8 @@ export function Nav() {
   };
 
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-obsidian/80 backdrop-blur-md safe-top">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6 sm:gap-10 lg:gap-12">
+    <nav className="fixed top-0 inset-x-0 z-[var(--z-nav)] border-b border-white/5 bg-obsidian/80 backdrop-blur-md safe-top">
+      <div className="app-gutter mx-auto grid h-16 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:gap-8">
         <Link to={user ? "/dashboard" : "/"} className="mr-auto flex min-w-0 items-center gap-2 sm:gap-3">
           <Logo className="size-7 shrink-0" />
           <span className="whitespace-nowrap font-mono text-xs tracking-[0.3em] uppercase">
@@ -95,10 +99,11 @@ export function Nav() {
             <span className="hidden text-muted-foreground sm:inline">/ Protocol.01</span>
           </span>
         </Link>
-        <div className="flex shrink-0 items-center gap-4 lg:gap-6 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground sm:gap-4 lg:gap-6">
           {user ? (
             <>
               {AUTHED_ITEMS.map((item) => {
+                if (!item.visibility) return null;
                 if (!routeVisible(item.to, labs)) return null;
                 return (
                   <Link
@@ -136,7 +141,7 @@ export function Nav() {
               </kbd>
               <Link
                 to="/start"
-                className="btn-ember px-4 py-1.5 border border-silver/20 rounded-full text-silver"
+                className="btn-ember inline-flex min-h-11 items-center justify-center rounded-full border border-silver/20 px-4 leading-none text-silver"
               >
                 New Session
               </Link>
@@ -178,9 +183,9 @@ export function Nav() {
               </Link>
               <Link
                 to="/auth"
-                className="btn-ember px-5 py-1.5 border border-silver/30 rounded-full text-silver"
+                className="btn-ember inline-flex h-[var(--control-height)] min-h-11 shrink-0 items-center justify-center rounded-full border border-silver/30 px-4 font-mono text-[10px] leading-none text-silver sm:px-5"
               >
-                Enter
+                <span className="block leading-none">Enter</span>
               </Link>
             </>
           )}

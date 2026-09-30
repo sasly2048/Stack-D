@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** The token-scoped client both the RPC middleware and the public routes pass in. */
+type AiSupabase = SupabaseClient<Database>;
 
 /** In-memory TTL cache for public brand prose (per Worker instance). */
 type Cached<T> = { value: T; expires: number };
@@ -107,11 +112,16 @@ const RecommendationSchema = z.object({
   confidence: z.enum(["low", "medium", "high"]),
 });
 
-export const recommendNextSession = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<SessionRecommendation> => {
-    const { supabase, userId } = context;
-
+/**
+ * Shared handler body: called by the web RPC (below) AND the public Android
+ * route (src/routes/api/public/ai/recommend.ts), so the prompt, fallback, and
+ * tier-snapping never drift between platforms.
+ */
+export async function recommendNextSessionCore(
+  supabase: AiSupabase,
+  userId: string,
+): Promise<SessionRecommendation> {
+  {
     const { data: hist } = await supabase
       .from("focus_history")
       .select("score, duration_seconds, breaches_count, tier, created_at")
@@ -203,7 +213,15 @@ Return only the JSON.`,
         generatedAt: new Date().toISOString(),
       };
     }
-  });
+  }
+}
+
+export const recommendNextSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    ({ context }): Promise<SessionRecommendation> =>
+      recommendNextSessionCore(context.supabase, context.userId),
+  );
 
 /* -------------------------------------------------------------------------- */
 /*  3. Authenticated: personalized dashboard insights (brand-tone paragraphs) */
@@ -221,11 +239,12 @@ const InsightsSchema = z.object({
   paragraphs: z.array(z.string().min(1).max(320)).min(2).max(3),
 });
 
-export const generateDashboardInsights = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<DashboardInsights> => {
-    const { supabase, userId } = context;
-
+/** Shared body — web RPC + public route both call this. */
+export async function generateDashboardInsightsCore(
+  supabase: AiSupabase,
+  userId: string,
+): Promise<DashboardInsights> {
+  {
     const { data: profile } = await supabase
       .from("profiles")
       .select("display_name, lifetime_xp, current_focus_streak")
@@ -341,7 +360,15 @@ Do not use the practitioner's name unless it flows naturally. Avoid "great job",
         generatedAt: new Date().toISOString(),
       };
     }
-  });
+  }
+}
+
+export const generateDashboardInsights = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    ({ context }): Promise<DashboardInsights> =>
+      generateDashboardInsightsCore(context.supabase, context.userId),
+  );
 
 /* -------------------------------------------------------------------------- */
 /*  4. Authenticated: post-session AI recap for a specific completed run      */
@@ -368,32 +395,39 @@ const RecapSchema = z.object({
   nextStep: z.string().min(1).max(180),
 });
 
-export const generateSessionRecap = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (data: {
-      roomId: string;
-      score: number;
-      xp: number;
-      durationSeconds: number;
-      breachesCount: number;
-      tier: string;
-      roomCode: string;
-    }) => ({
-      roomId: String(data.roomId),
-      score: Math.max(0, Math.min(100, Math.round(Number(data.score) || 0))),
-      xp: Math.max(0, Math.round(Number(data.xp) || 0)),
-      durationSeconds: Math.max(0, Math.round(Number(data.durationSeconds) || 0)),
-      breachesCount: Math.max(0, Math.round(Number(data.breachesCount) || 0)),
-      tier: String(data.tier || "OFFERING").slice(0, 40),
-      roomCode: String(data.roomCode || "")
-        .slice(0, 12)
-        .toUpperCase(),
-    }),
-  )
-  .handler(async ({ data, context }): Promise<SessionRecap> => {
-    const { supabase, userId } = context;
+/** Validated recap input, shared by the RPC validator and the public route. */
+export type SessionRecapInput = {
+  roomId: string;
+  score: number;
+  xp: number;
+  durationSeconds: number;
+  breachesCount: number;
+  tier: string;
+  roomCode: string;
+};
 
+/** Coerces/clamps raw input into a safe SessionRecapInput (RPC + route share it). */
+export function validateSessionRecapInput(data: SessionRecapInput): SessionRecapInput {
+  return {
+    roomId: String(data.roomId),
+    score: Math.max(0, Math.min(100, Math.round(Number(data.score) || 0))),
+    xp: Math.max(0, Math.round(Number(data.xp) || 0)),
+    durationSeconds: Math.max(0, Math.round(Number(data.durationSeconds) || 0)),
+    breachesCount: Math.max(0, Math.round(Number(data.breachesCount) || 0)),
+    tier: String(data.tier || "OFFERING").slice(0, 40),
+    roomCode: String(data.roomCode || "")
+      .slice(0, 12)
+      .toUpperCase(),
+  };
+}
+
+/** Shared body — web RPC + public route both call this. */
+export async function generateSessionRecapCore(
+  supabase: AiSupabase,
+  userId: string,
+  data: SessionRecapInput,
+): Promise<SessionRecap> {
+  {
     // Pull a few prior scores so the recap can compare (short, cheap).
     const { data: prior } = await supabase
       .from("focus_history")
@@ -485,4 +519,13 @@ Voice is obsidian, ceremonial, restrained. No emoji. No exclamation marks.`,
         generatedAt: new Date().toISOString(),
       };
     }
-  });
+  }
+}
+
+export const generateSessionRecap = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(validateSessionRecapInput)
+  .handler(
+    ({ data, context }): Promise<SessionRecap> =>
+      generateSessionRecapCore(context.supabase, context.userId, data),
+  );

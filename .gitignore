@@ -7,6 +7,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Bun-only project — keep npm's lockfile out
+package-lock.json
+
 node_modules
 dist
 dist-ssr
@@ -37,3 +40,13 @@ dist-ssr
 .env.*.local
 
 tests/e2e/artifacts/
+
+# Android
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/.cxx/
+*.keystore
+*.jks

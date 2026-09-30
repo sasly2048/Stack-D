@@ -38,6 +38,12 @@ export interface FinalizePayload {
    * replay rather than crash.
    */
   _scoring_version?: number;
+  /**
+   * Continuous seconds held-breached past the grace window. Server clamps this
+   * to [0, duration] and uses it only to LOWER the score — score/duration/xp
+   * are otherwise server-derived. Optional for on-disk backward-compat.
+   */
+  _abandonment_seconds?: number;
   /** owner stamp so we don't replay another account's payload after sign-out */
   _owner: string;
   _queued_at: number;
@@ -166,6 +172,14 @@ export function isDue(row: FinalizePayload, now: number): boolean {
   return now >= (row._next_attempt_at ?? 0);
 }
 
+// Single-flight guard. A reconnect ('online' event) and the interval timer can
+// fire the flush at the same moment; without this both read the same rows and
+// call finalize_focus_session for each. The RPC is idempotent (one row per
+// (profile, room)), so XP is never double-granted — but the duplicate attempt
+// wastes a round-trip and can fire the completion ceremony twice. Coalesce
+// concurrent callers onto one in-flight flush.
+let inFlight: Promise<void> | null = null;
+
 /**
  * Replays queued finalizations.
  *
@@ -174,7 +188,19 @@ export function isDue(row: FinalizePayload, now: number): boolean {
  * user pressing "Retry" is asking for an attempt *now* — honouring backoff
  * there would make the button appear broken.
  */
-export async function flushFinalizeQueue(
+export function flushFinalizeQueue(
+  ownerId: string,
+  opts: { force?: boolean } = {},
+): Promise<void> {
+  // Reuse the running flush rather than starting a second parallel drain.
+  if (inFlight) return inFlight;
+  inFlight = runFlush(ownerId, opts).finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function runFlush(
   ownerId: string,
   { force = false }: { force?: boolean } = {},
 ): Promise<void> {
@@ -196,6 +222,7 @@ export async function flushFinalizeQueue(
       // changed. Replaying it under today's rules would rewrite history, so
       // the version captured at completion travels with the payload.
       _scoring_version: r._scoring_version,
+      _abandonment_seconds: r._abandonment_seconds ?? 0,
     });
 
     if (error) {

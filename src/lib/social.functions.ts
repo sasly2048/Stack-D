@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export type FeedItem = {
   id: string;
@@ -30,7 +31,7 @@ export const listFeed = createServerFn({ method: "GET" })
     let profs: Record<string, { display_name: string | null; avatar_url: string | null }> = {};
     if (ids.length) {
       const { data: p } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, display_name, avatar_url")
         .in("id", ids);
       profs = Object.fromEntries((p ?? []).map((r) => [r.id, r]));
@@ -63,7 +64,7 @@ export const heartbeat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { error } = await context.supabase.rpc("presence_heartbeat");
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });
 
@@ -86,7 +87,7 @@ export const friendsPresence = createServerFn({ method: "GET" })
 
     const [{ data: profs }, { data: activeParts }] = await Promise.all([
       supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, display_name, avatar_url, lifetime_xp, current_focus_streak, last_active_at")
         .in("id", friendIds),
       supabase

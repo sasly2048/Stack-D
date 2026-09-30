@@ -9,14 +9,23 @@ import { GoalForecast } from "@/components/insights/goal-forecast";
 import { WeeklyNarrativeCard } from "@/components/insights/weekly-narrative-card";
 import { FocusRadar } from "@/components/analytics/focus-radar";
 import { AtlasWhisper } from "@/components/atlas-whisper";
+import { AiUsageMeter } from "@/components/premium/ai-usage-meter";
 
 export const Route = createFileRoute("/_authenticated/insights")({
   head: () => ({
     meta: [
       { title: "Insights — Stack'd" },
-      { name: "description", content: "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history." },
+      {
+        name: "description",
+        content:
+          "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history.",
+      },
       { property: "og:title", content: "Insights — Stack'd" },
-      { property: "og:description", content: "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history." },
+      {
+        property: "og:description",
+        content:
+          "Trends, tags and the hours you focus best, drawn from your complete Stack'd session history.",
+      },
     ],
   }),
   component: InsightsPage,
@@ -40,7 +49,7 @@ function InsightsPage() {
     return (
       <div className="min-h-screen bg-obsidian text-silver">
         <Nav />
-        <div className="mx-auto max-w-4xl px-6 pt-32">
+        <main className="app-page max-w-4xl">
           <QueryBoundary
             isPending={analytics.isPending}
             isError={analytics.isError}
@@ -52,7 +61,7 @@ function InsightsPage() {
           >
             {null}
           </QueryBoundary>
-        </div>
+        </main>
       </div>
     );
   }
@@ -64,10 +73,10 @@ function InsightsPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-6xl mx-auto px-6 pt-28 pb-24 space-y-16">
-        <header>
-          <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Depth</p>
-          <h1 className="mt-3 text-4xl md:text-5xl font-serif">Insights</h1>
+      <main className="app-page max-w-6xl space-y-16">
+        <header className="page-heading">
+          <p className="ritual-label text-ember">Depth</p>
+          <h1 className="page-title font-serif">Insights</h1>
           <p className="mt-3 text-silver-dim max-w-lg">The shape of your last 120 days.</p>
         </header>
 
@@ -78,6 +87,7 @@ function InsightsPage() {
           <Stat label="XP earned" value={data.totals.xp.toLocaleString()} />
         </section>
 
+        <AiUsageMeter />
         <AtlasWhisper context="insights" />
         <WeeklyNarrativeCard />
         <GoalForecast />

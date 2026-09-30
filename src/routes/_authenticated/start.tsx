@@ -19,6 +19,8 @@ import {
   dismissTip,
 } from "@/lib/prefs";
 import { BadgeHint } from "@/components/ui/badge-hint";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/start")({
   head: () => ({
@@ -160,11 +162,11 @@ function Start() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-32 pb-20 px-6 max-w-2xl mx-auto">
-        <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
+      <main className="app-page max-w-2xl">
+        <div className="ritual-label mb-4 text-muted-foreground">
           NEW / CONFIGURE
         </div>
-        <h1 className="text-5xl font-extrabold tracking-tighter mb-12">Set the protocol.</h1>
+        <h1 className="page-title mb-10 sm:mb-12">Set the protocol.</h1>
 
         {showIntro && (
           <div className="mb-10 flex items-start justify-between gap-4 rounded-lg border border-ember/25 bg-ember/[0.06] px-4 py-3">
@@ -172,17 +174,19 @@ function Start() {
               A room is a shared timer — everyone stacks their phones face-down and holds the
               silence until it runs out.
             </p>
-            <button
+              <Button
               type="button"
+                variant="ghost"
+                size="sm"
               onClick={() => {
                 dismissTip("start-intro");
                 setShowIntro(false);
               }}
               aria-label="Dismiss the explainer"
-              className="shrink-0 cursor-pointer rounded font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-silver active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+                className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-silver"
             >
               Got it
-            </button>
+              </Button>
           </div>
         )}
 
@@ -192,7 +196,7 @@ function Start() {
               <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-3">
                 Template
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => setTplKey("")}
@@ -237,13 +241,13 @@ function Start() {
             <label className="block font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2">
               Room Title <span className="text-muted-foreground/50">(optional)</span>
             </label>
-            <input
+            <Input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={80}
               placeholder="Deep work Monday"
-              className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+              className="bg-obsidian/40"
             />
           </div>
 
@@ -251,13 +255,13 @@ function Start() {
             <label className="block font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2">
               Collective goal (hours) <span className="text-muted-foreground/50">(optional)</span>
             </label>
-            <input
+            <Input
               type="number"
               min={0}
               max={720}
               value={goalHours}
               onChange={(e) => setGoalHours(Number(e.target.value))}
-              className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+              className="bg-obsidian/40"
             />
           </div>
 
@@ -344,7 +348,7 @@ function Start() {
             <legend className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
               Enforcement Profile
             </legend>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <ModeOption
                 active={mode === "gentle"}
                 onClick={() => setMode("gentle")}
@@ -360,14 +364,15 @@ function Start() {
             </div>
           </fieldset>
 
-          <button
+          <Button
             onClick={create}
             disabled={busy}
             aria-busy={busy}
-            className="w-full bg-silver text-obsidian py-5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+            size="lg"
+            className="h-14 w-full bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90"
           >
             {busy ? "Forging key..." : "Forge Room Key"}
-          </button>
+          </Button>
           {/* Busy already speaks for itself in the label; anything else that
               greys the button out must say why, or it's a dead end. */}
           {busy && (

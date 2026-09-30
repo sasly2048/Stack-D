@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { publicDbError } from "@/lib/db-error";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -100,16 +101,40 @@ export const listRoomTemplates = createServerFn({ method: "GET" })
 /*  Meta read                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Room-code alphabet: 32 symbols, Crockford-style — no confusable I/O/0/1 — so
+ * a byte % 32 is unbiased (256 divides evenly) and codes are unambiguous when
+ * read aloud or typed. crypto.getRandomValues, never Math.random.
+ */
+export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function generateRoomCode(): string {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => ROOM_CODE_ALPHABET[b % 32]).join("");
+}
+
+const ROOM_META_COLS =
+  "id, code, host_id, title, description, banner_url, pinned_message, collective_goal_seconds, visibility, template_key, status, target_duration_seconds, started_at, ended_at, created_at";
+
 export const getRoomMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ code: z.string().length(6) }).parse(d))
   .handler(async ({ data, context }): Promise<RoomMeta | null> => {
+    // Room codes are 6 chars from a 32-symbol alphabet (~1e9 space), so blind
+    // brute force is impractical — but throttle lookups anyway so a valid code
+    // can't be found by fast targeted enumeration, and cap the info returned to
+    // exactly the lobby fields (no select("*")).
+    const { isRateLimited } = await import("@/lib/rate-limit.server");
+    if (await isRateLimited(`roomcode:${context.userId}`, 60, 30)) {
+      throw new Error("rate_limited");
+    }
     const { data: row, error } = await context.supabase
       .from("rooms")
-      .select("*")
+      .select(ROOM_META_COLS)
       .eq("code", data.code.toUpperCase())
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "room_lookup_failed");
     return (row as RoomMeta | null) ?? null;
   });
 
@@ -161,7 +186,7 @@ export const updateRoomMeta = createServerFn({ method: "POST" })
     if (data.visibility !== undefined) patch.visibility = data.visibility;
 
     const { error } = await supabase.from("rooms").update(patch).eq("id", data.roomId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
 
     if (data.pinned_message) {
       await supabase.rpc("record_room_event", {
@@ -184,13 +209,14 @@ export const listRoomModerators = createServerFn({ method: "POST" })
     const { data: rows, error } = await context.supabase
       .from("room_moderators")
       .select("user_id, granted_at")
-      .eq("room_id", data.roomId);
-    if (error) throw new Error(error.message);
+      .eq("room_id", data.roomId)
+      .limit(100);
+    if (error) throw publicDbError(error, "room_lookup_failed");
     const ids = (rows ?? []).map((r) => r.user_id as string);
     let profileMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
     if (ids.length) {
       const { data: profs } = await context.supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, display_name, avatar_url")
         .in("id", ids);
       profileMap = new Map(
@@ -220,7 +246,7 @@ export const promoteModerator = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("room_moderators")
       .insert({ room_id: data.roomId, user_id: data.userId });
-    if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+    if (error && !error.message.includes("duplicate")) throw publicDbError(error, "db_write_failed");
     await context.supabase.rpc("record_room_event", {
       _room_id: data.roomId,
       _kind: "moderator_added",
@@ -240,7 +266,7 @@ export const demoteModerator = createServerFn({ method: "POST" })
       .delete()
       .eq("room_id", data.roomId)
       .eq("user_id", data.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     await context.supabase.rpc("record_room_event", {
       _room_id: data.roomId,
       _kind: "moderator_removed",
@@ -290,7 +316,7 @@ export const requestToJoinRoom = createServerFn({ method: "POST" })
       },
       { onConflict: "room_id,user_id" },
     );
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
 
     // record via RPC (definer) — requester may not be a room member yet, so
     // the direct insert into room_events is bypassed by the definer check.
@@ -307,8 +333,11 @@ export const listJoinRequests = createServerFn({ method: "POST" })
       .select("*")
       .eq("room_id", data.roomId)
       .eq("status", "pending")
-      .order("created_at", { ascending: true });
-    if (error) throw new Error(error.message);
+      .order("created_at", { ascending: true })
+      // Cap: a popular/public room can accumulate unbounded pending requests;
+      // don't let one lookup return (and buffer) them all.
+      .limit(200);
+    if (error) throw publicDbError(error, "room_lookup_failed");
     return (rows ?? []) as JoinRequest[];
   });
 
@@ -336,7 +365,7 @@ export const respondToJoinRequest = createServerFn({ method: "POST" })
       .from("room_join_requests")
       .update({ status: newStatus, responded_at: new Date().toISOString() })
       .eq("id", req.id);
-    if (uErr) throw new Error(uErr.message);
+    if (uErr) throw publicDbError(uErr, "db_write_failed");
 
     await supabase.rpc("record_room_event", {
       _room_id: req.room_id,
@@ -425,19 +454,13 @@ export const createRoomFromTemplate = createServerFn({ method: "POST" })
     if (tErr) throw new Error(tErr.message);
     if (!tpl) throw new Error("template_not_found");
 
-    // Generate unique code (retry a few times)
-    const gen = () =>
-      Array.from(
-        { length: 6 },
-        () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)],
-      ).join("");
     let room: { code: string; id: string } | null = null;
     let lastErr = "room_code_collision";
     for (let i = 0; i < 5 && !room; i++) {
       const { data: inserted, error: iErr } = await supabase
         .from("rooms")
         .insert({
-          code: gen(),
+          code: generateRoomCode(),
           host_id: userId,
           target_duration_seconds: tpl.target_duration_seconds,
           status: "lobby",
@@ -455,9 +478,10 @@ export const createRoomFromTemplate = createServerFn({ method: "POST" })
       }
       lastErr = iErr.message;
       // 23505 = unique violation on the room code; retry with a fresh code.
-      if (iErr.code !== "23505") throw new Error(iErr.message);
+      if (iErr.code !== "23505") throw publicDbError(iErr, "db_write_failed");
     }
-    if (!room) throw new Error(lastErr);
+    // Only reached if every retry collided — vanishingly unlikely. Log, stay generic.
+    if (!room) throw publicDbError({ message: lastErr }, "room_code_exhausted");
 
     const { data: prof } = await supabase
       .from("profiles")

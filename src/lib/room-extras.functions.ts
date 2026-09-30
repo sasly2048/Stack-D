@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export interface Milestone {
   id: string;
@@ -38,7 +39,8 @@ export const listSchedule = createServerFn({ method: "GET" })
       .select("id,title,description,starts_at,duration_minutes,created_by")
       .eq("room_id", data.roomId)
       .gte("starts_at", new Date(Date.now() - 86400_000).toISOString())
-      .order("starts_at", { ascending: true });
+      .order("starts_at", { ascending: true })
+      .limit(100);
     return { rows: (rows ?? []) as ScheduledEvent[] };
   });
 
@@ -66,6 +68,6 @@ export const createScheduledEvent = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { id: row!.id };
   });

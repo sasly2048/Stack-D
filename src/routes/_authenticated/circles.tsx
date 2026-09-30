@@ -47,13 +47,13 @@ function CirclesPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <div className="pt-24 max-w-6xl mx-auto px-6 pb-24">
+      <main className="app-page max-w-6xl">
         <div className="flex items-baseline justify-between mb-8">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+            <div className="ritual-label text-muted-foreground">
               Study Circles
             </div>
-            <h1 className="text-3xl font-serif mt-1">Your circles</h1>
+            <h1 className="page-title mt-1 font-serif">Your circles</h1>
           </div>
           <Link
             to="/groups"
@@ -198,7 +198,7 @@ function CirclesPage() {
             </section>
           </div>
         </QueryBoundary>
-      </div>
+      </main>
     </div>
   );
 }

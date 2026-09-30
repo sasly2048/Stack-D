@@ -1,5 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export const fileReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -20,24 +23,50 @@ export const fileReport = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { id: row!.id };
   });
 
 export const blockUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string }) => input)
+  .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     if (data.userId === context.userId) throw new Error("self");
     await context.supabase
       .from("user_blocks")
       .insert({ blocker_id: context.userId, blocked_id: data.userId });
+    // Blocking severs the relationship: drop any friendship row in either
+    // direction so a prior "accepted" friend can't keep friends-only access.
+    // Two parameterized deletes rather than a raw .or() string — no filter-
+    // injection surface even if a future caller skips the UUID validation.
+    await context.supabase
+      .from("friendships")
+      .delete()
+      .eq("requester_id", context.userId)
+      .eq("addressee_id", data.userId);
+    await context.supabase
+      .from("friendships")
+      .delete()
+      .eq("requester_id", data.userId)
+      .eq("addressee_id", context.userId);
+    // Also sever any mentorship in either role arrangement, for the same
+    // reason: a block should end an existing relationship, not just future ones.
+    await context.supabase
+      .from("mentor_relationships")
+      .delete()
+      .eq("mentor_id", context.userId)
+      .eq("mentee_id", data.userId);
+    await context.supabase
+      .from("mentor_relationships")
+      .delete()
+      .eq("mentor_id", data.userId)
+      .eq("mentee_id", context.userId);
     return { ok: true };
   });
 
 export const unblockUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string }) => input)
+  .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     await context.supabase
       .from("user_blocks")
@@ -62,7 +91,7 @@ export const listBlocks = createServerFn({ method: "GET" })
       const ids = (blocks ?? []).map((b) => b.blocked_id);
       if (ids.length === 0) return { rows: [] };
       const { data: profs } = await context.supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id,display_name")
         .in("id", ids);
       const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));

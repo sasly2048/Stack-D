@@ -1,9 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-function escapeCsv(v: unknown): string {
+export function escapeCsv(v: unknown): string {
   if (v === null || v === undefined) return "";
-  const s = String(v);
+  let s = String(v);
+  // Formula-injection guard: a cell starting with = + - @ (or a tab/CR that
+  // some parsers strip to reveal one) is executed as a formula by Excel/Sheets.
+  // Prefix a single quote so the value is treated as literal text.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

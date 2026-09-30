@@ -86,8 +86,8 @@ export function Scene({
     <section
       id={id}
       data-scene={index}
-      className={`relative isolate flex scroll-mt-20 flex-col justify-center overflow-hidden border-t border-white/5 px-6 ${
-        compact ? "pb-10 pt-32 sm:pb-10 sm:pt-28" : "min-h-[100svh] pb-28 pt-36 sm:pb-28 sm:pt-32"
+      className={`app-gutter relative isolate flex scroll-mt-20 flex-col justify-center overflow-hidden border-t border-white/5 ${
+        compact ? "scene-pad-y-compact" : "min-h-[100svh] scene-pad-y"
       } ${toneClass} ${className}`}
     >
       {background}
@@ -119,20 +119,25 @@ export function Scene({
         />
       )}
 
-      {/* Chapter marker — same position, same type, every scene. */}
-      <div className="pointer-events-none absolute left-6 top-20 z-10 flex items-center gap-3 sm:left-10">
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">{index}</span>
-        <span aria-hidden className="h-px w-8 bg-white/15" />
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          {label}
-        </span>
-      </div>
+      {/*
+        Chapter marker — in the flow, not floating. Absolutely positioning it
+        at a fixed offset meant that on short or dense viewports the
+        vertically-centred content rose underneath it and the two collided.
+        As the first row of the same centred column it can never overlap:
+        the marker's own margin owns the gap to the content below it.
+      */}
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col">
+        <div className="mb-8 flex items-center gap-3 sm:mb-10">
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">{index}</span>
+          <span aria-hidden className="h-px w-8 bg-white/15" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            {label}
+          </span>
+        </div>
 
-      <div
-        ref={contentRef}
-        className={`relative z-10 mx-auto w-full max-w-6xl ${contentClassName}`}
-      >
-        {children}
+        <div ref={contentRef} className={`w-full ${contentClassName}`}>
+          {children}
+        </div>
       </div>
 
       {/* Hand-off — a short descending rule that says "this act is finished". */}
@@ -161,7 +166,7 @@ export function SceneTitle({
 }) {
   return (
     <Tag
-      className={`text-balance text-[clamp(2.75rem,7vw,5rem)] font-extrabold leading-[0.9] tracking-tighter ${className}`}
+      className={`text-balance text-[clamp(2.25rem,7vw,5rem)] font-extrabold leading-[0.94] tracking-tighter ${className}`}
     >
       {children}
     </Tag>

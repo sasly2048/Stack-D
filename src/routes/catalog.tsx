@@ -51,7 +51,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
 // FX
@@ -192,11 +191,13 @@ function CatalogPage() {
   ];
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-obsidian text-white">
+    <div className="public-page">
+      <a href="#main" className="sr-only focus:not-sr-only focus:skip-link">
+        Skip to content
+      </a>
       <Nav />
-      <Toaster />
 
-      <header className="mx-auto max-w-6xl px-6 pb-8 pt-24">
+      <header className="app-gutter mx-auto max-w-6xl pb-8 pt-[var(--page-nav-clearance)]">
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
           Component Catalog
         </p>
@@ -216,8 +217,8 @@ function CatalogPage() {
       </header>
 
       {/* jump nav */}
-      <nav className="sticky top-16 z-30 border-y border-white/10 bg-obsidian/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl gap-4 overflow-x-auto px-6 py-3 text-xs">
+      <nav className="sticky top-16 z-[calc(var(--z-nav)-1)] border-y border-white/10 bg-obsidian/80 backdrop-blur">
+        <div className="app-gutter mx-auto flex max-w-6xl gap-4 overflow-x-auto py-3 text-xs">
           {groups
             .filter((g) => !query || g.label.toLowerCase().includes(query.toLowerCase()))
             .map((g) => (
@@ -232,7 +233,7 @@ function CatalogPage() {
         </div>
       </nav>
 
-      <main className="mx-auto max-w-6xl space-y-16 px-6 py-12">
+      <main id="main" className="app-gutter mx-auto max-w-6xl space-y-16 py-12">
         {/* Buttons */}
         <Section id="buttons" title="Buttons & Actions">
           <Demo
@@ -745,8 +746,8 @@ toast.success("Session complete");`}
         </Section>
       </main>
 
-      <footer className="border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
-        Component catalog · Stack'd design system
+      <footer className="app-gutter border-t border-white/10 py-10 text-center safe-bottom">
+        <span className="ritual-label text-muted-foreground">Component catalog · Stack'd design system</span>
       </footer>
     </div>
   );

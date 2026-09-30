@@ -2,6 +2,8 @@ import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { routeTree } from "./routeTree.gen";
+import { RouteErrorBoundary } from "./components/route-error-boundary";
+import { classifyRouteError } from "./lib/error-recovery";
 
 /**
  * Session data is short-lived and shared: a room's participant list changes by
@@ -22,12 +24,16 @@ export const getRouter = () => {
         // the screen's own error UI is the right place to explain it — a toast
         // there would double up.
         if (query.state.data === undefined) return;
+        // Aborted/offline/token-hydration blips resolve themselves; the retry
+        // and the offline banner already cover them.
+        if (classifyRouteError(error) !== "fatal") return;
         const message = error instanceof Error ? error.message : "Something went wrong.";
         toast.error("Couldn't refresh", {
           id: `qc-${String(query.queryHash)}`,
           description: message.slice(0, 140),
         });
       },
+
     }),
     defaultOptions: {
       queries: {
@@ -57,7 +63,11 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Any route without its own boundary gets the recovering-first boundary
+    // instead of a bare error screen.
+    defaultErrorComponent: RouteErrorBoundary,
   });
+
 
   return router;
 };

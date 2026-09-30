@@ -19,8 +19,12 @@ if (typeof window !== "undefined") {
  *     </div>
  *   </PinnedHorizontal>
  */
-/** Below this width the pin is replaced by native horizontal scrolling (Tailwind `md`). */
-const PIN_MIN_WIDTH = 768;
+/**
+ * The pinned scroll now runs at every width — a phone gets the same intended
+ * interaction as tablet and desktop, only scaled down. Only a
+ * prefers-reduced-motion user falls back to a native swipe.
+ */
+const PIN_MIN_WIDTH = 0;
 
 export function PinnedHorizontal({
   children,
@@ -57,30 +61,40 @@ export function PinnedHorizontal({
     if (!wrap || !pin || !track || typeof window === "undefined") return;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    // Scroll-jacking a phone is the worst version of this effect: the track is
-    // several viewports wide, so the user loses vertical control for a long
-    // stretch and can't flick past it. Below `md` we hand back a plain swipe.
-    const narrow = window.innerWidth < PIN_MIN_WIDTH;
 
-    if (reduced || narrow) {
-      // The overflow has to live on the pin box, not the track. The track is a
-      // flex row sized by its own children, so it has no width to overflow —
-      // setting overflow-x there produced an element that just grew, and the
-      // fallback never actually scrolled.
+    if (reduced) {
+      // Native swipe fallback. The overflow lives on the pin box (the track is
+      // a flex row sized by its children, so it has nothing to overflow), and
+      // touch-action keeps vertical page scroll gestures working over the
+      // cards. Height must be auto so the section doesn't clip its content.
       pin.style.overflowX = "auto";
+      pin.style.overflowY = "visible";
+      pin.style.touchAction = "pan-x pan-y";
+      pin.style.overscrollBehaviorX = "contain";
       pin.style.height = "auto";
+      wrap.style.height = "auto";
       return () => {
         pin.style.overflowX = "";
+        pin.style.overflowY = "";
+        pin.style.touchAction = "";
+        pin.style.overscrollBehaviorX = "";
         pin.style.height = "";
+        wrap.style.height = "";
       };
     }
 
+
     const ctx = gsap.context(() => {
+      // ScrollTrigger's own pinSpacing reserves exactly the scroll length the
+      // pin consumes. Setting the wrapper height by hand on top of that added
+      // a full extra viewport of empty scroll after the track finished — the
+      // dead band that made the section feel broken on phones.
       const setSize = () => {
         const distance = Math.max(0, track.scrollWidth - window.innerWidth);
-        wrap.style.height = `${window.innerHeight + distance + window.innerHeight * extraPin}px`;
+        pin.style.height = `${window.innerHeight}px`;
         return distance;
       };
+
 
       let distance = setSize();
 
@@ -97,7 +111,13 @@ export function PinnedHorizontal({
         },
       });
 
+      // On touch devices the URL bar collapsing fires a resize with an
+      // unchanged width. Refreshing there re-measures mid-scroll and makes the
+      // track jump, so only a real width change re-derives the pin length.
+      let lastWidth = window.innerWidth;
       const onResize = () => {
+        if (window.innerWidth === lastWidth) return;
+        lastWidth = window.innerWidth;
         distance = setSize();
         tween.scrollTrigger?.refresh();
       };
@@ -107,14 +127,18 @@ export function PinnedHorizontal({
 
     return () => {
       ctx.revert();
-      // ctx.revert() restores what GSAP set, but the wrapper height is ours.
       wrap.style.height = "";
+      pin.style.height = "";
     };
   }, [extraPin, layoutEpoch]);
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>
-      <div ref={pinRef} className="h-screen w-full overflow-hidden flex items-center">
+      <div
+        ref={pinRef}
+        className="flex h-screen w-full items-center overflow-hidden"
+      >
+
         <div ref={trackRef} className={`flex will-change-transform ${trackClassName}`}>
           {children}
         </div>

@@ -75,7 +75,7 @@ export function DynamicGreeting() {
       if (friendIds.size) {
         const since5 = new Date(Date.now() - 5 * 60_000).toISOString();
         const { data: online } = await supabase
-          .from("profiles")
+          .from("public_profiles")
           .select("id")
           .in("id", Array.from(friendIds))
           .gte("last_active_at", since5);

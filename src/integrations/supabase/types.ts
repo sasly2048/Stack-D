@@ -71,6 +71,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_emails: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
+      ai_usage: {
+        Row: {
+          action_count: number
+          period_end: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_count?: number
+          period_end?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_count?: number
+          period_end?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       auth_alerts: {
         Row: {
           created_at: string
@@ -501,6 +537,54 @@ export type Database = {
           },
         ]
       }
+      lifetime_promo: {
+        Row: {
+          coupon_code: string | null
+          ends_at: string | null
+          id: number
+          is_active: boolean
+          max_redemptions: number
+          redeemed_count: number
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          coupon_code?: string | null
+          ends_at?: string | null
+          id?: number
+          is_active?: boolean
+          max_redemptions?: number
+          redeemed_count?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          coupon_code?: string | null
+          ends_at?: string | null
+          id?: number
+          is_active?: boolean
+          max_redemptions?: number
+          redeemed_count?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lifetime_redemptions: {
+        Row: {
+          redeemed_at: string
+          user_id: string
+        }
+        Insert: {
+          redeemed_at?: string
+          user_id: string
+        }
+        Update: {
+          redeemed_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       login_streaks: {
         Row: {
           last_claim_date: string | null
@@ -733,6 +817,42 @@ export type Database = {
           },
         ]
       }
+      plans: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          interval: string
+          is_active: boolean
+          price_inr: number
+          provider_ref: string | null
+          sort_order: number
+          tier: Database["public"]["Enums"]["access_tier"]
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id: string
+          interval: string
+          is_active?: boolean
+          price_inr: number
+          provider_ref?: string | null
+          sort_order?: number
+          tier: Database["public"]["Enums"]["access_tier"]
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          interval?: string
+          is_active?: boolean
+          price_inr?: number
+          provider_ref?: string | null
+          sort_order?: number
+          tier?: Database["public"]["Enums"]["access_tier"]
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -749,6 +869,7 @@ export type Database = {
           pinned_showcase: Json
           prestige_level: number
           productivity_dna: string | null
+          timezone: string
           title: string | null
           total_focus_seconds: number
           updated_at: string
@@ -771,6 +892,7 @@ export type Database = {
           pinned_showcase?: Json
           prestige_level?: number
           productivity_dna?: string | null
+          timezone?: string
           title?: string | null
           total_focus_seconds?: number
           updated_at?: string
@@ -793,12 +915,70 @@ export type Database = {
           pinned_showcase?: Json
           prestige_level?: number
           productivity_dna?: string | null
+          timezone?: string
           title?: string | null
           total_focus_seconds?: number
           updated_at?: string
           username?: string | null
           username_canonical?: string | null
           username_changed_at?: string | null
+        }
+        Relationships: []
+      }
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          banner_gradient: string | null
+          banner_url: string | null
+          best_streak: number
+          bio: string | null
+          created_at: string
+          current_focus_streak: number
+          display_name: string
+          id: string
+          last_active_at: string | null
+          lifetime_xp: number
+          pinned_showcase: Json
+          prestige_level: number
+          title: string | null
+          total_focus_seconds: number
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          banner_gradient?: string | null
+          banner_url?: string | null
+          best_streak?: number
+          bio?: string | null
+          created_at: string
+          current_focus_streak?: number
+          display_name: string
+          id: string
+          last_active_at?: string | null
+          lifetime_xp?: number
+          pinned_showcase?: Json
+          prestige_level?: number
+          title?: string | null
+          total_focus_seconds?: number
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          banner_gradient?: string | null
+          banner_url?: string | null
+          best_streak?: number
+          bio?: string | null
+          created_at?: string
+          current_focus_streak?: number
+          display_name?: string
+          id?: string
+          last_active_at?: string | null
+          lifetime_xp?: number
+          pinned_showcase?: Json
+          prestige_level?: number
+          title?: string | null
+          total_focus_seconds?: number
+          username?: string | null
         }
         Relationships: []
       }
@@ -1259,6 +1439,47 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          plan_id: string | null
+          provider_ref: string | null
+          source: string
+          tier: Database["public"]["Enums"]["access_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          plan_id?: string | null
+          provider_ref?: string | null
+          source?: string
+          tier?: Database["public"]["Enums"]["access_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          plan_id?: string | null
+          provider_ref?: string | null
+          source?: string
+          tier?: Database["public"]["Enums"]["access_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -1537,6 +1758,27 @@ export type Database = {
           },
         ]
       }
+      webhook_events: {
+        Row: {
+          event_type: string
+          id: string
+          processed_at: string
+          status: string
+        }
+        Insert: {
+          event_type: string
+          id: string
+          processed_at?: string
+          status?: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          processed_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       webhooks: {
         Row: {
           active: boolean
@@ -1572,7 +1814,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ai_allowance: {
+        Args: { _tier: Database["public"]["Enums"]["access_tier"] }
+        Returns: number
+      }
+      ai_meter: {
+        Args: never
+        Returns: {
+          allowance: number
+          ok: boolean
+          remaining: number
+          unlimited: boolean
+          used: number
+        }[]
+      }
+      ai_refund: { Args: { _user_id: string }; Returns: undefined }
+      ai_usage_status: {
+        Args: never
+        Returns: {
+          allowance: number
+          remaining: number
+          unlimited: boolean
+          used: number
+        }[]
+      }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      award_earned_titles: {
+        Args: never
+        Returns: {
+          title_id: string
+        }[]
+      }
+      begin_webhook_event: {
+        Args: { _id: string; _type: string }
+        Returns: string
+      }
+      blocks_exist: { Args: { _a: string; _b: string }; Returns: boolean }
       check_and_record_hit: {
         Args: { _key: string; _max_hits: number; _window_seconds: number }
         Returns: boolean
@@ -1614,6 +1891,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_webhook_event: { Args: { _id: string }; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -1651,6 +1929,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      equip_title: { Args: { _title_id: string }; Returns: string }
       evaluate_achievements: {
         Args: { _history_id: string; _user_id: string }
         Returns: string[]
@@ -1660,30 +1939,75 @@ export type Database = {
         Returns: undefined
       }
       evaluate_milestones: { Args: { _user_id: string }; Returns: string[] }
-      finalize_focus_session:
-        | {
-            Args: {
-              _breaches_count: number
-              _duration_seconds: number
-              _room_id: string
-              _score: number
-              _tier: string
-              _xp: number
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _breaches_count: number
-              _duration_seconds: number
-              _room_id: string
-              _score: number
-              _scoring_version?: number
-              _tier: string
-              _xp: number
-            }
-            Returns: string
-          }
+      fail_webhook_event: { Args: { _id: string }; Returns: undefined }
+      finalize_focus_session: {
+        Args: {
+          _abandonment_seconds?: number
+          _breaches_count: number
+          _duration_seconds: number
+          _room_id: string
+          _score: number
+          _scoring_version?: number
+          _tier: string
+          _xp: number
+        }
+        Returns: string
+      }
+      finish_focus_room: {
+        Args: {
+          _outcome: Database["public"]["Enums"]["room_status"]
+          _room_id: string
+        }
+        Returns: {
+          banner_url: string | null
+          code: string
+          collective_goal_seconds: number | null
+          collective_seconds: number
+          created_at: string
+          description: string | null
+          ended_at: string | null
+          host_id: string
+          id: string
+          pinned_message: string | null
+          shared_goal_hours: number | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["room_status"]
+          target_duration_seconds: number
+          template_key: string | null
+          title: string | null
+          updated_at: string
+          visibility: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rooms"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_my_private_profile: {
+        Args: never
+        Returns: {
+          productivity_dna: string
+          username: string
+          username_canonical: string
+          username_changed_at: string
+        }[]
+      }
+      grant_subscription: {
+        Args: {
+          _period_end: string
+          _plan_id?: string
+          _provider_ref: string
+          _tier: Database["public"]["Enums"]["access_tier"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      has_tier: {
+        Args: { _required: Database["public"]["Enums"]["access_tier"] }
+        Returns: boolean
+      }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
@@ -1701,6 +2025,16 @@ export type Database = {
         Returns: boolean
       }
       join_season: { Args: { _season_id: string }; Returns: undefined }
+      lifetime_promo_status: {
+        Args: never
+        Returns: {
+          active: boolean
+          already_redeemed: boolean
+          ends_at: string
+          seats_remaining: number
+          seats_total: number
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -1710,7 +2044,18 @@ export type Database = {
         }
         Returns: number
       }
+      my_entitlement: {
+        Args: never
+        Returns: {
+          expires_at: string
+          is_admin: boolean
+          is_premium: boolean
+          source: string
+          tier: Database["public"]["Enums"]["access_tier"]
+        }[]
+      }
       my_season_rank: { Args: { _season_id: string }; Returns: number }
+      open_capsule: { Args: { _id: string }; Returns: string }
       presence_heartbeat: { Args: never; Returns: undefined }
       prestige_up: {
         Args: never
@@ -1765,6 +2110,11 @@ export type Database = {
         Args: { _kind: string; _payload?: Json; _room_id: string }
         Returns: string
       }
+      record_webhook_event: {
+        Args: { _id: string; _type: string }
+        Returns: boolean
+      }
+      redeem_lifetime: { Args: { _code: string }; Returns: string }
       refresh_personality: { Args: { _user_id: string }; Returns: string }
       room_code_exists: { Args: { _code: string }; Returns: boolean }
       season_standings: {
@@ -1777,13 +2127,24 @@ export type Database = {
           xp: number
         }[]
       }
+      set_my_timezone: { Args: { _tz: string }; Returns: undefined }
       start_focus_session: { Args: { _room_id: string }; Returns: string }
+      tier_rank: {
+        Args: { _t: Database["public"]["Enums"]["access_tier"] }
+        Returns: number
+      }
       update_session_meta: {
         Args: { _history_id: string; _notes: string; _tags: string[] }
         Returns: undefined
       }
+      user_timezone: { Args: { _user_id: string }; Returns: string }
+      username_is_taken: {
+        Args: { _canonical: string; _exclude_user?: string }
+        Returns: boolean
+      }
     }
     Enums: {
+      access_tier: "free" | "pro" | "elite"
       breach_severity: "minor" | "severe"
       room_status: "lobby" | "active" | "complete" | "aborted"
     }
@@ -1801,12 +2162,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1830,11 +2191,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1855,11 +2216,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1880,11 +2241,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1897,11 +2258,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1913,6 +2274,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      access_tier: ["free", "pro", "elite"],
       breach_severity: ["minor", "severe"],
       room_status: ["lobby", "active", "complete", "aborted"],
     },

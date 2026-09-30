@@ -58,7 +58,7 @@ function Leaderboard() {
       const [{ data: people, error: peopleErr }, { data: grps, error: grpsErr }] =
         await Promise.all([
           supabase
-            .from("profiles")
+            .from("public_profiles")
             .select("id, display_name, avatar_url, lifetime_xp, current_focus_streak")
             .order("lifetime_xp", { ascending: false })
             .limit(100),
@@ -106,12 +106,12 @@ function Leaderboard() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
+      <main className="app-page max-w-4xl">
         <div className="mb-12">
-          <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2">
+          <div className="ritual-label mb-2 text-muted-foreground">
             LEADERBOARD / LIFETIME_XP
           </div>
-          <h1 className="text-5xl font-extrabold tracking-tighter">Who's stacking.</h1>
+          <h1 className="page-title">Who's stacking.</h1>
         </div>
 
         <div className="inline-flex gap-1 p-1 mb-8 rounded-full border border-white/10 bg-white/5 backdrop-blur-md">

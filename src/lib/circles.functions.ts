@@ -63,7 +63,7 @@ export const getCircleDetail = createServerFn({ method: "POST" })
 
     const [{ data: profs }, { data: hist }] = await Promise.all([
       context.supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, display_name, avatar_url, current_focus_streak, last_active_at")
         .in("id", ids),
       context.supabase

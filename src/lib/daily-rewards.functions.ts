@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export interface RewardStatus {
   streak: number;
@@ -40,7 +41,7 @@ export const claimDailyReward = createServerFn({ method: "POST" })
   .handler(
     async ({ context }): Promise<{ rewardXp: number; newStreak: number; dayOfStreak: number }> => {
       const { data, error } = await context.supabase.rpc("claim_daily_reward");
-      if (error) throw new Error(error.message);
+      if (error) throw publicDbError(error, "db_write_failed");
       const row = Array.isArray(data) ? data[0] : data;
       return { rewardXp: row.reward_xp, newStreak: row.new_streak, dayOfStreak: row.day_of_streak };
     },

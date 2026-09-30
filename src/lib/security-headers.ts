@@ -18,6 +18,13 @@ const TURNSTILE = "https://challenges.cloudflare.com";
 const GOOGLE_FONTS_CSS = "https://fonts.googleapis.com";
 const GOOGLE_FONTS_FILES = "https://fonts.gstatic.com";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev";
+// Razorpay Checkout: the script loads from checkout.razorpay.com, opens its
+// card/UPI form in an iframe from api.razorpay.com, and makes API + telemetry
+// calls to *.razorpay.com. All three CSP directives below need these hosts or
+// the browser blocks the flow ("Failed to load Razorpay Checkout").
+const RAZORPAY_SCRIPT = "https://checkout.razorpay.com";
+const RAZORPAY_API = "https://api.razorpay.com";
+const RAZORPAY_ALL = "https://*.razorpay.com";
 
 /**
  * The policy.
@@ -47,14 +54,14 @@ const CSP_DIRECTIVES = [
   // What this still buys: an injected script may execute, but it cannot reach
   // an attacker's server, because connect-src is a strict allowlist. Data
   // exfiltration — the actual payoff of most XSS — stays blocked.
-  `script-src 'self' 'unsafe-inline' ${TURNSTILE}`,
+  `script-src 'self' 'unsafe-inline' ${TURNSTILE} ${RAZORPAY_SCRIPT}`,
   `style-src 'self' 'unsafe-inline' ${GOOGLE_FONTS_CSS}`,
   `font-src 'self' ${GOOGLE_FONTS_FILES} data:`,
   // https: on img-src because avatars are user-supplied and come from arbitrary
   // hosts; blob:/data: cover generated share images and inline icons.
   "img-src 'self' data: blob: https:",
-  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} ${TURNSTILE} ${AI_GATEWAY}`,
-  `frame-src ${TURNSTILE}`,
+  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} ${TURNSTILE} ${AI_GATEWAY} ${RAZORPAY_ALL}`,
+  `frame-src ${TURNSTILE} ${RAZORPAY_API} ${RAZORPAY_SCRIPT}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -72,7 +79,10 @@ const HEADERS: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   // Nothing here needs these. Denying by default means a future dependency
   // cannot quietly start asking for them.
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  // payment allows self + Razorpay: Razorpay Checkout uses the Payment Request
+  // API for card/UPI. The rest stay denied.
+  "Permissions-Policy":
+    'camera=(), microphone=(), geolocation=(), payment=(self "https://checkout.razorpay.com" "https://api.razorpay.com"), usb=()',
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
 };

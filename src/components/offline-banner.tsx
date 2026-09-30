@@ -19,7 +19,7 @@ export function OfflineBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed inset-x-0 top-0 z-[60] border-b border-breach/30 bg-breach/10 px-4 py-2 text-center backdrop-blur-md"
+      className="fixed inset-x-0 top-0 z-[65] border-b border-breach/30 bg-obsidian/95 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-center backdrop-blur-md"
     >
       <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-breach">
         Offline — your progress is held until you reconnect

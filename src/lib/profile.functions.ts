@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { httpUrl } from "@/lib/zod-url";
+import { fetchMyPrivateProfile } from "./private-profile.server";
+import { publicDbError } from "@/lib/db-error";
 
 export type PublicProfile = {
   id: string;
@@ -26,6 +29,22 @@ export type PublicProfile = {
   friendship?: { id: string; status: string; direction: "incoming" | "outgoing" | "friend" } | null;
 };
 
+/**
+ * Report the browser's IANA timezone so streak/daily-reward/challenge day
+ * boundaries and the DNA personality label are computed in the user's local
+ * time, not UTC. The DB (set_my_timezone) validates against pg_timezone_names
+ * and rejects anything that isn't a real zone.
+ */
+export const setMyTimezone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ tz: z.string().min(1).max(64) }).parse(d))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    // Ignore the error: a bad/unknown zone just leaves the stored value as-is
+    // (defaults to 'UTC'), never blocks the caller.
+    await context.supabase.rpc("set_my_timezone", { _tz: data.tz });
+    return { ok: true };
+  });
+
 /** Fetch a profile (self or other). Includes achievement unlocks + session count. */
 export const getProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -36,7 +55,7 @@ export const getProfile = createServerFn({ method: "GET" })
 
     const [{ data: p, error: pErr }, { count }, { data: unlocks }, { data: fs }] =
       await Promise.all([
-        supabase.from("profiles").select("*").eq("id", targetId).maybeSingle(),
+        supabase.from("public_profiles").select("id, display_name, username, avatar_url, bio, title, prestige_level, banner_gradient, banner_url, pinned_showcase, lifetime_xp, current_focus_streak, best_streak, total_focus_seconds, created_at, last_active_at").eq("id", targetId).maybeSingle(),
         supabase
           .from("focus_history")
           .select("id", { count: "exact", head: true })
@@ -56,6 +75,9 @@ export const getProfile = createServerFn({ method: "GET" })
               .maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
+    // Personality analysis is owner-only; strangers never see it.
+    const privateProfile = targetId === userId ? await fetchMyPrivateProfile(supabase) : null;
+
     if (pErr) throw new Error(pErr.message);
     if (!p) throw new Error("not_found");
 
@@ -92,7 +114,7 @@ export const getProfile = createServerFn({ method: "GET" })
       avatar_url: p.avatar_url,
 
       bio: (p as { bio?: string | null }).bio ?? null,
-      productivity_dna: (p as { productivity_dna?: string | null }).productivity_dna ?? null,
+      productivity_dna: privateProfile?.productivity_dna ?? null,
       created_at: p.created_at,
       lifetime_xp: p.lifetime_xp ?? 0,
       current_focus_streak: p.current_focus_streak ?? 0,
@@ -111,7 +133,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       .object({
         display_name: z.string().trim().min(1).max(40).optional(),
         bio: z.string().trim().max(280).optional(),
-        avatar_url: z.string().url().max(500).optional().or(z.literal("")),
+        avatar_url: httpUrl.max(500).optional().or(z.literal("")),
       })
       .parse(d),
   )
@@ -124,6 +146,6 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       .from("profiles")
       .update(patch)
       .eq("id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });

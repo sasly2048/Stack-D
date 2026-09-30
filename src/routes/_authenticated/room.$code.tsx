@@ -32,6 +32,7 @@ import { track } from "@/lib/observability";
 import { RoomTimeline } from "@/components/rooms/room-timeline";
 import { RoomSchedule } from "@/components/rooms/room-schedule";
 import { useLockScreenTimer } from "@/hooks/use-lock-screen-timer";
+import { withSessionRetry } from "@/lib/session-recovery";
 
 export const Route = createFileRoute("/_authenticated/room/$code")({
   head: ({ params }) => ({
@@ -165,11 +166,9 @@ function Room() {
       if (!mounted) return;
       setRoom(r);
 
-      const { data: parts } = await supabase
-        .from("participants")
-        .select("*")
-        .eq("room_id", r.id)
-        .order("joined_at");
+      const { data: parts } = await withSessionRetry(() =>
+        supabase.from("participants").select("*").eq("room_id", r.id).order("joined_at"),
+      );
       const { data: brks } = await supabase
         .from("breaks")
         .select("id, user_id, display_name, reason, severity, at")
@@ -288,11 +287,9 @@ function Room() {
     if (completionLockRef.current) return;
     completionLockRef.current = true;
     (async () => {
-      const { error } = await supabase
-        .from("rooms")
-        .update({ status: "complete", ended_at: new Date().toISOString() })
-        .eq("id", room.id)
-        .eq("status", "active");
+      const { error } = await withSessionRetry(() =>
+        supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "complete" }),
+      );
       if (error) completionLockRef.current = false;
     })();
   }, [isHost, room, remaining]);
@@ -306,13 +303,15 @@ function Room() {
         0,
         Math.round((elapsed / (room.target_duration_seconds || 1)) * 100),
       );
-      const { error } = await supabase.rpc("record_breach", {
-        _room_id: room.id,
-        _participant_id: myPart.id,
-        _reason: reason,
-        _severity: severity,
-        _integrity: integrity,
-      });
+      const { error } = await withSessionRetry(() =>
+        supabase.rpc("record_breach", {
+          _room_id: room.id,
+          _participant_id: myPart.id,
+          _reason: reason,
+          _severity: severity,
+          _integrity: integrity,
+        }),
+      );
       if (error) {
         toast.error("Breach not recorded — retrying", { description: error.message });
         return;
@@ -378,6 +377,10 @@ function Room() {
       // Recorded so a historical score stays interpretable if the formula
       // changes — without it, old and new rows silently mean different things.
       _scoring_version: res.scoringVersion,
+      // Server recomputes score/duration/xp authoritatively and only uses this
+      // (clamped) to apply the abandonment penalty — it can lower but never
+      // raise the score. The client _score/_xp/_duration above are display-only.
+      _abandonment_seconds: Math.max(0, Math.round(abandonmentMs / 1000)),
       _owner: me.id,
       _queued_at: Date.now(),
     };
@@ -392,6 +395,7 @@ function Room() {
           _breaches_count: payload._breaches_count,
           _tier: payload._tier,
           _scoring_version: payload._scoring_version,
+          _abandonment_seconds: payload._abandonment_seconds,
         });
         if (!error && typeof hid === "string") {
           setHistoryId(hid);
@@ -557,20 +561,21 @@ function Room() {
     if (!room || !isHost) return;
     if (completionLockRef.current) return;
     completionLockRef.current = true;
-    const { error } = await supabase
-      .from("rooms")
-      .update({ status: "complete", ended_at: new Date().toISOString() })
-      .eq("id", room.id)
-      .eq("status", "active");
-    if (error) completionLockRef.current = false;
+    const { error } = await withSessionRetry(() =>
+      supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "complete" }),
+    );
+    if (error) {
+      completionLockRef.current = false;
+      toast.error("Couldn't end the session. Try again.");
+    }
   };
 
   const abortRitual = async () => {
     if (!room || !isHost) return;
-    await supabase
-      .from("rooms")
-      .update({ status: "aborted", ended_at: new Date().toISOString() })
-      .eq("id", room.id);
+    const { error } = await withSessionRetry(() =>
+      supabase.rpc("finish_focus_room", { _room_id: room.id, _outcome: "aborted" }),
+    );
+    if (error) toast.error("Couldn't cancel the session. Try again.");
   };
 
   const leaveRoom = async () => {
@@ -630,11 +635,11 @@ function Room() {
 
   if (countdown !== null) {
     return (
-      <div className="fixed inset-0 z-[60] bg-black flex flex-col items-center justify-center">
+      <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-obsidian px-4 text-center">
         <div className="font-mono text-[10px] tracking-[0.4em] uppercase text-muted-foreground mb-8 animate-breathing">
           Prepare the offering
         </div>
-        <div className="text-[12rem] font-extrabold tracking-tighter leading-none animate-breathing">
+        <div className="animate-breathing text-[clamp(5rem,34vw,12rem)] font-extrabold leading-none">
           {countdown === 0 ? "STACK" : countdown}
         </div>
       </div>
@@ -667,8 +672,12 @@ function Room() {
       className={`min-h-screen ${oledMode ? "bg-black" : "bg-obsidian"} text-silver transition-colors`}
     >
       <Nav />
-      <main className="pt-24 pb-20 px-6 max-w-2xl mx-auto">
-        <div className="mb-10 flex justify-between items-center font-mono text-[10px] tracking-tighter text-muted-foreground">
+      <main className="app-page max-w-2xl">
+        <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 font-mono text-[10px] text-muted-foreground sm:mb-10">
+          {/* The copy button and its "Copied" confirmation share the first
+              grid column — as separate children the confirmation pushed the
+              status span onto an implicit second row and the header jumped. */}
+          <span className="flex min-w-0 items-center gap-2">
           <button
             type="button"
             onClick={copyCode}
@@ -685,12 +694,13 @@ function Room() {
           {copied && (
             <span
               aria-hidden="true"
-              className="font-mono text-[10px] uppercase tracking-widest text-pulse"
+              className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-pulse"
             >
               Copied
             </span>
           )}
-          <span className="flex items-center gap-3">
+          </span>
+          <span className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
             {/* Connection health sits next to the session status because the two
                 are read together: "LIVE SESSION" while the channel is down
                 means the screen is lying about being live. */}
@@ -740,7 +750,7 @@ function Room() {
                 <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase mb-3">
                   Target
                 </div>
-                <div className="text-6xl sm:text-7xl font-mono tracking-tighter mb-3">
+                <div className="mb-3 font-mono text-5xl leading-none sm:text-7xl">
                   {formatDuration(room.target_duration_seconds)}
                 </div>
                 <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
@@ -751,7 +761,7 @@ function Room() {
             {active && (
               <>
                 <div
-                  className={`text-7xl sm:text-8xl font-mono tracking-tighter mb-3 ${myPart?.breached ? "text-breach" : ""}`}
+                  className={`mb-3 font-mono text-5xl leading-none sm:text-8xl ${myPart?.breached ? "text-breach" : ""}`}
                 >
                   {formatDuration(remaining)}
                 </div>
@@ -762,7 +772,7 @@ function Room() {
             )}
             {complete && (
               <>
-                <div className="text-7xl sm:text-8xl font-mono tracking-tighter mb-3 text-pulse">
+                <div className="mb-3 font-mono text-5xl leading-none text-pulse sm:text-8xl">
                   {formatDuration(elapsed)}
                 </div>
                 <div className="text-[10px] font-mono tracking-[0.4em] text-pulse uppercase">
@@ -772,7 +782,7 @@ function Room() {
             )}
             {aborted && (
               <>
-                <div className="text-6xl font-mono tracking-tighter mb-3 text-breach">ABORT</div>
+                <div className="mb-3 font-mono text-5xl leading-none text-breach sm:text-6xl">ABORT</div>
                 <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
                   Session terminated by host
                 </div>
@@ -785,17 +795,17 @@ function Room() {
           <>
             <RoomHeader roomId={room.id} isHost={isHost} />
             <JoinRequestsPanel roomId={room.id} isModerator={isHost} />
-            <div className="mb-10 glass rounded-md p-5 flex items-center gap-5">
+            <div className="mb-10 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 rounded-md p-4 glass sm:gap-5 sm:p-5">
               <QRCode
                 text={`${typeof window !== "undefined" ? window.location.origin : ""}/room/${room.code}`}
-                size={128}
+                size={112}
               />
               <div>
                 <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">
                   Invite
                 </p>
                 <p className="mt-2 text-sm text-silver-dim">Scan to join room</p>
-                <p className="mt-1 font-mono text-2xl tracking-[0.3em] text-silver">{room.code}</p>
+                <p className="mt-1 break-all font-mono text-xl tracking-[0.2em] text-silver sm:text-2xl sm:tracking-[0.3em]">{room.code}</p>
               </div>
             </div>
             <div className="mb-10 grid md:grid-cols-2 gap-4">
@@ -987,7 +997,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="pt-32 pb-20 px-6 max-w-2xl mx-auto">{children}</main>
+      <main className="app-page max-w-2xl">{children}</main>
     </div>
   );
 }

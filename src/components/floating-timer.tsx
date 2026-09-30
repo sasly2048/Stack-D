@@ -70,7 +70,7 @@ export function FloatingTimer() {
     <Link
       to="/room/$code"
       params={{ code: session.code }}
-      className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-full glass px-4 py-2.5 font-mono text-xs text-silver shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] hover:border-ember/40 transition-colors safe-bottom"
+      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full glass px-3 py-2.5 font-mono text-xs text-silver shadow-[var(--shadow-panel)] transition-colors hover:border-ember/40 sm:gap-3 sm:px-4"
       aria-label={`Return to active session ${session.code}`}
     >
       <span
@@ -81,7 +81,7 @@ export function FloatingTimer() {
         {done ? "READY" : "LIVE"}
       </span>
       <span className="tabular-nums text-silver">{fmt(remaining)}</span>
-      <span className="text-muted-foreground text-[10px] tracking-widest">· {session.code}</span>
+      <span className="hidden text-[10px] tracking-widest text-muted-foreground min-[360px]:inline">· {session.code}</span>
     </Link>
   );
 }

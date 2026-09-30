@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { publicDbError } from "@/lib/db-error";
 
 export interface Partner {
   relationship_id: string;
@@ -33,7 +35,7 @@ export const listPartners = createServerFn({ method: "GET" })
       new Set(rows.map((r) => (r.mentor_id === context.userId ? r.mentee_id : r.mentor_id))),
     );
     const { data: profs } = await context.supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id,display_name,avatar_url")
       .in("id", partnerIds);
     const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
@@ -63,7 +65,11 @@ export const listPartners = createServerFn({ method: "GET" })
  */
 export const pairPartner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { partnerId: string; asRole: "mentor" | "mentee" }) => input)
+  .inputValidator((input) =>
+    z
+      .object({ partnerId: z.string().uuid(), asRole: z.enum(["mentor", "mentee"]) })
+      .parse(input),
+  )
   .handler(async ({ data, context }): Promise<{ id: string }> => {
     if (data.partnerId === context.userId) throw new Error("self");
     const mentor = data.asRole === "mentor" ? context.userId : data.partnerId;
@@ -81,20 +87,22 @@ export const pairPartner = createServerFn({ method: "POST" })
       )
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { id: row!.id };
   });
 
 /** Only the invited party can accept or decline. */
 export const respondToPairing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { relationshipId: string; accept: boolean }) => input)
+  .inputValidator((input) =>
+    z.object({ relationshipId: z.string().uuid(), accept: z.boolean() }).parse(input),
+  )
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { error } = await context.supabase
       .from("mentor_relationships")
       .update({ status: data.accept ? "active" : "declined" })
       .eq("id", data.relationshipId);
-    if (error) throw new Error(error.message);
+    if (error) throw publicDbError(error, "db_write_failed");
     return { ok: true };
   });
 
