@@ -42,7 +42,9 @@ import app.stackd.core.ui.OfflineBanner
 import app.stackd.core.ui.QueueBadge
 import app.stackd.core.workmanager.FinalizeQueueWorker
 import io.github.jan.supabase.auth.status.SessionStatus
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 
 /** Calm post-crash screen (web route-error-boundary). Retry and dismiss both re-enter the app. */
 @Composable
@@ -75,9 +77,30 @@ private fun SessionInterrupted(detail: String, onContinue: () -> Unit) {
 }
 
 class MainActivity : ComponentActivity() {
+    override fun onResume() {
+        super.onResume()
+        // Checkout runs in the browser; coming back is when an upgrade lands.
+        val container = (application as StackdApplication).container
+        lifecycleScope.launch { app.stackd.core.premium.Celebration.check(container) }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        debugCelebrate(intent)
+    }
+
+    /** Debug builds only: `adb shell am start ... --es celebrate pro|elite` previews the celebration. */
+    private fun debugCelebrate(intent: android.content.Intent?) {
+        if (!BuildConfig.DEBUG) return
+        intent?.getStringExtra("celebrate")?.takeIf { it == "pro" || it == "elite" }?.let {
+            app.stackd.core.premium.Celebration.pending.value = it
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        debugCelebrate(intent)
 
         val container = (application as StackdApplication).container
 
@@ -192,6 +215,12 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
                                         .padding(bottom = 96.dp),
+                                )
+
+                                // Post-upgrade celebration over everything; held
+                                // while a room is on screen.
+                                app.stackd.core.premium.CelebrationHost(
+                                    suppressed = entry?.destination?.route == Dest.Room.route,
                                 )
                             }
                         }

@@ -17,7 +17,7 @@ import kotlin.math.sin
  * SettingsStore by StackdApplication).
  */
 object Sfx {
-    enum class Kind { TAP, SELECT, OPEN, CLOSE, SUCCESS, ERROR, AUTH, XP, ACHIEVEMENT, NOTIFY, PURCHASE }
+    enum class Kind { TAP, SELECT, OPEN, CLOSE, SUCCESS, ERROR, AUTH, XP, ACHIEVEMENT, NOTIFY, PURCHASE, CELEBRATE_PRO, CELEBRATE_ELITE }
 
     @Volatile var enabled: Boolean = true
 
@@ -42,6 +42,21 @@ object Sfx {
         ),
         Kind.NOTIFY to listOf(Note(880.0, 0.0, 0.07, Wave.SINE, 0.045), Note(1174.0, 0.06, 0.12, Wave.SINE, 0.045)),
         Kind.PURCHASE to listOf(Note(587.0, 0.0, 0.09, Wave.TRIANGLE, 0.05), Note(880.0, 0.07, 0.14, Wave.SINE, 0.055)),
+        // web celebration-sfx.ts playProSfx: two tones converging to a "signal lock".
+        Kind.CELEBRATE_PRO to listOf(
+            Note(587.33, 0.0, 0.22, Wave.TRIANGLE, 0.12),
+            Note(880.0, 0.14, 0.5, Wave.SINE, 0.16),
+            Note(1760.0, 0.16, 0.28, Wave.SINE, 0.05),
+        ),
+        // playEliteSfx: rising drone, A-major arpeggio, landing chord, sparkle tail.
+        Kind.CELEBRATE_ELITE to buildList {
+            add(Note(110.0, 0.0, 1.4, Wave.SAWTOOTH, 0.08, 220.0))
+            listOf(440.0, 554.37, 659.25, 880.0).forEachIndexed { i, f ->
+                add(Note(f, 0.25 + i * 0.16, 0.4, Wave.TRIANGLE, 0.13))
+            }
+            listOf(880.0, 1108.73, 1318.51).forEach { add(Note(it, 1.05, 0.9, Wave.SINE, 0.09)) }
+            add(Note(2637.0, 1.1, 0.6, Wave.SINE, 0.04))
+        },
     )
 
     private const val RATE = 22_050

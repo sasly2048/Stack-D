@@ -54,7 +54,15 @@ class PremiumViewModel(private val container: AppContainer) : ViewModel() {
         _state.value = (cached ?: _state.value).copy(loading = cached == null)
         viewModelScope.launch {
             val premium = container.premium
-            val ent = runCatching { premium.myEntitlement() }.getOrDefault(Entitlement())
+            val entRead = runCatching { premium.myEntitlement() }
+            // Only a real read feeds the upgrade detector — a failure default
+            // of "free" would make the next real read look like an upgrade.
+            entRead.getOrNull()?.let { e ->
+                container.auth.currentUserId?.let { uid ->
+                    app.stackd.core.premium.Celebration.observe(container.appContextForWork, uid, e.tier)
+                }
+            }
+            val ent = entRead.getOrDefault(Entitlement())
             val plans = runCatching { premium.listPlans() }.getOrDefault(emptyList())
             val promo = runCatching { premium.lifetimePromoStatus() }.getOrDefault(LifetimePromoStatus())
             val usage = runCatching { premium.aiUsage() }.getOrDefault(AiUsage())

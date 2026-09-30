@@ -88,7 +88,7 @@ private fun messageFor(record: JsonObject): String? {
     }
 }
 
-private fun vibrate(context: Context, ms: Long = 20) {
+internal fun vibrate(context: Context, ms: Long = 20) {
     val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
     } else {
