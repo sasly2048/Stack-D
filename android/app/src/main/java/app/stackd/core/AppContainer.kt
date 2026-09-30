@@ -85,6 +85,11 @@ class AppContainer(context: Context) {
 
     val partners: PartnersRepository by lazy { PartnersRepository(client) }
 
+    /** Webhooks via the web app's public routes (server holds the service-role writes). */
+    val webhooks: app.stackd.data.webhooks.WebhooksRepository by lazy {
+        app.stackd.data.webhooks.WebhooksRepository(client)
+    }
+
     /** Calls the web app's public AI routes; every method degrades to null. */
     val ai: app.stackd.data.ai.AiRepository by lazy { app.stackd.data.ai.AiRepository(client) }
 }

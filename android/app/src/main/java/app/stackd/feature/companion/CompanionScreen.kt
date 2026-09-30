@@ -85,9 +85,14 @@ class CompanionViewModel(private val container: AppContainer) : ViewModel() {
             val context = history
                 .filterNot { it.role == "assistant" && it.content.startsWith(ERROR_PREFIX) }
                 .takeLast(HISTORY_LIMIT)
-            val reply = container.ai.askCompanion(CompanionInput(history = context, message = text))
-            val bubble = reply?.reply
-                ?: "$ERROR_PREFIX Companion is unavailable right now. Try again in a moment."
+            val bubble = when (
+                val r = container.ai.askCompanion(CompanionInput(history = context, message = text))
+            ) {
+                is app.stackd.data.ai.CompanionResult.Reply -> r.text
+                // Tier/quota/outage reasons come from the server; prefixed so
+                // they're never sent back as assistant context.
+                is app.stackd.data.ai.CompanionResult.Refused -> "$ERROR_PREFIX ${r.notice}"
+            }
             _state.value = _state.value.copy(
                 messages = withUser + CompanionMessage(role = "assistant", content = bubble),
                 busy = false,

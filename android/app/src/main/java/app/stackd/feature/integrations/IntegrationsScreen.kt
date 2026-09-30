@@ -61,12 +61,20 @@ private val INTEGRATIONS = listOf(
 )
 
 @Composable
-fun IntegrationsRoute(onBack: () -> Unit, modifier: Modifier = Modifier) {
-    IntegrationsScreen(onBack = onBack, modifier = modifier)
+fun IntegrationsRoute(
+    onBack: () -> Unit,
+    onOpenWebhooks: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    IntegrationsScreen(onBack = onBack, onOpenWebhooks = onOpenWebhooks, modifier = modifier)
 }
 
 @Composable
-fun IntegrationsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun IntegrationsScreen(
+    onBack: () -> Unit,
+    onOpenWebhooks: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val colors = Stackd.colors
     val context = LocalContext.current
     Box(
@@ -97,8 +105,14 @@ fun IntegrationsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                         .then(
                             if (live && i.webPath != null) {
                                 Modifier.clickable {
-                                    val url = BuildConfig.WEB_BASE_URL + i.webPath
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                                    // Webhooks is native now; SDK/MCP stay approved
+                                    // web hand-offs.
+                                    if (i.webPath == "/webhooks") {
+                                        onOpenWebhooks()
+                                    } else {
+                                        val url = BuildConfig.WEB_BASE_URL + i.webPath
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                                    }
                                 }
                             } else Modifier,
                         )
@@ -131,7 +145,11 @@ fun IntegrationsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     Text(i.tagline, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                     if (live) {
                         Spacer(Modifier.height(4.dp))
-                        Text("Opens on the web →", style = MonoLabelSmall, color = colors.accent)
+                        Text(
+                            if (i.webPath == "/webhooks") "Manage →" else "Opens on the web →",
+                            style = MonoLabelSmall,
+                            color = colors.accent,
+                        )
                     }
                 }
             }

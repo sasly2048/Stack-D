@@ -252,12 +252,17 @@ fun StackdNavHost(
 
         // Misc
         composable(Dest.Integrations.route) {
-            IntegrationsRoute(onBack = { navController.popBackStack() })
+            IntegrationsRoute(
+                onBack = { navController.popBackStack() },
+                onOpenWebhooks = { navController.navigate(Dest.Webhooks.route) { launchSingleTop = true } },
+            )
+        }
+        composable(Dest.Webhooks.route) {
+            app.stackd.feature.webhooks.WebhooksRoute(onBack = { navController.popBackStack() })
         }
         placeholder(Dest.Settings, "Settings")
 
         // Developer surfaces — reachable only while the Settings toggle is on
-        placeholder(Dest.Webhooks, "Webhooks")
         placeholder(Dest.Sdk, "SDK")
         placeholder(Dest.Mcp, "MCP")
     }

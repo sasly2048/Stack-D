@@ -1,7 +1,8 @@
 package app.stackd.core.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,24 +33,34 @@ fun NavMenuSheet(
         onDismissRequest = onDismiss,
         containerColor = colors.background,
     ) {
-        Column(Modifier.padding(horizontal = 24.dp)) {
-            Text("NAVIGATE", style = MonoLabelSmall, color = colors.textMuted)
-            Spacer(Modifier.height(8.dp))
-            entries.forEach { (label, go) ->
+        // Lazy + scrollable: 22 destinations are taller than the sheet on a
+        // phone, and the old plain Column cut off everything after "Partners"
+        // (Trust & Safety, Integrations, Profile were unreachable).
+        androidx.compose.foundation.lazy.LazyColumn(
+            modifier = Modifier.padding(horizontal = 24.dp),
+            contentPadding = androidx.compose.foundation.layout.WindowInsets.navigationBars
+                .asPaddingValues(),
+        ) {
+            item {
+                Text("NAVIGATE", style = MonoLabelSmall, color = colors.textMuted)
+                Spacer(Modifier.height(8.dp))
+            }
+            items(entries.size) { i ->
+                val (label, go) = entries[i]
                 Text(
                     label,
                     style = MaterialTheme.typography.titleMedium,
                     color = colors.textPrimary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
                             onDismiss()
                             go()
                         }
                         .padding(vertical = 14.dp),
                 )
             }
-            Spacer(Modifier.height(24.dp))
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }

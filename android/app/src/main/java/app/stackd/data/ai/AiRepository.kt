@@ -78,8 +78,38 @@ class AiRepository(private val client: SupabaseClient) {
         return fetch()?.also { aiCache[key] = System.currentTimeMillis() to it }
     }
 
-    suspend fun askCompanion(input: CompanionInput): CompanionReply? =
-        getJson("/api/public/ai/companion", post = true, body = json.encodeToString(input))
+    /**
+     * Companion is an explicit, tier-metered action (1 AI action per message).
+     * Unlike the passive cards it must tell the user WHY it can't answer, so the
+     * route's typed error is surfaced as a notice instead of a silent null.
+     */
+    suspend fun askCompanion(input: CompanionInput): CompanionResult {
+        val token = client.auth.currentAccessTokenOrNull()
+            ?: return CompanionResult.Refused("Sign in again to use the Companion.")
+        return runCatching {
+            val response = http.post(webBase + "/api/public/ai/companion") {
+                header(HttpHeaders.Authorization, "Bearer $token")
+                contentType(ContentType.Application.Json)
+                setBody(json.encodeToString(input))
+            }
+            val text = response.bodyAsText()
+            if (response.status == HttpStatusCode.OK) {
+                CompanionResult.Reply(json.decodeFromString<CompanionReply>(text).reply)
+            } else {
+                val err = runCatching { json.decodeFromString<AiError>(text) }.getOrNull()
+                CompanionResult.Refused(
+                    when (err?.error) {
+                        // Server's own wording: "available on Pro and Elite" /
+                        // "You've used all N of your AI actions…"
+                        "ai_quota" -> err.message ?: "AI features are available on Pro and Elite."
+                        "ai_unavailable" -> "The Companion is paused right now. Try again later."
+                        "invalid_input" -> "That message couldn't be sent. Try a shorter one."
+                        else -> "Companion is unavailable right now. Try again in a moment."
+                    },
+                )
+            }
+        }.getOrElse { CompanionResult.Refused("Couldn't reach the Companion. Check your connection.") }
+    }
 
     suspend fun summarizeVaultItem(itemId: String): VaultSummary? =
         getJson(
@@ -207,6 +237,16 @@ data class CompanionInput(
 
 @Serializable
 data class CompanionReply(val reply: String)
+
+/** The public routes' typed error body: { error, message?, reason? }. */
+@Serializable
+data class AiError(val error: String? = null, val message: String? = null, val reason: String? = null)
+
+/** A companion turn: a reply, or a user-facing reason it was refused. */
+sealed interface CompanionResult {
+    data class Reply(val text: String) : CompanionResult
+    data class Refused(val notice: String) : CompanionResult
+}
 
 @Serializable
 private data class VaultSummarizeInput(val id: String)
