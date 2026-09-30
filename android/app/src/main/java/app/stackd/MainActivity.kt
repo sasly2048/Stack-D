@@ -38,6 +38,7 @@ import androidx.navigation.compose.rememberNavController
 import app.stackd.core.theme.StackdTheme
 import app.stackd.core.ui.FloatingTimerPill
 import app.stackd.core.ui.GlobalRealtimeToasts
+import app.stackd.core.ui.SprintInvites
 import app.stackd.core.ui.OfflineBanner
 import app.stackd.core.ui.QueueBadge
 import app.stackd.core.workmanager.FinalizeQueueWorker
@@ -94,6 +95,23 @@ class MainActivity : ComponentActivity() {
         if (!BuildConfig.DEBUG) return
         intent?.getStringExtra("celebrate")?.takeIf { it == "pro" || it == "elite" }?.let {
             app.stackd.core.premium.Celebration.pending.value = it
+        }
+        // `--ez recap_pdf true` renders the recap PDF from sample data.
+        if (intent?.getBooleanExtra("recap_pdf", false) == true) {
+            app.stackd.feature.room.RecapPdf.share(
+                this,
+                app.stackd.data.ai.SessionRecap(
+                    title = "A steady ninety minutes",
+                    summary = "You held the stack for the full block with a single wobble near the end. " +
+                        "Your focus score climbed past last week's average.",
+                    reflections = listOf("The first 30 minutes were the cleanest.", "The one breach came right after the halfway mark."),
+                    nextStep = "Try a 100-minute block tomorrow morning.",
+                    score = 87,
+                    xp = 240,
+                ),
+                app.stackd.data.ai.SessionRecapInput("r", 87, 240, 5400, 1, "gold", "ABC123"),
+                "Raghavendra G",
+            )
         }
     }
 
@@ -172,6 +190,12 @@ class MainActivity : ComponentActivity() {
                                 client = container.client,
                                 userId = uid,
                                 host = snackbarHost,
+                            )
+                            SprintInvites(
+                                client = container.client,
+                                userId = uid,
+                                host = snackbarHost,
+                                onJoin = { code -> navController.navigate(Dest.Room.of(code)) },
                             )
 
                             Box(Modifier.fillMaxSize()) {

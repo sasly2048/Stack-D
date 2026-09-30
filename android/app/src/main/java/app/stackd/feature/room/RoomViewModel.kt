@@ -90,6 +90,10 @@ data class RoomUiState(
      * AI backend is unreachable.
      */
     val aiRecap: app.stackd.data.ai.SessionRecap? = null,
+    /** What the recap was asked about — reused by Regenerate and the PDF. */
+    val aiRecapInput: app.stackd.data.ai.SessionRecapInput? = null,
+    val aiRecapLoading: Boolean = false,
+    val aiRecapError: Boolean = false,
     val savingSessionMeta: Boolean = false,
     val sessionMetaSaved: Boolean = false,
     /** A device signal that isn't guarding the stack — surfaced as a warning. */
@@ -938,12 +942,24 @@ class RoomViewModel(
         }
     }
 
-    /** Pulls the LLM narrative recap, best-effort; the card stays hidden if null. */
+    /** Pulls the LLM narrative recap; failure shows Signal lost + Retry (web card). */
     private fun fetchAiRecap(input: app.stackd.data.ai.SessionRecapInput) {
+        _state.value = _state.value.copy(aiRecapInput = input, aiRecapLoading = true, aiRecapError = false)
         viewModelScope.launch {
-            val recap = container.ai.sessionRecap(input) ?: return@launch
-            _state.value = _state.value.copy(aiRecap = recap)
+            val recap = container.ai.sessionRecap(input)
+            _state.value = _state.value.copy(
+                aiRecap = recap ?: _state.value.aiRecap,
+                aiRecapLoading = false,
+                aiRecapError = recap == null,
+            )
         }
+    }
+
+    /** Regenerate / Retry on the recap card. */
+    fun regenerateRecap() {
+        val input = _state.value.aiRecapInput ?: return
+        if (_state.value.aiRecapLoading) return
+        fetchAiRecap(input)
     }
 
     /** Pulls the rich ceremony summary for the just-finished session. */

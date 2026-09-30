@@ -1,5 +1,9 @@
 package app.stackd.feature.room
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
+
 import android.content.Context
 import android.os.Build
 import android.os.VibrationEffect
@@ -164,6 +168,7 @@ fun RoomRoute(
             onSaveSessionMeta = vm::saveSessionMeta,
             onInteraction = vm::onInteraction,
             onRequestJoin = vm::requestJoin,
+            onRegenerateRecap = vm::regenerateRecap,
         )
         SnackbarHost(
             hostState = snackbarHost,
@@ -247,6 +252,7 @@ fun RoomScreen(
     onSaveSessionMeta: (String, String) -> Unit = { _, _ -> },
     onInteraction: () -> Unit = {},
     onRequestJoin: (String) -> Unit = {},
+    onRegenerateRecap: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -287,7 +293,7 @@ fun RoomScreen(
                 onToggleReady, onAddWorkspace, onToggleWorkspace, onDeleteWorkspace,
                 onInteraction = onInteraction,
             )
-            RoomPhase.ENDED -> Ended(state, onExit, onSaveSessionMeta)
+            RoomPhase.ENDED -> Ended(state, onExit, onSaveSessionMeta, onRegenerateRecap)
         }
       }
       // Celebration burst over a clean, high finish — not on aborted/compromised
@@ -641,6 +647,7 @@ private fun Ended(
     state: RoomUiState,
     onExit: () -> Unit,
     onSaveSessionMeta: (String, String) -> Unit,
+    onRegenerateRecap: () -> Unit,
 ) {
     val colors = Stackd.colors
     val result = state.result
@@ -739,12 +746,11 @@ private fun Ended(
             }
         }
 
-        // LLM narrative recap — web's AI recap card. Renders only once the AI
-        // backend answers; there's no local fallback, so it stays hidden until
-        // then (or forever, if the backend is unreachable).
-        state.aiRecap?.let { recap ->
+        // LLM narrative recap — web's SessionRecapCard: loading, Signal lost +
+        // Retry, Regenerate, and Download PDF.
+        if (state.aiRecapInput != null) {
             Spacer(Modifier.height(20.dp))
-            AiRecapCard(recap)
+            AiRecapCard(state, onRegenerateRecap)
         }
 
         // Post-session notes + tags, attached to this history row. Only after
@@ -765,10 +771,13 @@ private fun Ended(
     EmberButton(text = "Back to Dashboard", onClick = onExit)
 }
 
-/** LLM narrative recap of the finished session — mirrors the web AI recap card. */
+/** LLM narrative recap of the finished session — mirrors the web SessionRecapCard. */
 @Composable
-private fun AiRecapCard(recap: app.stackd.data.ai.SessionRecap) {
+private fun AiRecapCard(state: RoomUiState, onRegenerate: () -> Unit) {
     val colors = Stackd.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val recap = state.aiRecap
+    val loading = state.aiRecapLoading
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -776,8 +785,54 @@ private fun AiRecapCard(recap: app.stackd.data.ai.SessionRecap) {
             .border(1.dp, colors.accent.copy(alpha = 0.25f), app.stackd.core.theme.Radius2Xl)
             .padding(20.dp),
     ) {
-        Text("ATLAS RECAP", style = MonoLabelSmall, color = colors.accent)
-        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("AI / SESSION_RECAP", style = MonoLabelSmall, color = colors.accent, modifier = Modifier.weight(1f))
+            Text(
+                if (loading) "COMPOSING…" else "REGENERATE →",
+                style = MonoLabelSmall,
+                color = if (loading) colors.textMuted else colors.textPrimary,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clickable(enabled = !loading, role = androidx.compose.ui.semantics.Role.Button, onClick = onRegenerate)
+                    .wrapContentHeight(Alignment.CenterVertically)
+                    .padding(horizontal = 4.dp),
+            )
+        }
+        when {
+            recap == null && loading -> {
+                Spacer(Modifier.height(6.dp))
+                Text("Composing your recap…", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+            }
+            recap == null -> {
+                Spacer(Modifier.height(6.dp))
+                Text("SIGNAL LOST", style = MonoLabelSmall, color = colors.textMuted)
+                Spacer(Modifier.height(8.dp))
+                GhostButton(text = "Retry", onClick = onRegenerate)
+            }
+            else -> RecapBody(recap)
+        }
+        if (recap != null) {
+            Spacer(Modifier.height(16.dp))
+            GhostButton(
+                text = "Download PDF",
+                enabled = !loading,
+                onClick = {
+                    val input = state.aiRecapInput ?: return@GhostButton
+                    val me = state.participants.firstOrNull { it.userId == state.meId }?.displayName
+                    if (!RecapPdf.share(context, recap, input, me)) {
+                        android.widget.Toast.makeText(context, "Couldn't export the recap.", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecapBody(recap: app.stackd.data.ai.SessionRecap) {
+    val colors = Stackd.colors
+    Column {
+        Spacer(Modifier.height(6.dp))
         Text(
             recap.title,
             style = MaterialTheme.typography.titleLarge,
