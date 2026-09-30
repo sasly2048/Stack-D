@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -157,48 +158,48 @@ fun FriendsScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        ResponsiveColumn {
-            Text("STACK'D / FRIENDS", style = MonoLabel, color = colors.textMuted)
-            Spacer(Modifier.height(16.dp))
-            SectionLabel("YOUR PEOPLE")
-            Spacer(Modifier.height(16.dp))
-
-            var query by remember { mutableStateOf("") }
-            OutlinedTextField(
-                value = query,
-                onValueChange = {
-                    query = it.take(60)
-                    onSearch(query)
-                },
-                label = { Text("Find people by name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (state.searchResults.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                state.searchResults.forEach { p ->
-                    PersonRow(
-                        name = p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
-                        sub = null,
-                        actionA = if (p.id in state.requested) "SENT" else "ADD",
-                        onA = if (p.id in state.requested) null else ({ onSendRequest(p.id) }),
-                    )
-                }
+    // Hoisted out of the lazy items: state remembered inside an item is dropped
+    // when the item scrolls off screen.
+    var query by remember { mutableStateOf("") }
+    app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
+        item(key = "header") {
+            Column {
+                Text("STACK'D / FRIENDS", style = MonoLabel, color = colors.textMuted)
+                Spacer(Modifier.height(16.dp))
+                SectionLabel("YOUR PEOPLE")
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = {
+                        query = it.take(60)
+                        onSearch(query)
+                    },
+                    label = { Text("Find people by name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (state.searchResults.isNotEmpty()) Spacer(Modifier.height(8.dp))
             }
-            Spacer(Modifier.height(20.dp))
+        }
+        items(state.searchResults, key = { "s:${it.id}" }) { p ->
+            PersonRow(
+                name = p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
+                sub = null,
+                actionA = if (p.id in state.requested) "SENT" else "ADD",
+                onA = if (p.id in state.requested) null else ({ onSendRequest(p.id) }),
+            )
+        }
+        item(key = "gap") { Spacer(Modifier.height(20.dp)) }
 
-            when {
-                state.loading -> Text(
+        when {
+            state.loading -> item(key = "loading") {
+                Text(
                     "Loading…",
                     style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                 )
-                state.error -> {
+            }
+            state.error -> item(key = "error") {
+                Column {
                     Text(
                         "Couldn't load friends.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
@@ -206,53 +207,68 @@ fun FriendsScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                else -> {
-                    if (state.incoming.isNotEmpty()) {
-                        Text("REQUESTS", style = MonoLabelSmall, color = colors.accent)
-                        Spacer(Modifier.height(6.dp))
-                        state.incoming.forEach { f ->
-                            PersonRow(
-                                name = f.displayName ?: "Anon",
-                                sub = "wants to connect",
-                                actionA = "ACCEPT", onA = { onRespond(f.id, true) },
-                                actionB = "DECLINE", onB = { onRespond(f.id, false) },
-                            )
+            }
+            else -> {
+                if (state.incoming.isNotEmpty()) {
+                    item(key = "in-h") {
+                        Column {
+                            Text("REQUESTS", style = MonoLabelSmall, color = colors.accent)
+                            Spacer(Modifier.height(6.dp))
                         }
-                        Spacer(Modifier.height(16.dp))
                     }
-                    if (state.outgoing.isNotEmpty()) {
-                        Text("SENT", style = MonoLabelSmall, color = colors.textMuted)
-                        Spacer(Modifier.height(6.dp))
-                        state.outgoing.forEach { f ->
-                            PersonRow(
-                                name = f.displayName ?: "Anon",
-                                sub = "pending",
-                                actionA = "CANCEL", onA = { onRemove(f.id) },
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
-                    }
-                    Text("FRIENDS · ${state.friends.size}", style = MonoLabelSmall, color = colors.textMuted)
-                    Spacer(Modifier.height(6.dp))
-                    if (state.friends.isEmpty()) {
-                        Text(
-                            "No friends yet — search above to send a request.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                        )
-                    }
-                    state.friends.forEach { f ->
+                    items(state.incoming, key = { "in:${it.id}" }) { f ->
                         PersonRow(
                             name = f.displayName ?: "Anon",
-                            sub = "since ${f.since.take(10)}",
-                            actionA = "REMOVE", onA = { onRemove(f.id) },
+                            sub = "wants to connect",
+                            actionA = "ACCEPT", onA = { onRespond(f.id, true) },
+                            actionB = "DECLINE", onB = { onRespond(f.id, false) },
                         )
                     }
+                    item(key = "in-gap") { Spacer(Modifier.height(16.dp)) }
+                }
+                if (state.outgoing.isNotEmpty()) {
+                    item(key = "out-h") {
+                        Column {
+                            Text("SENT", style = MonoLabelSmall, color = colors.textMuted)
+                            Spacer(Modifier.height(6.dp))
+                        }
+                    }
+                    items(state.outgoing, key = { "out:${it.id}" }) { f ->
+                        PersonRow(
+                            name = f.displayName ?: "Anon",
+                            sub = "pending",
+                            actionA = "CANCEL", onA = { onRemove(f.id) },
+                        )
+                    }
+                    item(key = "out-gap") { Spacer(Modifier.height(16.dp)) }
+                }
+                item(key = "fr-h") {
+                    Column {
+                        Text("FRIENDS · ${state.friends.size}", style = MonoLabelSmall, color = colors.textMuted)
+                        Spacer(Modifier.height(6.dp))
+                        if (state.friends.isEmpty()) {
+                            Text(
+                                "No friends yet — search above to send a request.",
+                                style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                            )
+                        }
+                    }
+                }
+                items(state.friends, key = { "fr:${it.id}" }) { f ->
+                    PersonRow(
+                        name = f.displayName ?: "Anon",
+                        sub = "since ${f.since.take(10)}",
+                        actionA = "REMOVE", onA = { onRemove(f.id) },
+                    )
                 }
             }
+        }
 
-            Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
-            Spacer(Modifier.height(32.dp))
+        item(key = "footer") {
+            Column {
+                Spacer(Modifier.height(24.dp))
+                GhostButton(text = "Back", onClick = onBack)
+            }
         }
     }
 }

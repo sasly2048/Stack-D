@@ -3,8 +3,13 @@ package app.stackd.core.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
@@ -63,6 +68,58 @@ fun ResponsiveColumn(
                 .padding(horizontal = horizontalPadding, vertical = verticalPadding),
             horizontalAlignment = horizontalAlignment,
             verticalArrangement = verticalArrangement,
+            content = content,
+        )
+    }
+}
+
+/**
+ * The lazy counterpart of [ResponsiveColumn] for screens with long lists.
+ *
+ * Same width ceiling and padding, but items compose on demand instead of all at
+ * once — a 100-row leaderboard or 200-item vault used to compose and measure
+ * every row before the first frame. Callers put headers in `item {}` and rows
+ * in `items(...)`.
+ *
+ * Insets: the TOP inset is applied outside the list, so scrolled content passes
+ * beneath a fixed status-bar gap instead of sliding under the clock (the old
+ * inset lived inside the scroll and scrolled away). The bottom inset (nav bar +
+ * keyboard) is content padding, so the last row can still scroll clear of it.
+ */
+@Composable
+fun ResponsiveLazyColumn(
+    modifier: Modifier = Modifier,
+    maxContentWidth: Dp? = null,
+    horizontalPadding: Dp = 20.dp,
+    verticalPadding: Dp = 28.dp,
+    state: androidx.compose.foundation.lazy.LazyListState =
+        androidx.compose.foundation.lazy.rememberLazyListState(),
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+) {
+    val cap = maxContentWidth ?: rememberWindowInfo().contentCap
+    val insets = androidx.compose.foundation.layout.WindowInsets.safeDrawing
+    val bottom = insets.only(androidx.compose.foundation.layout.WindowInsetsSides.Bottom)
+        .asPaddingValues().calculateBottomPadding()
+    androidx.compose.foundation.layout.Box(
+        modifier = modifier
+            .fillMaxSize()
+            .windowInsetsPadding(
+                insets.only(
+                    androidx.compose.foundation.layout.WindowInsetsSides.Top +
+                        androidx.compose.foundation.layout.WindowInsetsSides.Horizontal,
+                ),
+            ),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        androidx.compose.foundation.lazy.LazyColumn(
+            state = state,
+            modifier = Modifier.widthIn(max = cap).fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = horizontalPadding,
+                end = horizontalPadding,
+                top = verticalPadding,
+                bottom = verticalPadding + bottom,
+            ),
             content = content,
         )
     }

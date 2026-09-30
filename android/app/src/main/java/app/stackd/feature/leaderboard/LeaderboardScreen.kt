@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -115,41 +117,43 @@ fun LeaderboardScreen(
 ) {
     val colors = Stackd.colors
     var tab by remember { mutableStateOf("individual") }
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        ResponsiveColumn {
-            Text("STACK'D / LEADERBOARD", style = MonoLabel, color = colors.textMuted)
-            Spacer(Modifier.height(16.dp))
-            SectionLabel("THE STANDINGS")
-            Spacer(Modifier.height(16.dp))
+    app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
+        item(key = "header") {
+            Column {
+                Text("STACK'D / LEADERBOARD", style = MonoLabel, color = colors.textMuted)
+                Spacer(Modifier.height(16.dp))
+                SectionLabel("THE STANDINGS")
+                Spacer(Modifier.height(16.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("individual" to "INDIVIDUAL", "groups" to "GROUPS").forEach { (key, label) ->
-                    val selected = tab == key
-                    Text(
-                        label,
-                        style = MonoLabelSmall,
-                        color = if (selected) colors.accent else colors.textMuted,
-                        modifier = Modifier
-                            .border(1.dp, if (selected) colors.accent else colors.border, RadiusMd)
-                            .clickable { tab = key }
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("individual" to "INDIVIDUAL", "groups" to "GROUPS").forEach { (key, label) ->
+                        val selected = tab == key
+                        Text(
+                            label,
+                            style = MonoLabelSmall,
+                            color = if (selected) colors.accent else colors.textMuted,
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .border(1.dp, if (selected) colors.accent else colors.border, RadiusMd)
+                                .clickable(role = androidx.compose.ui.semantics.Role.Tab) { tab = key }
+                                .padding(horizontal = 16.dp, vertical = 16.dp),
+                        )
+                    }
                 }
+                Spacer(Modifier.height(16.dp))
             }
-            Spacer(Modifier.height(16.dp))
+        }
 
-            when {
-                state.loading -> Text(
+        when {
+            state.loading -> item(key = "loading") {
+                Text(
                     "Loading the board…",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textMuted,
                 )
-                state.error -> {
+            }
+            state.error -> item(key = "error") {
+                Column {
                     Text(
                         "Couldn't load the board.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -158,29 +162,32 @@ fun LeaderboardScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                tab == "individual" -> state.individuals.forEachIndexed { i, p ->
-                    BoardRow(
-                        rank = i + 1,
-                        title = p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
-                        subtitle = "${p.currentFocusStreak}d streak",
-                        xp = p.lifetimeXp,
-                        isMe = p.id == state.meId,
-                    )
-                }
-                else -> state.groups.forEachIndexed { i, g ->
-                    BoardRow(
-                        rank = i + 1,
-                        title = g.name,
-                        subtitle = "${g.memberCount} members",
-                        xp = g.totalGroupXp,
-                        isMe = false,
-                    )
-                }
             }
+            tab == "individual" -> itemsIndexed(state.individuals, key = { _, p -> "p:${p.id}" }) { i, p ->
+                BoardRow(
+                    rank = i + 1,
+                    title = p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
+                    subtitle = "${p.currentFocusStreak}d streak",
+                    xp = p.lifetimeXp,
+                    isMe = p.id == state.meId,
+                )
+            }
+            else -> itemsIndexed(state.groups, key = { _, g -> "g:${g.id}" }) { i, g ->
+                BoardRow(
+                    rank = i + 1,
+                    title = g.name,
+                    subtitle = "${g.memberCount} members",
+                    xp = g.totalGroupXp,
+                    isMe = false,
+                )
+            }
+        }
 
-            Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
-            Spacer(Modifier.height(32.dp))
+        item(key = "footer") {
+            Column {
+                Spacer(Modifier.height(24.dp))
+                GhostButton(text = "Back", onClick = onBack)
+            }
         }
     }
 }

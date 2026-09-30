@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -177,24 +179,60 @@ fun VaultScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        ResponsiveColumn {
-            Text("STACK'D / VAULT", style = MonoLabel, color = colors.textMuted)
-            Spacer(Modifier.height(16.dp))
-            SectionLabel("MEMORY VAULT")
-            Spacer(Modifier.height(16.dp))
+    // All form/search/dialog state lives here, not inside lazy items — an item
+    // that scrolls off screen would otherwise drop a half-typed entry.
+    var showForm by remember { mutableStateOf(false) }
+    var title by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    var tags by remember { mutableStateOf("") }
+    // Web searches title/notes/summary server-side with ilike; Android already
+    // holds the full page (limit 200), so the same match runs in memory.
+    var query by remember { mutableStateOf("") }
+    // Guard the irreversible delete behind a confirm, mirroring the web's
+    // window.confirm. Holds the item id awaiting confirmation; null = no dialog.
+    var pendingDelete by remember { mutableStateOf<String?>(null) }
+    pendingDelete?.let { id ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete this vault item?") },
+            text = { Text("This can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(id); pendingDelete = null }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+            },
+        )
+    }
+    val q = query.trim().lowercase()
+    val shown = remember(state.items, q) {
+        if (q.isEmpty()) state.items else state.items.filter {
+            it.title.lowercase().contains(q) ||
+                it.body?.lowercase()?.contains(q) == true ||
+                it.aiSummary?.lowercase()?.contains(q) == true
+        }
+    }
 
-            when {
-                state.loading -> Text(
+    app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
+        item(key = "header") {
+            Column {
+                Text("STACK'D / VAULT", style = MonoLabel, color = colors.textMuted)
+                Spacer(Modifier.height(16.dp))
+                SectionLabel("MEMORY VAULT")
+                Spacer(Modifier.height(16.dp))
+            }
+        }
+
+        when {
+            state.loading -> item(key = "loading") {
+                Text(
                     "Unlocking…",
                     style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                 )
-                state.error -> {
+            }
+            state.error -> item(key = "error") {
+                Column {
                     Text(
                         "Couldn't open the vault.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
@@ -202,22 +240,22 @@ fun VaultScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                state.hasAccess == false -> EliteGate(
+            }
+            state.hasAccess == false -> item(key = "gate") {
+                EliteGate(
                     "Keep what mattered from every deep-work session — notes, links and artifacts, forever searchable.",
                     onUpgrade,
                 )
-                else -> {
-                    var showForm by remember { mutableStateOf(false) }
+            }
+            else -> {
+                item(key = "form") {
+                  Column {
                     GhostButton(
                         text = if (showForm) "Cancel" else "New entry",
                         onClick = { showForm = !showForm },
                     )
                     if (showForm) {
                         Spacer(Modifier.height(12.dp))
-                        var title by remember { mutableStateOf("") }
-                        var body by remember { mutableStateOf("") }
-                        var url by remember { mutableStateOf("") }
-                        var tags by remember { mutableStateOf("") }
                         OutlinedTextField(
                             value = title, onValueChange = { if (it.length <= 200) title = it },
                             label = { Text("Title") }, singleLine = true,
@@ -244,36 +282,16 @@ fun VaultScreen(
                         Spacer(Modifier.height(10.dp))
                         EmberButton(
                             text = if (state.saving) "Saving…" else "Store it",
-                            onClick = { onAdd(title, body, url, tags); showForm = false },
+                            onClick = {
+                                onAdd(title, body, url, tags)
+                                showForm = false
+                                title = ""; body = ""; url = ""; tags = ""
+                            },
                             enabled = title.isNotBlank(),
                             busy = state.saving,
                         )
                     }
-
                     Spacer(Modifier.height(16.dp))
-                    // Web searches title/notes/summary server-side with ilike;
-                    // Android already holds the full page (limit 200), so the
-                    // same match runs in memory with no extra round-trip.
-                    var query by remember { mutableStateOf("") }
-                    // Guard the irreversible delete behind a confirm, mirroring
-                    // the web's window.confirm. Holds the item id awaiting
-                    // confirmation; null = no dialog.
-                    var pendingDelete by remember { mutableStateOf<String?>(null) }
-                    pendingDelete?.let { id ->
-                        AlertDialog(
-                            onDismissRequest = { pendingDelete = null },
-                            title = { Text("Delete this vault item?") },
-                            text = { Text("This can't be undone.") },
-                            confirmButton = {
-                                TextButton(onClick = { onDelete(id); pendingDelete = null }) {
-                                    Text("Delete")
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
-                            },
-                        )
-                    }
                     if (state.items.isNotEmpty()) {
                         OutlinedTextField(
                             value = query,
@@ -283,12 +301,6 @@ fun VaultScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(12.dp))
-                    }
-                    val q = query.trim().lowercase()
-                    val shown = if (q.isEmpty()) state.items else state.items.filter {
-                        it.title.lowercase().contains(q) ||
-                            it.body?.lowercase()?.contains(q) == true ||
-                            it.aiSummary?.lowercase()?.contains(q) == true
                     }
                     if (state.items.isEmpty()) {
                         Text(
@@ -301,79 +313,96 @@ fun VaultScreen(
                             style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                         )
                     }
-                    shown.forEach { item ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
-                                .border(1.dp, colors.border, Radius2Xl)
-                                .padding(14.dp),
-                        ) {
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    item.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.textPrimary,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Text(
-                                    "DELETE",
-                                    style = MonoLabelSmall,
-                                    color = colors.textMuted,
-                                    modifier = Modifier
-                                        .clickable { pendingDelete = item.id }
-                                        .padding(start = 8.dp),
-                                )
-                            }
-                            item.body?.takeIf { it.isNotBlank() }?.let {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    it, style = MaterialTheme.typography.bodySmall,
-                                    color = colors.textMuted, maxLines = 4,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                            if (item.tags.isNotEmpty()) {
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    item.tags.joinToString("  ") { "#$it" },
-                                    style = MonoLabelSmall, color = colors.accent,
-                                )
-                            }
-                            // AI summary — web parity: show the ✦ line when it
-                            // exists, otherwise a Summarize action that calls the
-                            // Elite-gated AI route and writes the summary back.
-                            val summary = item.aiSummary?.takeIf { it.isNotBlank() }
-                            Spacer(Modifier.height(8.dp))
-                            when {
-                                summary != null -> Text(
-                                    "✦ $summary",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.accent,
-                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                )
-                                item.id in state.summarizing -> Text(
-                                    "Summarizing…",
-                                    style = MonoLabelSmall, color = colors.textMuted,
-                                )
-                                else -> Text(
-                                    "✦ SUMMARIZE",
-                                    style = MonoLabelSmall,
-                                    color = colors.accent,
-                                    modifier = Modifier.clickable { onSummarize(item.id) },
-                                )
-                            }
-                        }
-                    }
+                  }
+                }
+                items(shown, key = { it.id }) { item ->
+                    VaultItemCard(
+                        item = item,
+                        summarizing = item.id in state.summarizing,
+                        onDelete = { pendingDelete = item.id },
+                        onSummarize = { onSummarize(item.id) },
+                    )
                 }
             }
+        }
 
-            Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
-            Spacer(Modifier.height(32.dp))
+        item(key = "footer") {
+            Column {
+                Spacer(Modifier.height(24.dp))
+                GhostButton(text = "Back", onClick = onBack)
+            }
+        }
+    }
+}
+
+/** One stored entry. Actions are real 48dp buttons with semantics, not tiny text taps. */
+@Composable
+private fun VaultItemCard(
+    item: VaultItem,
+    summarizing: Boolean,
+    onDelete: () -> Unit,
+    onSummarize: () -> Unit,
+) {
+    val colors = Stackd.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 8.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                item.title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onDelete) {
+                Text("Delete", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
+            }
+        }
+        Column(Modifier.padding(end = 10.dp)) {
+            item.body?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    it, style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted, maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (item.tags.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    item.tags.joinToString("  ") { "#$it" },
+                    style = MaterialTheme.typography.labelMedium, color = colors.accent,
+                )
+            }
+        }
+        // AI summary — web parity: the ✦ line when it exists, otherwise a
+        // Summarize action that calls the Elite-gated route and writes it back.
+        val summary = item.aiSummary?.takeIf { it.isNotBlank() }
+        when {
+            summary != null -> Text(
+                "✦ $summary",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.accent,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                modifier = Modifier.padding(top = 8.dp, end = 10.dp),
+            )
+            summarizing -> Text(
+                "Summarizing…",
+                style = MaterialTheme.typography.labelMedium, color = colors.textMuted,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            else -> TextButton(
+                onClick = onSummarize,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp),
+            ) {
+                Text("✦ Summarize", style = MaterialTheme.typography.labelMedium, color = colors.accent)
+            }
         }
     }
 }
