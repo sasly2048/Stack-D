@@ -39,7 +39,7 @@ describe("aiErrorResponse", () => {
 
   it("maps anything else to a JSON 500, never an HTML page", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const res = aiErrorResponse(new Error("boom"));
+    const res = aiErrorResponse(new Error("Something unexpected happened at runtime."));
     expect(res.status).toBe(500);
     expect(res.headers.get("content-type")).toContain("application/json");
     expect(await res.json()).toEqual({ error: "internal" });

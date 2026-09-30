@@ -41,11 +41,25 @@ export async function aiRoute(
   }
 }
 
+/** The same wrapper for any authenticated public route (webhooks, …). */
+export const authedRoute = aiRoute;
+
 /** Exported for tests: the error → response mapping used by [aiRoute]. */
 export function aiErrorResponse(err: unknown): Response {
-  const e = err as { name?: string; status?: number; message?: string };
+  const e = err as {
+    name?: string;
+    status?: number;
+    message?: string;
+    issues?: { message?: string }[];
+  };
   if (e?.name === "ZodError" || err instanceof SyntaxError) {
-    return Response.json({ error: "invalid_input" }, { status: 400 });
+    // First validation message, when there is one, so a form can show it
+    // ("URL must be a public http(s) endpoint").
+    const message = e?.issues?.[0]?.message;
+    return Response.json(
+      message ? { error: "invalid_input", message } : { error: "invalid_input" },
+      { status: 400 },
+    );
   }
   if (typeof e?.status === "number") {
     const reason = e.status === 402 ? "credits" : e.status === 429 ? "rate_limited" : "gateway";
@@ -54,6 +68,11 @@ export function aiErrorResponse(err: unknown): Response {
   const message = e?.message ?? "";
   if (/AI features are available on Pro|used all .* AI actions/.test(message)) {
     return Response.json({ error: "ai_quota", message }, { status: 402 });
+  }
+  // Server code paths throw short machine codes on expected refusals
+  // (not_found, url_not_public, db_write_failed…); pass the code through.
+  if (/^[a-z][a-z0-9_]{2,40}$/.test(message)) {
+    return Response.json({ error: message }, { status: 422 });
   }
   console.error("[ai-route]", err);
   return Response.json({ error: "internal" }, { status: 500 });
