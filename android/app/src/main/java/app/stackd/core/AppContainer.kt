@@ -49,6 +49,14 @@ class AppContainer(context: Context) {
 
     val finalizeQueue: FinalizeQueue = FinalizeQueue(appContext)
 
+    /**
+     * Process-lifetime scope for work that must finish even after the screen that
+     * started it is gone — removing a realtime channel from onCleared (when
+     * viewModelScope is already cancelled), or sending a parked breach.
+     */
+    val appScope: kotlinx.coroutines.CoroutineScope =
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+
     val auth: AuthRepository by lazy { AuthRepository(settings) }
 
     val profiles: ProfileRepository by lazy { ProfileRepository(client) }

@@ -17,6 +17,7 @@ import app.stackd.feature.room.session.FocusSessionService
 import app.stackd.feature.room.session.SessionClock
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
+import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -434,12 +435,22 @@ class RoomViewModel(
      */
     private fun startForegroundTimer(room: RoomRow) {
         val started = app.stackd.core.parseIsoMillis(room.startedAt) ?: return
+        val s = _state.value
+        // The service records breaches as this participant, so it needs the
+        // seat; the roster lands before the first ACTIVE row in practice.
+        val me = s.me ?: return
+        val owner = s.meId ?: return
         if (foregroundTimerRunning) return
         foregroundTimerRunning = true
         observeServiceSignals()
         FocusSessionService.start(
             context = container.appContextForWork,
             roomCode = room.code,
+            roomId = room.id,
+            participantId = me.id,
+            ownerId = owner,
+            isHost = s.isHost,
+            startedAtMillis = started,
             endsAtMillis = SessionClock.endsAtMillis(started, room.targetDurationSeconds),
             modeWire = mode.wire,
         )
@@ -456,8 +467,9 @@ class RoomViewModel(
     private fun observeServiceSignals() {
         if (serviceObserved) return
         serviceObserved = true
+        // The service already recorded these; the room screen only reflects them.
         FocusSessionService.breachEvents
-            .onEach { onBreach(it.reason, it.severity) }
+            .onEach { showBreach(it.severity) }
             .launchIn(viewModelScope)
         FocusSessionService.calibrated
             .onEach { onCalibrated() }
@@ -477,7 +489,9 @@ class RoomViewModel(
     }
 
     private fun stopForegroundTimer() {
-        if (!foregroundTimerRunning) return
+        // Unconditional: a re-entered room screen didn't start the service it
+        // may be ending, so the local flag can't gate this. stopService is a
+        // no-op when nothing is running.
         foregroundTimerRunning = false
         FocusSessionService.stop(container.appContextForWork)
     }
@@ -734,35 +748,43 @@ class RoomViewModel(
      * own detection. Exactly the web's `handleBreach`.
      */
     fun onBreach(reason: BreachReason, severity: BreachSeverity) {
-        android.util.Log.i("StackdBreach", "breach: ${reason.wire}/${severity.wire}")
         val s = _state.value
         val room = s.room ?: return
         val me = s.me ?: return
+        val owner = s.meId ?: return
         // Already breached (locally or per the server row) — don't double-record.
         if (severity == BreachSeverity.SEVERE && s.iBreached) return
-
-        // Flip the UI to BREACHED and disarm NOW, before the RPC round-trip and
-        // without waiting for the participant-row realtime echo. This is what
-        // makes the breach visible the instant the phone is lifted or the screen
-        // is touched; the server record and its echo follow and agree.
-        if (severity == BreachSeverity.SEVERE) {
-            _state.value = _state.value.copy(armed = false, locallyBreached = true)
-        }
+        showBreach(severity)
 
         val integrity = if (room.targetDurationSeconds > 0) {
             ((s.elapsedSeconds.toDouble() / room.targetDurationSeconds) * 100).toInt().coerceIn(0, 100)
         } else 0
 
-        viewModelScope.launch {
-            runCatching {
-                rooms.recordBreach(
-                    roomId = room.id,
-                    participantId = me.id,
-                    reason = reason.wire,
-                    severity = severity.wire,
-                    integrity = integrity,
-                )
-            }
+        // Durable, not fire-and-forget: parked first, sent now if possible, and
+        // retried by the worker otherwise — the same path the service uses.
+        val breach = app.stackd.core.workmanager.PendingBreach(
+            id = java.util.UUID.randomUUID().toString(),
+            roomId = room.id,
+            participantId = me.id,
+            reason = reason.wire,
+            severity = severity.wire,
+            integrity = integrity,
+            owner = owner,
+            at = System.currentTimeMillis(),
+        )
+        container.appScope.launch {
+            FocusSessionService.enqueueAndSend(container.appContextForWork, breach)
+        }
+    }
+
+    /**
+     * Flips the UI to BREACHED and disarms NOW, before any round-trip and without
+     * waiting for the participant-row realtime echo — the breach is visible the
+     * instant the phone is lifted or the screen touched; the echo later agrees.
+     */
+    private fun showBreach(severity: BreachSeverity) {
+        if (severity == BreachSeverity.SEVERE) {
+            _state.value = _state.value.copy(armed = false, locallyBreached = true)
         }
     }
 
@@ -824,7 +846,15 @@ class RoomViewModel(
                 abandonmentSeconds = abandonmentSeconds,
             )
 
-            val historyId = runCatching {
+            // Every parked breach must reach the server BEFORE the result: the
+            // server scores from recorded breaks. If any are still stuck, park
+            // the result too — the worker sends breaches first, then this.
+            val sendBreach = app.stackd.core.workmanager.FinalizeQueueWorker.breachSubmitter
+            val breachesClear = sendBreach != null &&
+                app.stackd.core.workmanager.BreachOutbox(container.appContextForWork)
+                    .drain(userId) { sendBreach(it) }
+
+            val historyId = if (!breachesClear) null else runCatching {
                 rooms.finalizeSession(
                     roomId = room.id,
                     score = result.score,
@@ -899,11 +929,18 @@ class RoomViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        // Leaving the screen must not leave a countdown notification stranded.
-        stopForegroundTimer()
+        // A running session outlives this screen: the service keeps guarding,
+        // records breaches, and ends the session on schedule. Only tear it down
+        // when there's no live session to protect (lobby, ended, aborted).
+        if (_state.value.room?.statusEnum != RoomStatus.ACTIVE) stopForegroundTimer()
         placementWatcher?.stop()
         placementWatcher = null
-        channel?.let { ch -> viewModelScope.launch { runCatching { ch.unsubscribe() } } }
+        // viewModelScope is already cancelled by the time onCleared runs, so a
+        // launch there never executes and the channel stayed joined. Remove it
+        // on the app scope instead.
+        channel?.let { ch ->
+            container.appScope.launch { runCatching { container.client.realtime.removeChannel(ch) } }
+        }
     }
 
     /* ---------------------------------------------------------------------- */

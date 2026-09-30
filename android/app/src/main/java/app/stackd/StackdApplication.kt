@@ -74,5 +74,17 @@ class StackdApplication : Application() {
                 abandonmentSeconds = payload.abandonmentSeconds,
             ) != null
         }
+        // Same owner guard for parked breaches: record_breach runs as auth.uid(),
+        // so sending another account's breach would pin it on the wrong person.
+        FinalizeQueueWorker.breachSubmitter = { b ->
+            check(container.auth.currentUserId == b.owner) { "breach owner mismatch" }
+            container.rooms.recordBreach(
+                roomId = b.roomId,
+                participantId = b.participantId,
+                reason = b.reason,
+                severity = b.severity,
+                integrity = b.integrity,
+            )
+        }
     }
 }

@@ -85,6 +85,15 @@ class FinalizeQueue(private val context: Context) {
         }
     }
 
+    /** Drops [owner]'s submitted results by room, leaving anything enqueued since. */
+    suspend fun removeSent(owner: String, roomIds: Set<String>) {
+        if (roomIds.isEmpty()) return
+        context.finalizeStore.edit { prefs ->
+            val kept = decode(prefs[KEY]).filterNot { it.owner == owner && it.roomId in roomIds }
+            prefs[KEY] = json.encodeToString(serializer, kept)
+        }
+    }
+
     suspend fun size(owner: String): Int = readFor(owner).size
 
     /**

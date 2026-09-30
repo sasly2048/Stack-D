@@ -91,6 +91,37 @@ fun RoomRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // A live session must not end on an accidental back gesture. Leaving is
+    // allowed — the service keeps guarding and records breaches without this
+    // screen, and the floating timer pill brings the user back — but it's a
+    // confirmed choice, not a swipe.
+    var confirmLeave by remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = state.phase == RoomPhase.ACTIVE) {
+        confirmLeave = true
+    }
+    if (confirmLeave) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmLeave = false },
+            title = { Text("Leave the room screen?") },
+            text = {
+                Text(
+                    "Your session keeps running and the stack stays guarded — " +
+                        "lifting the phone still counts. The timer pill brings you back.",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmLeave = false; onExit() }) {
+                    Text("Leave screen")
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmLeave = false }) {
+                    Text("Keep focusing")
+                }
+            },
+        )
+    }
+
     // "X broke the stack" toasts for other participants' severe breaks.
     val snackbarHost = remember { SnackbarHostState() }
     LaunchedEffect(vm) {

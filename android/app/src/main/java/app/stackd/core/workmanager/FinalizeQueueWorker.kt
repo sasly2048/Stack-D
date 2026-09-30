@@ -24,21 +24,31 @@ class FinalizeQueueWorker(
 
     override suspend fun doWork(): Result {
         val owner = inputData.getString(KEY_OWNER) ?: return Result.success()
-        val queue = FinalizeQueue(applicationContext)
 
+        // Breaches first, always: the server derives the score from recorded
+        // breaks, so a result must never land ahead of a breach still parked
+        // offline. Until every breach is through, hold the results back.
+        val sendBreach = breachSubmitter ?: return Result.retry()
+        val breachesClear = BreachOutbox(applicationContext).drain(owner) { sendBreach(it) }
+        if (!breachesClear) return Result.retry()
+
+        val queue = FinalizeQueue(applicationContext)
         val pending = queue.readFor(owner)
         if (pending.isEmpty()) return Result.success()
 
         val submit = submitter ?: return Result.retry()
 
-        val survivors = pending.filterNot { payload ->
+        val sent = pending.filter { payload ->
             runCatching { submit(payload) }.getOrDefault(false)
         }
-        queue.replaceFor(owner, survivors)
+        // Remove only what went through, atomically. Writing back a survivors
+        // list from the snapshot above would erase any result parked while the
+        // network calls were in flight.
+        queue.removeSent(owner, sent.map { it.roomId }.toSet())
 
         // Anything still queued failed for a reason WorkManager should back off
         // on rather than spin against.
-        return if (survivors.isEmpty()) Result.success() else Result.retry()
+        return if (sent.size == pending.size) Result.success() else Result.retry()
     }
 
     companion object {
@@ -54,6 +64,10 @@ class FinalizeQueueWorker(
          */
         @Volatile
         var submitter: (suspend (FinalizePayload) -> Boolean)? = null
+
+        /** Sends one parked breach; throws on failure. Wired alongside [submitter]. */
+        @Volatile
+        var breachSubmitter: (suspend (PendingBreach) -> Unit)? = null
 
         fun flush(context: Context, owner: String) {
             val request = OneTimeWorkRequestBuilder<FinalizeQueueWorker>()

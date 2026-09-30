@@ -53,7 +53,13 @@ fun GlobalRealtimeToasts(
                 host.showSnackbar(message)
             }
         } finally {
-            runCatching { channel.unsubscribe() }
+            // This block runs because the effect was cancelled (sign-out, user
+            // switch). A plain suspend call here throws at its first suspension
+            // point and the channel stayed joined; NonCancellable lets the removal
+            // actually complete.
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                runCatching { client.realtime.removeChannel(channel) }
+            }
         }
     }
 }

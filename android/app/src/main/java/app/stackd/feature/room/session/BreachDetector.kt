@@ -111,6 +111,9 @@ class BreachDetector(
     // Bounded shake window — sustained agitation, not one spike.
     private var accelWindow = emptyList<BreachRules.TimedMagnitude>()
 
+    /** Kept so it can be released alone once calibration no longer needs it. */
+    private var rotationSensor: Sensor? = null
+
     private val rotationMatrix = FloatArray(9)
     private val orientation = FloatArray(3)
 
@@ -120,6 +123,7 @@ class BreachDetector(
         reset()
 
         val rotation = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        rotationSensor = rotation
         val accel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         rotation?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
         accel?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
@@ -225,10 +229,16 @@ class BreachDetector(
             baseGravX = rotationMatrix[6]
             baseGravY = rotationMatrix[7]
             baseGravZ = rotationMatrix[8]
-            android.util.Log.i(
-                "StackdBreach",
-                "calibrated face-down: grav=(${rotationMatrix[6]},${rotationMatrix[7]},${rotationMatrix[8]})",
-            )
+            if (app.stackd.BuildConfig.DEBUG) {
+                android.util.Log.i(
+                    "StackdBreach",
+                    "calibrated face-down: grav=(${rotationMatrix[6]},${rotationMatrix[7]},${rotationMatrix[8]})",
+                )
+            }
+            // The rotation vector is a fused gyro+mag+accel sensor — the costliest
+            // stream here — and after calibration nothing reads it (lift/tilt run
+            // off the accelerometer). Release it for the rest of the session.
+            rotationSensor?.let { sensorManager.unregisterListener(this, it) }
             onCalibrated?.invoke()
             return
         }
