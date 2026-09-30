@@ -57,7 +57,13 @@ class MainActivity : ComponentActivity() {
                             CircularProgressIndicator()
                         }
                         else -> {
-                            val signedIn = status is SessionStatus.Authenticated
+                            // RefreshFailure = the access token expired while
+                            // offline; the stored session is still valid and the
+                            // SDK refreshes it once the network returns. Treating
+                            // it as signed-out dumped users on the Auth screen on
+                            // every offline launch after an hour.
+                            val signedIn = status is SessionStatus.Authenticated ||
+                                status is SessionStatus.RefreshFailure
                             val start = if (signedIn) Dest.Dashboard.route else Dest.Auth.route
                             val navController = rememberNavController()
                             val uid = if (signedIn) container.auth.currentUserId else null

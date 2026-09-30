@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -75,15 +78,26 @@ class CompanionViewModel(private val container: AppContainer) : ViewModel() {
         val withUser = history + CompanionMessage(role = "user", content = text)
         _state.value = _state.value.copy(messages = withUser, busy = true)
         viewModelScope.launch {
-            // Pass the prior history (before this turn) as context, like the web.
-            val reply = container.ai.askCompanion(CompanionInput(history = history, message = text))
+            // Prior turns as context, like the web — but bounded. The route
+            // rejects more than 30 history messages (and only reads the last 20),
+            // so sending the whole chat broke it after ~15 exchanges. Local
+            // "unavailable" notices aren't real assistant turns; leave them out.
+            val context = history
+                .filterNot { it.role == "assistant" && it.content.startsWith(ERROR_PREFIX) }
+                .takeLast(HISTORY_LIMIT)
+            val reply = container.ai.askCompanion(CompanionInput(history = context, message = text))
             val bubble = reply?.reply
-                ?: "⚠ Companion is unavailable right now. Try again in a moment."
+                ?: "$ERROR_PREFIX Companion is unavailable right now. Try again in a moment."
             _state.value = _state.value.copy(
                 messages = withUser + CompanionMessage(role = "assistant", content = bubble),
                 busy = false,
             )
         }
+    }
+
+    private companion object {
+        const val HISTORY_LIMIT = 20
+        const val ERROR_PREFIX = "⚠"
     }
 }
 
@@ -106,15 +120,40 @@ fun CompanionScreen(
 ) {
     val colors = Stackd.colors
     var input by remember { mutableStateOf("") }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    // Follow the conversation: every new turn (and the "thinking" row) scrolls
+    // the newest line into view instead of leaving it below the fold.
+    val lastIndex = state.messages.size + (if (state.busy) 1 else 0) + (if (state.messages.isEmpty()) 1 else 0)
+    androidx.compose.runtime.LaunchedEffect(lastIndex) {
+        if (lastIndex > 0) listState.animateScrollToItem(lastIndex - 1)
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
-            .verticalScroll(rememberScrollState()),
+            // Status bar, nav bar AND keyboard: the input row rides above the IME.
+            .safeDrawingPadding(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        ResponsiveColumn {
-            Text("STACK'D / COMPANION", style = MonoLabel, color = colors.textMuted)
-            Spacer(Modifier.height(8.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = app.stackd.core.ui.DEFAULT_MAX_CONTENT_WIDTH)
+                .padding(horizontal = 20.dp),
+        ) {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("STACK'D / COMPANION", style = MonoLabel, color = colors.textMuted)
+                androidx.compose.material3.TextButton(onClick = onBack) {
+                    Text("Back", style = MonoLabel, color = colors.textMuted)
+                }
+            }
             Text(
                 "Study Companion",
                 style = MaterialTheme.typography.headlineSmall,
@@ -123,61 +162,78 @@ fun CompanionScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Private coach · reads your protocol · never leaves your account",
-                style = MonoLabelSmall,
+                "Private coach. Reads your protocol. Never leaves your account.",
+                style = MaterialTheme.typography.bodySmall,
                 color = colors.textMuted,
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
 
-            if (state.messages.isEmpty()) {
-                Text(
-                    "Ask anything about your focus.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textMuted,
-                )
-                Spacer(Modifier.height(12.dp))
-                OPENERS.forEach { opener ->
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 8.dp)
-                            .border(1.dp, colors.border, CircleShape)
-                            .clickable { onSend(opener) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) {
-                        Text(opener, style = MonoLabelSmall, color = colors.textMuted)
+            androidx.compose.foundation.lazy.LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            ) {
+                if (state.messages.isEmpty()) {
+                    item(key = "openers") {
+                        Column {
+                            Text(
+                                "Ask anything about your focus.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textMuted,
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            OPENERS.forEach { opener ->
+                                Box(
+                                    modifier = Modifier
+                                        .padding(bottom = 8.dp)
+                                        .heightIn(min = 48.dp)
+                                        .border(1.dp, colors.border, CircleShape)
+                                        .clip(CircleShape)
+                                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                                            onSend(opener)
+                                        }
+                                        .padding(horizontal = 16.dp),
+                                    contentAlignment = Alignment.CenterStart,
+                                ) {
+                                    Text(opener, style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
+                                }
+                            }
+                        }
+                    }
+                }
+                items(state.messages.size) { i -> MessageBubble(state.messages[i]) }
+                if (state.busy) {
+                    item(key = "thinking") {
+                        Text(
+                            "Companion is thinking…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                        )
                     }
                 }
             }
 
-            state.messages.forEach { m -> MessageBubble(m) }
-
-            if (state.busy) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Companion is thinking…",
-                    style = MonoLabelSmall,
-                    color = colors.textMuted,
+            // Pinned composer: always reachable, however long the chat grows.
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { if (it.length <= 2000) input = it },
+                    placeholder = { Text("Ask the companion…") },
+                    maxLines = 4,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
+                EmberButton(
+                    text = if (state.busy) "…" else "Send",
+                    onClick = { onSend(input); input = "" },
+                    enabled = !state.busy && input.isNotBlank(),
+                    busy = state.busy,
+                    modifier = Modifier.width(96.dp),
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                value = input,
-                onValueChange = { if (it.length <= 2000) input = it },
-                label = { Text("Ask the companion…") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(8.dp))
-            EmberButton(
-                text = if (state.busy) "Thinking…" else "Send",
-                onClick = { onSend(input); input = "" },
-                enabled = !state.busy && input.isNotBlank(),
-                busy = state.busy,
-            )
-
-            Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
-            Spacer(Modifier.height(32.dp))
         }
     }
 }
@@ -187,13 +243,16 @@ fun CompanionScreen(
 private fun MessageBubble(m: CompanionMessage) {
     val colors = Stackd.colors
     val isUser = m.role == "user"
-    Row(
+    androidx.compose.foundation.layout.BoxWithConstraints(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
+        // A MAX width (web's max-w-[80%]): short messages hug their text
+        // instead of stretching to a fixed 80% slab.
+        val cap = maxWidth * 0.8f
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.8f)
+                .align(if (isUser) Alignment.CenterEnd else Alignment.CenterStart)
+                .widthIn(max = cap)
                 .then(
                     if (isUser) {
                         Modifier

@@ -110,7 +110,9 @@ class AuthRepository(
     val currentEmail: String? get() = client.auth.currentUserOrNull()?.email?.takeIf { it.isNotBlank() }
 
     val isSignedIn: Flow<Boolean>
-        get() = client.auth.sessionStatus.map { it is SessionStatus.Authenticated }
+        get() = client.auth.sessionStatus.map {
+            it is SessionStatus.Authenticated || it is SessionStatus.RefreshFailure
+        }
 
     /**
      * Signs in through the `auth-guard` Edge Function rather than calling
