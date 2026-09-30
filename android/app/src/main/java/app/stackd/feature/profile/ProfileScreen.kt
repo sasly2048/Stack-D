@@ -1,5 +1,8 @@
 package app.stackd.feature.profile
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.Alignment
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -347,6 +350,8 @@ fun ProfileScreen(
                     )
 
                     Spacer(Modifier.height(20.dp))
+                    SoundToggle()
+                    Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Manage plan", onClick = onOpenPremium)
                     Spacer(Modifier.height(8.dp))
                     GhostButton(text = "Sign out", onClick = onSignOut)
@@ -357,6 +362,32 @@ fun ProfileScreen(
             GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
+    }
+}
+
+/** UI sounds on/off — web SoundToggle on the profile page. */
+@Composable
+private fun SoundToggle() {
+    val colors = Stackd.colors
+    val settings = (androidx.compose.ui.platform.LocalContext.current.applicationContext as app.stackd.StackdApplication)
+        .container.settings
+    val on by settings.soundEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("SOUND EFFECTS", style = MonoLabel, color = colors.textMuted, modifier = Modifier.weight(1f))
+        androidx.compose.material3.Switch(
+            checked = on,
+            onCheckedChange = { next ->
+                scope.launch { settings.setSoundEnabled(next) }
+                if (next) {
+                    app.stackd.core.feedback.Sfx.enabled = true
+                    app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.SELECT)
+                }
+            },
+        )
     }
 }
 

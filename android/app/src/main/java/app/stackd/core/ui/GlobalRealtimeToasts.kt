@@ -49,6 +49,13 @@ fun GlobalRealtimeToasts(
         try {
             flow.collect { action ->
                 val message = messageFor(action.record) ?: return@collect
+                app.stackd.core.feedback.Sfx.play(
+                    when (action.record["kind"]?.jsonPrimitive?.content) {
+                        "friend_add" -> app.stackd.core.feedback.Sfx.Kind.NOTIFY
+                        "session_complete" -> app.stackd.core.feedback.Sfx.Kind.SUCCESS
+                        else -> app.stackd.core.feedback.Sfx.Kind.ACHIEVEMENT
+                    },
+                )
                 vibrate(context)
                 host.showSnackbar(message)
             }

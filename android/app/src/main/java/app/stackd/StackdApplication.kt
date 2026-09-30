@@ -28,6 +28,9 @@ class StackdApplication : Application() {
         container = AppContainer(this)
         wireFinalizeSubmitter()
         reportTimezoneOnSignIn()
+        appScope.launch {
+            container.settings.soundEnabled.collect { app.stackd.core.feedback.Sfx.enabled = it }
+        }
     }
 
     /**

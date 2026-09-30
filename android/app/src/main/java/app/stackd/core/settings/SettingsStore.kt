@@ -121,7 +121,16 @@ class SettingsStore(private val context: Context) {
         context.dataStore.edit { it[KeyLastAuth] = provider }
     }
 
+    /** UI sound effects on unless turned off — web `stackd:sound`. */
+    val soundEnabled: Flow<Boolean> =
+        context.dataStore.data.map { it[KeySound] ?: true }
+
+    suspend fun setSoundEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KeySound] = enabled }
+    }
+
     companion object {
+        private val KeySound = booleanPreferencesKey("sound_enabled")
         private val KeyLastAuth = stringPreferencesKey("last_auth_provider")
         const val MODE_GENTLE = "gentle"
         const val MODE_ABSOLUTE = "absolute"

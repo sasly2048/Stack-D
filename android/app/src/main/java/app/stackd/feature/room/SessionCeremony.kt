@@ -68,6 +68,8 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
 
     var beat by remember(summary) { mutableIntStateOf(0) }
     LaunchedEffect(summary) {
+        // Web session-ceremony: feedback("success") as the ceremony opens.
+        app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.SUCCESS)
         while (beat < beats.size - 1) {
             kotlinx.coroutines.delay(if (beats[beat] == "xp") 2200 else 1400)
             beat++

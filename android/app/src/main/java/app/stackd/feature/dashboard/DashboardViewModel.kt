@@ -34,6 +34,12 @@ data class DashboardUiState(
     val live: List<RoomRow> = emptyList(),
     /** The caller's recent rooms — a listed path back to a lobby/active room. */
     val myRooms: List<app.stackd.data.room.RoomListItem> = emptyList(),
+    /** My-rooms paging (web MyRoomsPanel: 8 per page, Prev/Next). */
+    val myRoomsPage: Int = 0,
+    val myRoomsHasMore: Boolean = false,
+    val myRoomsError: Boolean = false,
+    /** For the HOST/GUEST tag on my-rooms rows. */
+    val meId: String? = null,
     /** Daily login reward — null while loading or if the read failed. */
     val reward: RewardStatus? = null,
     val claiming: Boolean = false,
@@ -123,7 +129,10 @@ class DashboardViewModel(
                 ascending = false,
                 prestigeNotice = if (level != null) "Prestige $level · ascended" else "Prestige failed. Retry.",
             )
-            if (level != null) { refreshPrestige(); load() }
+            if (level != null) {
+                app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.ACHIEVEMENT)
+                refreshPrestige(); load()
+            }
         }
     }
 
@@ -218,7 +227,8 @@ class DashboardViewModel(
                     // My-rooms is best-effort: a failed read degrades to empty
                     // rather than sinking the whole dashboard load.
                     val roomsDef = async {
-                        runCatching { rooms.listMyRooms().first }.getOrDefault(emptyList())
+                        runCatching { rooms.listMyRooms(pageSize = MY_ROOMS_PAGE) }
+                            .getOrDefault(emptyList<app.stackd.data.room.RoomListItem>() to false)
                     }
                     Quint(
                         profileDef.await(), historyDef.await(), liveDef.await(),
@@ -241,7 +251,11 @@ class DashboardViewModel(
                         history = history,
                         live = live,
                         reward = reward,
-                        myRooms = myRooms,
+                        myRooms = myRooms.first,
+                        myRoomsHasMore = myRooms.second,
+                        myRoomsPage = 0,
+                        myRoomsError = false,
+                        meId = userId,
                     )
                     _state.value = fresh
                     // Cache the ledger only — AI cards are cheap to refetch and a
@@ -263,6 +277,21 @@ class DashboardViewModel(
         }
     }
 
+    /** Prev/Next on the my-rooms panel. Failure keeps the current page and flags Retry. */
+    fun myRoomsGoTo(page: Int) {
+        if (page < 0) return
+        viewModelScope.launch {
+            runCatching { rooms.listMyRooms(page = page, pageSize = MY_ROOMS_PAGE) }.fold(
+                onSuccess = { (items, more) ->
+                    _state.value = _state.value.copy(
+                        myRooms = items, myRoomsHasMore = more, myRoomsPage = page, myRoomsError = false,
+                    )
+                },
+                onFailure = { _state.value = _state.value.copy(myRoomsError = true) },
+            )
+        }
+    }
+
     /**
      * Builds the focus-history CSV off the main thread. Returns null if there's
      * no session or the read fails; the caller (which owns a Context) shares it.
@@ -279,6 +308,9 @@ class DashboardViewModel(
         _state.value = current.copy(claiming = true, claimNotice = null)
         viewModelScope.launch {
             val result = runCatching { profiles.claimDailyReward() }.getOrNull()
+            app.stackd.core.feedback.Sfx.play(
+                if (result != null) app.stackd.core.feedback.Sfx.Kind.XP else app.stackd.core.feedback.Sfx.Kind.ERROR,
+            )
             if (result != null) {
                 _state.value = _state.value.copy(
                     claiming = false,
@@ -292,6 +324,7 @@ class DashboardViewModel(
     }
 }
 
+private const val MY_ROOMS_PAGE = 8
 private const val ATLAS_KEY = "atlas_dismissed_until"
 private const val UPGRADE_KEY = "upgrade_card_dismissed"
 

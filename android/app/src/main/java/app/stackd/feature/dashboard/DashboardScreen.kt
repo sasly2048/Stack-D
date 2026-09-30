@@ -97,6 +97,7 @@ fun DashboardRoute(
         onDismissAtlas = vm::dismissAtlas,
         onDismissUpgrade = vm::dismissUpgrade,
         onAscend = vm::ascend,
+        onMyRoomsPage = vm::myRoomsGoTo,
         onExportCsv = {
             scope.launch {
                 val export = vm.buildCsv()
@@ -131,6 +132,7 @@ fun DashboardScreen(
     onDismissAtlas: () -> Unit = {},
     onDismissUpgrade: () -> Unit = {},
     onAscend: () -> Unit = {},
+    onMyRoomsPage: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -249,8 +251,8 @@ fun DashboardScreen(
                     LiveNow(state.live, onOpenRoom)
                     Spacer(Modifier.height(20.dp))
                 }
-                if (state.myRooms.isNotEmpty()) {
-                    MyRooms(state.myRooms, onOpenRoom)
+                if (state.myRooms.isNotEmpty() || state.myRoomsPage > 0) {
+                    MyRooms(state, onOpenRoom, onMyRoomsPage)
                     Spacer(Modifier.height(20.dp))
                 }
                 if (!state.isEmpty) {
@@ -387,20 +389,32 @@ private fun LiveNow(live: List<RoomRow>, onOpenRoom: (String) -> Unit) {
 }
 
 /**
- * The caller's recent rooms — a listed path back into a lobby or still-active
- * room, mirroring web's MyRoomsPanel. First page only (the repository paginates,
- * but the dashboard just needs a way back in; deep history lives elsewhere).
+ * The caller's rooms, 8 per page with Prev/Next — web's MyRoomsPanel.
  */
 @Composable
 private fun MyRooms(
-    rooms: List<app.stackd.data.room.RoomListItem>,
+    state: DashboardUiState,
     onOpenRoom: (String) -> Unit,
+    onPage: (Int) -> Unit,
 ) {
     val colors = Stackd.colors
     Tile {
-        SectionLabel("MY_ROOMS", color = colors.textMuted)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            SectionLabel("MY_ROOMS", color = colors.textMuted)
+            Text("PAGE ${state.myRoomsPage + 1}", style = MonoLabelSmall, color = colors.textMuted)
+        }
         Spacer(Modifier.height(12.dp))
-        rooms.forEach { room ->
+        if (state.myRoomsError) {
+            Text("SIGNAL LOST", style = MonoLabelSmall, color = colors.textMuted)
+            TextAction("Retry", enabled = true, onClick = { onPage(state.myRoomsPage) })
+            Spacer(Modifier.height(8.dp))
+        }
+        state.myRooms.forEach { room ->
+            val elapsed = remember(room.startedAt, room.endedAt) {
+                val s = parseIsoMillis(room.startedAt)
+                val e = parseIsoMillis(room.endedAt)
+                if (s != null && e != null) ((e - s) / 1000).coerceAtLeast(0).toInt() else null
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -413,7 +427,7 @@ private fun MyRooms(
             ) {
                 Text(room.code, style = MonoLabelSmall, color = colors.textPrimary)
                 Text(
-                    room.status.uppercase(),
+                    "${if (room.isHost(state.meId)) "HOST" else "GUEST"} · ${room.status.uppercase()}",
                     style = MonoLabelSmall,
                     color = if (room.statusEnum == app.stackd.data.room.RoomStatus.ACTIVE) {
                         colors.live
@@ -421,12 +435,18 @@ private fun MyRooms(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    formatDuration(room.targetDurationSeconds.toInt()),
+                    formatDuration(elapsed ?: room.targetDurationSeconds.toInt()),
                     style = MonoLabelSmall,
                     color = colors.textMuted,
                 )
             }
             Spacer(Modifier.height(8.dp))
+        }
+        if (state.myRoomsPage > 0 || state.myRoomsHasMore) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextAction("← Prev", enabled = state.myRoomsPage > 0, onClick = { onPage(state.myRoomsPage - 1) })
+                TextAction("Next →", enabled = state.myRoomsHasMore, onClick = { onPage(state.myRoomsPage + 1) })
+            }
         }
     }
 }

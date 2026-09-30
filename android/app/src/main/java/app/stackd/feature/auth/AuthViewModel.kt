@@ -130,6 +130,7 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
         when (outcome) {
             AuthOutcome.SignedIn -> {
                 _state.update { it.copy(pending = false) }
+                app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.AUTH)
                 viewModelScope.launch { container.settings.setLastAuthProvider(provider) }
                 // A SignedIn outcome means a session was installed — but
                 // importSession is async and currentUserOrNull() can still read
