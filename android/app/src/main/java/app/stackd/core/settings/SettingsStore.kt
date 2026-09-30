@@ -113,7 +113,16 @@ class SettingsStore(private val context: Context) {
         context.dataStore.edit { it[KeyStartIntro] = true }
     }
 
+    /** Provider ("email"/"google") of the last successful sign-in — web `getLastAuthProvider`. */
+    val lastAuthProvider: Flow<String?> =
+        context.dataStore.data.map { it[KeyLastAuth] }
+
+    suspend fun setLastAuthProvider(provider: String) {
+        context.dataStore.edit { it[KeyLastAuth] = provider }
+    }
+
     companion object {
+        private val KeyLastAuth = stringPreferencesKey("last_auth_provider")
         const val MODE_GENTLE = "gentle"
         const val MODE_ABSOLUTE = "absolute"
 

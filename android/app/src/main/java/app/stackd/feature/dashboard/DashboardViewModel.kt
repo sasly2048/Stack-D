@@ -51,6 +51,18 @@ data class DashboardUiState(
      * stays hidden if the AI backend is unreachable.
      */
     val aiInsights: app.stackd.data.ai.DashboardInsights? = null,
+    val aiRecLoading: Boolean = true,
+    val aiRecError: Boolean = false,
+    val aiInsLoading: Boolean = true,
+    val aiInsError: Boolean = false,
+    /** Null until the entitlement read lands; the upgrade card needs a definite false. */
+    val isPremium: Boolean? = null,
+    val upgradeDismissed: Boolean = false,
+    val atlasDismissed: Boolean = false,
+    val greeting: GreetingExtras = GreetingExtras(),
+    val prestige: app.stackd.data.progression.PrestigeStatus? = null,
+    val ascending: Boolean = false,
+    val prestigeNotice: String? = null,
 ) {
     /** Lifetime focus, summed off the same rows the history table shows. */
     val totalSeconds: Int get() = history.sumOf { it.durationSeconds }
@@ -68,22 +80,73 @@ class DashboardViewModel(
     private val rooms: app.stackd.data.room.RoomRepository,
     private val ai: app.stackd.data.ai.AiRepository,
     private val cache: app.stackd.core.cache.MemoryCache,
+    private val premium: app.stackd.data.premium.PremiumRepository,
+    private val prestigeRepo: app.stackd.data.progression.PrestigeRepository,
+    private val client: io.github.jan.supabase.SupabaseClient,
+    private val prefs: android.content.SharedPreferences,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardUiState())
     val state: StateFlow<DashboardUiState> = _state.asStateFlow()
 
     init {
+        _state.value = _state.value.copy(
+            atlasDismissed = prefs.getLong(ATLAS_KEY, 0L) > System.currentTimeMillis(),
+            upgradeDismissed = prefs.getBoolean(UPGRADE_KEY, false),
+        )
         load()
         fetchAiRecommendation()
         fetchAiInsights()
+        viewModelScope.launch {
+            val ent = runCatching { premium.myEntitlement() }.getOrNull()
+            _state.value = _state.value.copy(isPremium = ent?.isPremium)
+        }
+        viewModelScope.launch {
+            _state.value = _state.value.copy(greeting = loadGreetingExtras(client))
+        }
+        refreshPrestige()
     }
 
-    /** Pulls the LLM ledger insights, best-effort; the card stays hidden if null. */
-    private fun fetchAiInsights() {
+    fun refreshPrestige() {
         viewModelScope.launch {
-            val insights = ai.dashboardInsights() ?: return@launch
-            _state.value = _state.value.copy(aiInsights = insights)
+            val st = runCatching { prestigeRepo.status() }.getOrNull() ?: return@launch
+            _state.value = _state.value.copy(prestige = st)
+        }
+    }
+
+    fun ascend() {
+        if (_state.value.ascending) return
+        _state.value = _state.value.copy(ascending = true, prestigeNotice = null)
+        viewModelScope.launch {
+            val level = prestigeRepo.prestigeUp()
+            _state.value = _state.value.copy(
+                ascending = false,
+                prestigeNotice = if (level != null) "Prestige $level · ascended" else "Prestige failed. Retry.",
+            )
+            if (level != null) { refreshPrestige(); load() }
+        }
+    }
+
+    fun dismissAtlas() {
+        prefs.edit().putLong(ATLAS_KEY, System.currentTimeMillis() + 6 * 3600_000L).apply()
+        _state.value = _state.value.copy(atlasDismissed = true)
+    }
+
+    fun dismissUpgrade() {
+        prefs.edit().putBoolean(UPGRADE_KEY, true).apply()
+        _state.value = _state.value.copy(upgradeDismissed = true)
+    }
+
+    /** Pulls the LLM ledger insights; [fresh] bypasses the 30-min cache (Regenerate). */
+    fun fetchAiInsights(fresh: Boolean = false) {
+        _state.value = _state.value.copy(aiInsLoading = true, aiInsError = false)
+        viewModelScope.launch {
+            val insights = ai.dashboardInsights(fresh)
+            _state.value = _state.value.copy(
+                aiInsights = insights ?: _state.value.aiInsights,
+                aiInsLoading = false,
+                aiInsError = insights == null,
+            )
         }
     }
 
@@ -92,10 +155,16 @@ class DashboardViewModel(
      * forget: the card already shows the local heuristic; this upgrades it if
      * the AI backend answers, and silently no-ops if it doesn't.
      */
-    private fun fetchAiRecommendation() {
+    fun fetchAiRecommendation(fresh: Boolean = false) {
+        _state.value = _state.value.copy(aiRecLoading = true, aiRecError = false)
         viewModelScope.launch {
-            val rec = ai.recommendNextSession() ?: return@launch
+            val rec = ai.recommendNextSession(fresh)
+            if (rec == null) {
+                _state.value = _state.value.copy(aiRecLoading = false, aiRecError = true)
+                return@launch
+            }
             _state.value = _state.value.copy(
+                aiRecLoading = false,
                 aiRecommendation = app.stackd.feature.insights.SessionRecommendation(
                     durationMinutes = rec.durationMinutes,
                     topic = rec.topic,
@@ -120,7 +189,16 @@ class DashboardViewModel(
         // Stale-while-revalidate: seed from the last cached state so a re-entry
         // shows data instantly instead of a spinner, then revalidate below.
         val cached: DashboardUiState? = cache.get(cacheKey(userId))
-        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
+        val cur = _state.value
+        // Ledger from cache, but keep the live AI/extras fields the cache doesn't own.
+        _state.value = (cached?.copy(
+            aiRecommendation = cur.aiRecommendation, aiInsights = cur.aiInsights,
+            aiRecLoading = cur.aiRecLoading, aiRecError = cur.aiRecError,
+            aiInsLoading = cur.aiInsLoading, aiInsError = cur.aiInsError,
+            isPremium = cur.isPremium, upgradeDismissed = cur.upgradeDismissed,
+            atlasDismissed = cur.atlasDismissed, greeting = cur.greeting,
+            prestige = cur.prestige, ascending = cur.ascending, prestigeNotice = cur.prestigeNotice,
+        ) ?: cur).copy(loading = cached == null, error = false)
         viewModelScope.launch {
             runCatching {
                 // Three independent reads — fan them out, mirroring the web's
@@ -213,6 +291,9 @@ class DashboardViewModel(
         }
     }
 }
+
+private const val ATLAS_KEY = "atlas_dismissed_until"
+private const val UPGRADE_KEY = "upgrade_card_dismissed"
 
 /** Claim path + tiny tuple the fan-out load needs. */
 private data class Quint<A, B, C, D, E>(

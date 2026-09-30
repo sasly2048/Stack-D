@@ -40,6 +40,7 @@ import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
 import app.stackd.data.room.FocusHistoryRow
 import app.stackd.feature.dashboard.ActivityHeatmap
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -63,6 +64,12 @@ data class InsightsUiState(
     val proactive: app.stackd.data.ai.ProactiveInsight? = null,
     /** LLM-written weekly narrative. Renders only when the AI backend answers. */
     val weeklyStory: String? = null,
+    /** Discovered patterns shown under the story — web weekly-narrative-card. */
+    val patterns: List<String> = emptyList(),
+    /** True until the weekly story request settles — shows "Composing…". */
+    val aiLoading: Boolean = true,
+    /** Monthly AI action meter — web ai-usage-meter on insights. */
+    val aiUsage: app.stackd.data.premium.AiUsage? = null,
 ) {
     // Computed once per state instance (lazy), not on every read during
     // recomposition — each of these walks up to 1000 history rows.
@@ -126,8 +133,18 @@ class InsightsViewModel(private val container: AppContainer) : ViewModel() {
             }
         }
         viewModelScope.launch {
-            container.ai.weeklyStory()?.let {
-                _state.value = _state.value.copy(weeklyStory = it.story)
+            // Story and patterns load together, as on the web's narrative card.
+            val story = async { container.ai.weeklyStory() }
+            val patterns = async { container.ai.discoverPatterns() }
+            _state.value = _state.value.copy(
+                weeklyStory = story.await()?.story,
+                patterns = patterns.await()?.patterns.orEmpty(),
+                aiLoading = false,
+            )
+        }
+        viewModelScope.launch {
+            runCatching { container.premium.aiUsage() }.getOrNull()?.let {
+                _state.value = _state.value.copy(aiUsage = it)
             }
         }
     }
@@ -315,11 +332,26 @@ fun InsightsScreen(
                         Spacer(Modifier.height(8.dp))
                         ProactiveCard(p)
                     }
-                    state.weeklyStory?.takeIf { it.isNotBlank() }?.let { story ->
+                    val story = state.weeklyStory?.takeIf { it.isNotBlank() }
+                    if (story != null || state.aiLoading) {
                         Spacer(Modifier.height(16.dp))
                         SectionLabel("THIS WEEK")
                         Spacer(Modifier.height(8.dp))
-                        WeeklyStoryCard(story)
+                        WeeklyStoryCard(story ?: "Composing…")
+                        state.patterns.forEach { p ->
+                            Spacer(Modifier.height(6.dp))
+                            Text("· $p", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                        }
+                    }
+                    state.aiUsage?.takeIf { it.unlimited || it.allowance > 0 }?.let { u ->
+                        Spacer(Modifier.height(16.dp))
+                        SectionLabel("AI ACTIONS")
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (u.unlimited) "Unlimited" else "${u.used} of ${u.allowance} used this billing period",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted,
+                        )
                     }
                 }
             }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -130,6 +132,7 @@ class FriendsViewModel(private val container: AppContainer) : ViewModel() {
 @Composable
 fun FriendsRoute(
     onBack: () -> Unit,
+    onOpenProfile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     vm: FriendsViewModel = viewModel(factory = stackdViewModel { FriendsViewModel(it) }),
 ) {
@@ -142,6 +145,7 @@ fun FriendsRoute(
         onRemove = vm::remove,
         onRetry = vm::load,
         onBack = onBack,
+        onOpenProfile = onOpenProfile,
         modifier = modifier,
     )
 }
@@ -156,6 +160,7 @@ fun FriendsScreen(
     onRetry: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenProfile: (String) -> Unit = {},
 ) {
     val colors = Stackd.colors
     // Hoisted out of the lazy items: state remembered inside an item is dropped
@@ -185,6 +190,7 @@ fun FriendsScreen(
             PersonRow(
                 name = p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
                 sub = null,
+                onOpen = { onOpenProfile(p.id) },
                 actionA = if (p.id in state.requested) "SENT" else "ADD",
                 onA = if (p.id in state.requested) null else ({ onSendRequest(p.id) }),
             )
@@ -220,6 +226,7 @@ fun FriendsScreen(
                         PersonRow(
                             name = f.displayName ?: "Anon",
                             sub = "wants to connect",
+                            onOpen = { onOpenProfile(f.userId) },
                             actionA = "ACCEPT", onA = { onRespond(f.id, true) },
                             actionB = "DECLINE", onB = { onRespond(f.id, false) },
                         )
@@ -237,6 +244,7 @@ fun FriendsScreen(
                         PersonRow(
                             name = f.displayName ?: "Anon",
                             sub = "pending",
+                            onOpen = { onOpenProfile(f.userId) },
                             actionA = "CANCEL", onA = { onRemove(f.id) },
                         )
                     }
@@ -258,6 +266,7 @@ fun FriendsScreen(
                     PersonRow(
                         name = f.displayName ?: "Anon",
                         sub = "since ${f.since.take(10)}",
+                        onOpen = { onOpenProfile(f.userId) },
                         actionA = "REMOVE", onA = { onRemove(f.id) },
                     )
                 }
@@ -277,6 +286,7 @@ fun FriendsScreen(
 private fun PersonRow(
     name: String,
     sub: String?,
+    onOpen: (() -> Unit)? = null,
     actionA: String? = null,
     onA: (() -> Unit)? = null,
     actionB: String? = null,
@@ -292,7 +302,17 @@ private fun PersonRow(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
+        Column(
+            Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp)
+                .then(
+                    if (onOpen != null) {
+                        Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpen() }
+                    } else Modifier,
+                ),
+            verticalArrangement = Arrangement.Center,
+        ) {
             Text(
                 name,
                 style = MaterialTheme.typography.bodyMedium,

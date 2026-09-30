@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -132,6 +134,7 @@ fun FeedRoute(
     onBack: () -> Unit,
     onStart: () -> Unit,
     onOpenFriends: () -> Unit,
+    onOpenProfile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     vm: FeedViewModel = viewModel(factory = stackdViewModel { FeedViewModel(it) }),
 ) {
@@ -146,6 +149,7 @@ fun FeedRoute(
         onBack = onBack,
         onStart = onStart,
         onOpenFriends = onOpenFriends,
+        onOpenProfile = onOpenProfile,
         modifier = modifier,
     )
 }
@@ -158,6 +162,7 @@ fun FeedScreen(
     onStart: () -> Unit,
     onOpenFriends: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenProfile: (String) -> Unit = {},
 ) {
     val colors = Stackd.colors
     Box(
@@ -186,7 +191,7 @@ fun FeedScreen(
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
                 else -> {
-                    CirclePanel(state.circle, onOpenFriends)
+                    CirclePanel(state.circle, onOpenFriends, onOpenProfile)
                     Spacer(Modifier.height(20.dp))
 
                     if (state.rows.isEmpty()) {
@@ -201,7 +206,7 @@ fun FeedScreen(
                         Spacer(Modifier.height(8.dp))
                         GhostButton(text = "Find friends", onClick = onOpenFriends)
                     }
-                    state.rows.forEach { FeedRow(it, state.nowMillis) }
+                    state.rows.forEach { FeedRow(it, state.nowMillis, onOpenProfile) }
                 }
             }
 
@@ -213,7 +218,7 @@ fun FeedScreen(
 }
 
 @Composable
-private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit) {
+private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
     Text(
         if (circle.isEmpty()) "CIRCLE" else "CIRCLE · ${circle.size}",
@@ -240,6 +245,8 @@ private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenProfile(f.id) }
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -274,7 +281,7 @@ private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit)
 }
 
 @Composable
-private fun FeedRow(item: FeedItem, now: Long) {
+private fun FeedRow(item: FeedItem, now: Long, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
     val name = item.displayName?.takeIf { it.isNotBlank() } ?: "Anonymous"
     Row(
@@ -283,6 +290,7 @@ private fun FeedRow(item: FeedItem, now: Long) {
             .padding(vertical = 3.dp)
             .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
+            .clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenProfile(item.userId) }
             .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

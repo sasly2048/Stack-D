@@ -103,11 +103,12 @@ class LeaderboardViewModel(private val container: AppContainer) : ViewModel() {
 @Composable
 fun LeaderboardRoute(
     onBack: () -> Unit,
+    onOpenProfile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     vm: LeaderboardViewModel = viewModel(factory = stackdViewModel { LeaderboardViewModel(it) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    LeaderboardScreen(state = state, onRetry = vm::load, onBack = onBack, modifier = modifier)
+    LeaderboardScreen(state = state, onRetry = vm::load, onBack = onBack, onOpenProfile = onOpenProfile, modifier = modifier)
 }
 
 @Composable
@@ -116,6 +117,7 @@ fun LeaderboardScreen(
     onRetry: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenProfile: (String) -> Unit = {},
 ) {
     val colors = Stackd.colors
     var tab by remember { mutableStateOf("individual") }
@@ -172,6 +174,7 @@ fun LeaderboardScreen(
                     subtitle = "${p.currentFocusStreak}d streak",
                     xp = p.lifetimeXp,
                     isMe = p.id == state.meId,
+                    onClick = { onOpenProfile(p.id) },
                 )
             }
             else -> itemsIndexed(state.groups, key = { _, g -> "g:${g.id}" }) { i, g ->
@@ -195,7 +198,7 @@ fun LeaderboardScreen(
 }
 
 @Composable
-private fun BoardRow(rank: Int, title: String, subtitle: String, xp: Long, isMe: Boolean) {
+private fun BoardRow(rank: Int, title: String, subtitle: String, xp: Long, isMe: Boolean, onClick: (() -> Unit)? = null) {
     val colors = Stackd.colors
     Row(
         modifier = Modifier
@@ -206,6 +209,9 @@ private fun BoardRow(rank: Int, title: String, subtitle: String, xp: Long, isMe:
                 Radius2Xl,
             )
             .border(1.dp, if (isMe) colors.accent.copy(alpha = 0.5f) else colors.border, Radius2Xl)
+            .then(
+                if (onClick != null) Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onClick() } else Modifier,
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

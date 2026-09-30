@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +40,7 @@ import app.stackd.core.theme.RadiusXl
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.ErrorBanner
+import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.StackdField
 import app.stackd.data.room.RoomTemplate
@@ -50,6 +52,7 @@ import app.stackd.data.room.RoomTemplate
 @Composable
 fun StartRoute(
     onRoomCreated: (String) -> Unit,
+    onJoinRoom: (String) -> Unit = {},
     vm: StartViewModel = viewModel(
         factory = stackdViewModel {
             StartViewModel(it.auth, it.profiles, it.rooms, it.settings)
@@ -74,6 +77,7 @@ fun StartRoute(
         onSetMode = vm::setMode,
         onDismissIntro = vm::dismissIntro,
         onCreate = vm::create,
+        onJoinRoom = onJoinRoom,
     )
 }
 
@@ -89,6 +93,7 @@ fun StartScreen(
     onDismissIntro: () -> Unit,
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
+    onJoinRoom: (String) -> Unit = {},
 ) {
     val colors = Stackd.colors
     androidx.compose.foundation.layout.Box(
@@ -263,8 +268,38 @@ fun StartScreen(
             color = colors.textMuted,
             modifier = Modifier.fillMaxWidth(),
         )
+        Spacer(Modifier.height(32.dp))
+        JoinWithCode(onJoinRoom)
+        Spacer(Modifier.height(32.dp))
       }
     }
+}
+
+/** Mirrors web normalizeCode/ROOM_CODE_PATTERN: uppercase alphanumerics, exactly 6. */
+@Composable
+private fun JoinWithCode(onJoinRoom: (String) -> Unit) {
+    var code by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    var error by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    SectionLabel("JOIN WITH A CODE")
+    Spacer(Modifier.height(12.dp))
+    StackdField(
+        label = "Room key",
+        value = code,
+        onValueChange = {
+            code = it.uppercase().filter { c -> c in 'A'..'Z' || c in '0'..'9' }.take(6)
+            error = null
+        },
+        placeholder = "ABC123",
+        isError = error != null,
+        hint = error,
+        imeAction = androidx.compose.ui.text.input.ImeAction.Go,
+        centeredMono = true,
+    )
+    Spacer(Modifier.height(12.dp))
+    GhostButton(
+        text = "Join room",
+        onClick = { if (code.length == 6) onJoinRoom(code) else error = "Enter the full 6-character key." },
+    )
 }
 
 @Composable

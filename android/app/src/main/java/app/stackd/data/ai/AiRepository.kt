@@ -38,22 +38,22 @@ class AiRepository(private val client: SupabaseClient) {
 
     private val webBase: String get() = BuildConfig.WEB_BASE_URL.trimEnd('/')
 
-    suspend fun recommendNextSession(): SessionRecommendation? =
-        cached("/api/public/ai/recommend") { getJson("/api/public/ai/recommend", post = true) }
+    suspend fun recommendNextSession(fresh: Boolean = false): SessionRecommendation? =
+        cached("/api/public/ai/recommend", fresh) { getJson("/api/public/ai/recommend", post = true) }
 
-    suspend fun dashboardInsights(): DashboardInsights? =
-        cached("/api/public/ai/dashboard-insights") {
+    suspend fun dashboardInsights(fresh: Boolean = false): DashboardInsights? =
+        cached("/api/public/ai/dashboard-insights", fresh) {
             getJson("/api/public/ai/dashboard-insights", post = true)
         }
 
     suspend fun sessionRecap(input: SessionRecapInput): SessionRecap? =
         getJson("/api/public/ai/session-recap", post = true, body = json.encodeToString(input))
 
-    suspend fun weeklyStory(): WeeklyStory? =
-        cached("/api/public/ai/weekly-story") { getJson("/api/public/ai/weekly-story", post = true) }
+    suspend fun weeklyStory(fresh: Boolean = false): WeeklyStory? =
+        cached("/api/public/ai/weekly-story", fresh) { getJson("/api/public/ai/weekly-story", post = true) }
 
-    suspend fun discoverPatterns(): DiscoveredPatterns? =
-        cached("/api/public/ai/discover-patterns") {
+    suspend fun discoverPatterns(fresh: Boolean = false): DiscoveredPatterns? =
+        cached("/api/public/ai/discover-patterns", fresh) {
             getJson("/api/public/ai/discover-patterns", post = true)
         }
 
@@ -68,11 +68,11 @@ class AiRepository(private val client: SupabaseClient) {
      * Only successes are cached, so a failure retries on the next visit.
      * Chat, recaps and vault summaries are never cached.
      */
-    private suspend inline fun <reified T : Any> cached(route: String, fetch: () -> T?): T? {
+    private suspend inline fun <reified T : Any> cached(route: String, fresh: Boolean = false, fetch: () -> T?): T? {
         val user = client.auth.currentUserOrNull()?.id ?: return fetch()
         val key = "$user:$route"
         val hit = aiCache[key]
-        if (hit != null && System.currentTimeMillis() - hit.first < AI_TTL_MS) {
+        if (!fresh && hit != null && System.currentTimeMillis() - hit.first < AI_TTL_MS) {
             (hit.second as? T)?.let { return it }
         }
         return fetch()?.also { aiCache[key] = System.currentTimeMillis() to it }

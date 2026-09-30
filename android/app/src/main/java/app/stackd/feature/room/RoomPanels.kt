@@ -69,6 +69,9 @@ private const val DISCONNECT_MS = 45_000L
 
 /* --------------------------------- roster --------------------------------- */
 
+/** Set by the nav host; opens another participant's profile. No-op by default. */
+val LocalOpenProfile = androidx.compose.runtime.staticCompositionLocalOf<(String) -> Unit> { {} }
+
 /**
  * The presence roster — per-participant status derived in the same priority
  * order the web uses: broke > disconnected > stacking > ready > idle.
@@ -77,6 +80,7 @@ private const val DISCONNECT_MS = 45_000L
 fun PresenceRoster(state: RoomUiState, onToggleReady: () -> Unit) {
     val colors = Stackd.colors
     val now = System.currentTimeMillis()
+    val openProfile = LocalOpenProfile.current
     Panel {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -89,7 +93,10 @@ fun PresenceRoster(state: RoomUiState, onToggleReady: () -> Unit) {
         state.present.forEach { p ->
             val status = rosterStatus(p, state, now)
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { openProfile(p.userId) },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {

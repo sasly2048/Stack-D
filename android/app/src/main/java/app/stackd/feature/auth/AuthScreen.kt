@@ -15,11 +15,23 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -84,6 +96,15 @@ fun AuthScreen(
     }
 
     val colors = Stackd.colors
+    // Short client cooldown so a failed provider can't be hammered via Retry.
+    var cooling by remember { mutableStateOf(false) }
+    LaunchedEffect(state.error) {
+        if (state.error != null) {
+            cooling = true
+            delay(1500)
+            cooling = false
+        }
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -140,17 +161,10 @@ fun AuthScreen(
                 onFocusLost = onEmailBlur,
             )
             Spacer(Modifier.height(16.dp))
-            StackdField(
-                label = "Password",
+            PasswordField(
                 value = state.password,
                 onValueChange = onPasswordChange,
-                required = true,
-                password = true,
-                placeholder = "••••••••",
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
                 isError = state.passwordInvalid,
-                hint = "At least 6 characters.",
                 onFocusLost = onPasswordBlur,
             )
             if (state.mode == AuthMode.SIGN_UP && !state.passwordInvalid) {
@@ -170,23 +184,33 @@ fun AuthScreen(
                 enabled = !state.submitBlocked,
                 busy = state.pending,
             )
+            if (state.lastUsed == "email") LastUsedBadge()
+            if (state.errorProvider != "google") {
+                state.error?.let {
+                    Spacer(Modifier.height(16.dp))
+                    ErrorBanner(it, onRetry = if (cooling) null else onSubmit)
+                }
+            }
 
             if (onGoogle != null) {
                 Spacer(Modifier.height(12.dp))
                 LinkButton(
                     text = "Continue with Google",
                     onClick = onGoogle,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 )
+                if (state.lastUsed == "google") LastUsedBadge()
+                if (state.errorProvider == "google") {
+                    state.error?.let {
+                        Spacer(Modifier.height(8.dp))
+                        ErrorBanner(it, onRetry = if (cooling) null else onGoogle)
+                    }
+                }
             }
 
             state.notice?.let {
                 Spacer(Modifier.height(16.dp))
                 NoticeBanner(it)
-            }
-            state.error?.let {
-                Spacer(Modifier.height(16.dp))
-                ErrorBanner(it, onRetry = onSubmit)
             }
 
             Spacer(Modifier.height(32.dp))
@@ -199,6 +223,76 @@ fun AuthScreen(
                 onClick = onToggleMode,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+@Composable
+private fun LastUsedBadge() {
+    Spacer(Modifier.height(6.dp))
+    Text("LAST USED", style = MonoLabelSmall, color = Stackd.colors.accent)
+}
+
+/** Password input with a show/hide toggle (web auth.tsx eye button). */
+@Composable
+private fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    isError: Boolean,
+    onFocusLost: () -> Unit,
+) {
+    val colors = Stackd.colors
+    var visible by remember { mutableStateOf(false) }
+    var hadFocus by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth()) {
+        Row {
+            Text("PASSWORD", style = MonoLabel, color = colors.textMuted)
+            Text(" *", style = MonoLabel, color = colors.accent)
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            isError = isError,
+            shape = RadiusMd,
+            placeholder = { Text("••••••••", color = colors.textMuted) },
+            visualTransformation =
+                if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+            ),
+            textStyle = MaterialTheme.typography.bodyMedium,
+            trailingIcon = {
+                TextButton(
+                    onClick = { visible = !visible },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(if (visible) "HIDE" else "SHOW", style = MonoLabelSmall, color = colors.textMuted)
+                }
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = colors.textPrimary.copy(alpha = 0.07f),
+                unfocusedContainerColor = colors.textPrimary.copy(alpha = 0.05f),
+                errorContainerColor = colors.textPrimary.copy(alpha = 0.05f),
+                focusedBorderColor = colors.accentDeep.copy(alpha = 0.6f),
+                unfocusedBorderColor = colors.textPrimary.copy(alpha = 0.1f),
+                errorBorderColor = colors.breach,
+                cursorColor = colors.accent,
+                focusedTextColor = colors.textPrimary,
+                unfocusedTextColor = colors.textPrimary,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged {
+                    if (hadFocus && !it.isFocused) onFocusLost()
+                    hadFocus = it.isFocused
+                },
+        )
+        if (isError) {
+            Spacer(Modifier.height(6.dp))
+            Text("At least 6 characters.", style = MonoLabelSmall, color = colors.breach)
         }
     }
 }

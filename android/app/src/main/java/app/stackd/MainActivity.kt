@@ -12,8 +12,23 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import app.stackd.core.crash.CrashRecorder
+import app.stackd.core.theme.MonoLabel
+import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.GhostButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -29,6 +44,36 @@ import app.stackd.core.workmanager.FinalizeQueueWorker
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.flowOf
 
+/** Calm post-crash screen (web route-error-boundary). Retry and dismiss both re-enter the app. */
+@Composable
+private fun SessionInterrupted(detail: String, onContinue: () -> Unit) {
+    val colors = Stackd.colors
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 32.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+    ) {
+        Text("STACK'D / INTERRUPTED", style = MonoLabel, color = colors.textMuted)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Session interrupted",
+            style = MaterialTheme.typography.displayMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Something went wrong and the app restarted. Your progress is safe.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textMuted,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(detail.lineSequence().first(), style = MonoLabel, color = colors.textMuted)
+        Spacer(Modifier.height(28.dp))
+        EmberButton(text = "Retry", onClick = onContinue)
+        Spacer(Modifier.height(12.dp))
+        GhostButton(text = "Dismiss", onClick = onContinue)
+    }
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -39,6 +84,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             StackdTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    var crash by remember { mutableStateOf(CrashRecorder.consume(applicationContext)) }
+                    if (crash != null) {
+                        SessionInterrupted(detail = crash!!, onContinue = { crash = null })
+                        return@Surface
+                    }
                     // The session restores from storage asynchronously, so the
                     // start destination CANNOT be read synchronously in onCreate —
                     // doing that raced the restore and dropped a signed-in user on
@@ -64,8 +114,24 @@ class MainActivity : ComponentActivity() {
                             // every offline launch after an hour.
                             val signedIn = status is SessionStatus.Authenticated ||
                                 status is SessionStatus.RefreshFailure
-                            val start = if (signedIn) Dest.Dashboard.route else Dest.Auth.route
-                            val navController = rememberNavController()
+                            val initialSignedIn = remember { signedIn }
+
+                            // Sign-out anywhere -> fresh nav graph at Auth (web
+                            // onAuthStateChange). Only the signed-in -> signed-out
+                            // edge resets: signing IN from Auth must not, or the
+                            // confirm-identity step would be skipped.
+                            var epoch by remember { mutableIntStateOf(0) }
+                            var wasSignedIn by remember { mutableStateOf(signedIn) }
+                            LaunchedEffect(signedIn) {
+                                if (wasSignedIn && !signedIn) {
+                                    container.cache.clear()
+                                    epoch++
+                                }
+                                wasSignedIn = signedIn
+                            }
+                            val start = if (initialSignedIn && epoch == 0) Dest.Dashboard.route
+                            else Dest.Auth.route
+                            val navController = key(epoch) { rememberNavController() }
                             val uid = if (signedIn) container.auth.currentUserId else null
 
                             // Pending-finalize count for the queue badge. When
@@ -86,10 +152,12 @@ class MainActivity : ComponentActivity() {
                             )
 
                             Box(Modifier.fillMaxSize()) {
-                                StackdNavHost(
-                                    navController = navController,
-                                    startDestination = start,
-                                )
+                                key(epoch) {
+                                    StackdNavHost(
+                                        navController = navController,
+                                        startDestination = start,
+                                    )
+                                }
                                 val entry by navController.currentBackStackEntryAsState()
 
                                 // Offline banner pinned to the top; queue badge

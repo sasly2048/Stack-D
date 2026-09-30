@@ -1,6 +1,7 @@
 package app.stackd
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -8,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import app.stackd.core.ui.PlaceholderScreen
 import app.stackd.feature.auth.AuthRoute
 import app.stackd.feature.dashboard.DashboardRoute
@@ -33,6 +35,7 @@ import app.stackd.feature.vault.CapsuleRoute
 import app.stackd.feature.vault.VaultRoute
 import app.stackd.feature.leaderboard.LeaderboardRoute
 import app.stackd.feature.premium.PremiumRoute
+import app.stackd.feature.room.LocalOpenProfile
 import app.stackd.feature.room.RoomRoute
 import app.stackd.feature.start.StartRoute
 
@@ -42,6 +45,7 @@ fun StackdNavHost(
     navController: NavHostController = rememberNavController(),
     startDestination: String = Dest.Landing.route,
 ) {
+    val openProfile: (String) -> Unit = { id -> navController.navigate(Dest.ProfileDetail.of(id)) }
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -68,6 +72,7 @@ fun StackdNavHost(
             DashboardRoute(
                 onStart = { navController.navigate(Dest.Start.route) },
                 onOpenRoom = { code -> navController.navigate(Dest.Room.of(code)) },
+                onOpenPremium = { navController.navigate(Dest.Premium.route) { launchSingleTop = true } },
                 menuEntries = listOf(
                     // Web nav labels the companion chat "Atlas" (to: "/companion").
                     "Atlas" to Dest.Companion,
@@ -100,6 +105,7 @@ fun StackdNavHost(
         }
         composable(Dest.Start.route) {
             StartRoute(
+                onJoinRoom = { code -> navController.navigate(Dest.Room.of(code)) },
                 onRoomCreated = { code ->
                     navController.navigate(Dest.Room.of(code)) {
                         // The Start screen is a one-shot configurator; drop it
@@ -113,17 +119,20 @@ fun StackdNavHost(
         composable(
             route = Dest.Room.route,
             arguments = listOf(navArgument(Dest.Room.ARG_CODE) { type = NavType.StringType }),
+            deepLinks = listOf(navDeepLink { uriPattern = "https://stackd.raghav.studio/room/{${Dest.Room.ARG_CODE}}" }),
         ) { entry ->
             val code = entry.arguments?.getString(Dest.Room.ARG_CODE).orEmpty()
-            RoomRoute(
-                code = code,
-                onExit = {
-                    navController.navigate(Dest.Dashboard.route) {
-                        popUpTo(Dest.Dashboard.route) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
-            )
+            CompositionLocalProvider(LocalOpenProfile provides openProfile) {
+                RoomRoute(
+                    code = code,
+                    onExit = {
+                        navController.navigate(Dest.Dashboard.route) {
+                            popUpTo(Dest.Dashboard.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
         }
 
         // Monetization
@@ -151,13 +160,14 @@ fun StackdNavHost(
             ProfileDetailRoute(userId = id, onBack = { navController.popBackStack() })
         }
         composable(Dest.Friends.route) {
-            FriendsRoute(onBack = { navController.popBackStack() })
+            FriendsRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile)
         }
         composable(Dest.Feed.route) {
             FeedRoute(
                 onBack = { navController.popBackStack() },
                 onStart = { navController.navigate(Dest.Start.route) },
                 onOpenFriends = { navController.navigate(Dest.Friends.route) },
+                onOpenProfile = openProfile,
             )
         }
         composable(Dest.Timeline.route) {
@@ -169,7 +179,7 @@ fun StackdNavHost(
 
         // Progression
         composable(Dest.Leaderboard.route) {
-            LeaderboardRoute(onBack = { navController.popBackStack() })
+            LeaderboardRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile)
         }
         composable(Dest.Achievements.route) {
             AchievementsRoute(onBack = { navController.popBackStack() })
@@ -186,6 +196,7 @@ fun StackdNavHost(
             CirclesRoute(
                 onBack = { navController.popBackStack() },
                 onManage = { navController.navigate(Dest.Groups.route) },
+                onOpenProfile = openProfile,
             )
         }
         composable(Dest.Groups.route) {

@@ -21,6 +21,10 @@ data class AuthUiState(
     val passwordTouched: Boolean = false,
     val pending: Boolean = false,
     val error: String? = null,
+    /** Which sign-in method [error] belongs to ("email"/"google"). */
+    val errorProvider: String? = null,
+    /** Provider of the last successful sign-in, for the "Last used" badge. */
+    val lastUsed: String? = null,
     /** Set after a successful sign-up: no session exists, so this is not a route change. */
     val notice: String? = null,
     /** A session exists; the confirm-identity step is showing. */
@@ -72,6 +76,9 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
         // A session may already exist from a previous launch — the web shows
         // the same confirm step on return rather than silently entering.
         container.auth.currentUserId?.let { enterConfirmStep(it) }
+        viewModelScope.launch {
+            container.settings.lastAuthProvider.collect { p -> _state.update { it.copy(lastUsed = p) } }
+        }
     }
 
     fun onEmailChange(value: String) = _state.update { it.copy(email = value, error = null) }
@@ -107,7 +114,7 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
                     displayName = current.displayName,
                 )
             }
-            applyOutcome(outcome)
+            applyOutcome(outcome, "email")
         }
     }
 
@@ -115,14 +122,15 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
         if (_state.value.pending) return
         _state.update { it.copy(pending = true, error = null) }
         viewModelScope.launch {
-            applyOutcome(container.auth.signInWithGoogle(idToken, rawNonce))
+            applyOutcome(container.auth.signInWithGoogle(idToken, rawNonce), "google")
         }
     }
 
-    private fun applyOutcome(outcome: AuthOutcome) {
+    private fun applyOutcome(outcome: AuthOutcome, provider: String) {
         when (outcome) {
             AuthOutcome.SignedIn -> {
                 _state.update { it.copy(pending = false) }
+                viewModelScope.launch { container.settings.setLastAuthProvider(provider) }
                 // A SignedIn outcome means a session was installed — but
                 // importSession is async and currentUserOrNull() can still read
                 // null for a beat right after, so gating the confirm step on the
@@ -148,7 +156,7 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
             }
 
             is AuthOutcome.Failed -> _state.update {
-                it.copy(pending = false, error = outcome.message)
+                it.copy(pending = false, error = outcome.message, errorProvider = provider)
             }
         }
     }

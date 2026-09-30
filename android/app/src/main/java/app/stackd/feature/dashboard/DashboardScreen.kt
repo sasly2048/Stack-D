@@ -11,6 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -63,8 +68,16 @@ fun DashboardRoute(
     onStart: () -> Unit,
     onOpenRoom: (String) -> Unit,
     menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
+    /** Opens the Premium screen from the upgrade card; StackdNavHost must wire it. */
+    onOpenPremium: () -> Unit = {},
     vm: DashboardViewModel = viewModel(
-        factory = stackdViewModel { DashboardViewModel(it.auth, it.profiles, it.rooms, it.ai, it.cache) },
+        factory = stackdViewModel {
+            DashboardViewModel(
+                it.auth, it.profiles, it.rooms, it.ai, it.cache, it.premium,
+                app.stackd.data.progression.PrestigeRepository(it.client), it.client,
+                it.appContextForWork.getSharedPreferences("dashboard_prefs", 0),
+            )
+        },
     ),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -77,6 +90,13 @@ fun DashboardRoute(
         menuEntries = menuEntries,
         onRetry = vm::load,
         onClaimReward = vm::claimReward,
+        onOpenPremium = onOpenPremium,
+        onRegenRec = { vm.fetchAiRecommendation(fresh = true) },
+        onRetryRec = { vm.fetchAiRecommendation(fresh = true) },
+        onRegenInsights = { vm.fetchAiInsights(fresh = true) },
+        onDismissAtlas = vm::dismissAtlas,
+        onDismissUpgrade = vm::dismissUpgrade,
+        onAscend = vm::ascend,
         onExportCsv = {
             scope.launch {
                 val export = vm.buildCsv()
@@ -104,6 +124,13 @@ fun DashboardScreen(
     menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
     onClaimReward: () -> Unit = {},
     onExportCsv: () -> Unit = {},
+    onOpenPremium: () -> Unit = {},
+    onRegenRec: () -> Unit = {},
+    onRetryRec: () -> Unit = {},
+    onRegenInsights: () -> Unit = {},
+    onDismissAtlas: () -> Unit = {},
+    onDismissUpgrade: () -> Unit = {},
+    onAscend: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -119,24 +146,7 @@ fun DashboardScreen(
       app.stackd.core.ui.ResponsiveColumn(
         maxContentWidth = app.stackd.core.ui.WIDE_MAX_CONTENT_WIDTH,
       ) {
-        Text(
-            "ANALYTICS / ${state.name.uppercase()}",
-            style = MonoLabel,
-            color = colors.textMuted,
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            Text(
-                "Your discipline.",
-                style = MaterialTheme.typography.displaySmall,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.ExtraBold,
-            )
-        }
+        Greeting(state)
         Spacer(Modifier.height(24.dp))
         EmberButton(text = "New Session", onClick = onStart)
         Spacer(Modifier.height(12.dp))
@@ -160,17 +170,26 @@ fun DashboardScreen(
             Spacer(Modifier.height(16.dp))
         }
 
+        if (state.isPremium == false && !state.upgradeDismissed) {
+            UpgradeCard(onOpenPremium = onOpenPremium, onDismiss = onDismissUpgrade)
+            Spacer(Modifier.height(16.dp))
+        }
+        state.prestige?.let { PrestigeCard(it, state.ascending, state.prestigeNotice, onAscend) }
+
         // Atlas — the ambient companion. Shows a next-session recommendation
         // derived from the same history the ledger already loaded. Dismissible.
         if (!state.loading && !state.isEmpty) {
-            var atlasVisible by remember { mutableStateOf(true) }
-            if (atlasVisible) {
+            if (!state.atlasDismissed) {
                 AtlasCard(
                     // Prefer the LLM recommendation once it lands; until then (or
                     // if the AI backend is unreachable) show the local heuristic.
                     rec = state.aiRecommendation
                         ?: app.stackd.feature.insights.recommendNextSession(state.history),
-                    onDismiss = { atlasVisible = false },
+                    onDismiss = onDismissAtlas,
+                    loading = state.aiRecLoading,
+                    error = state.aiRecError,
+                    onRegenerate = onRegenRec,
+                    onRetry = onRetryRec,
                 )
                 Spacer(Modifier.height(16.dp))
             }
@@ -222,8 +241,8 @@ fun DashboardScreen(
                     StatTiles(state)
                     Spacer(Modifier.height(20.dp))
                 }
-                state.aiInsights?.takeIf { it.paragraphs.isNotEmpty() }?.let { insights ->
-                    InsightsCard(insights)
+                if (!state.isEmpty) {
+                    InsightsCard(state.aiInsights, state.aiInsLoading, state.aiInsError, onRegenInsights)
                     Spacer(Modifier.height(20.dp))
                 }
                 if (state.live.isNotEmpty()) {
@@ -479,6 +498,11 @@ private fun SessionHistory(history: List<FocusHistoryRow>, onOpenRoom: (String) 
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
+                    shortDate(h.createdAt),
+                    style = MonoLabelSmall,
+                    color = colors.textPrimary,
+                )
+                Text(
                     code ?: "—",
                     style = MonoLabelSmall,
                     color = colors.textMuted,
@@ -502,6 +526,16 @@ private fun SessionHistory(history: List<FocusHistoryRow>, onOpenRoom: (String) 
                     textAlign = TextAlign.End,
                     modifier = Modifier.weight(1f),
                 )
+                if (isNew(h.createdAt)) {
+                    Text(
+                        "NEW",
+                        style = MonoLabelSmall,
+                        color = colors.live,
+                        modifier = Modifier
+                            .border(1.dp, colors.live.copy(alpha = 0.5f), RadiusMd)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
             }
         }
     }
@@ -528,6 +562,10 @@ private fun Tile(modifier: Modifier = Modifier, content: @Composable () -> Unit)
 private fun AtlasCard(
     rec: app.stackd.feature.insights.SessionRecommendation,
     onDismiss: () -> Unit,
+    loading: Boolean,
+    error: Boolean,
+    onRegenerate: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     val colors = Stackd.colors
     Box(
@@ -537,15 +575,14 @@ private fun AtlasCard(
             .border(1.dp, colors.accent.copy(alpha = 0.25f), Radius2Xl)
             .padding(20.dp),
     ) {
-        Text(
-            "✕",
-            style = MonoLabelSmall,
-            color = colors.textMuted,
+        Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .clickable(onClick = onDismiss)
-                .padding(4.dp),
-        )
+                .heightIn(min = 48.dp)
+                .widthIn(min = 48.dp)
+                .clickable(role = Role.Button, onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) { Text("✕", style = MonoLabelSmall, color = colors.textMuted) }
         Column {
             Text("ATLAS", style = MonoLabelSmall, color = colors.accent)
             Spacer(Modifier.height(8.dp))
@@ -573,17 +610,29 @@ private fun AtlasCard(
                 style = MonoLabelSmall,
                 color = colors.accent,
             )
+            Spacer(Modifier.height(4.dp))
+            if (error) {
+                Text("SIGNAL LOST", style = MonoLabelSmall, color = colors.textMuted)
+                TextAction("Retry", enabled = !loading, onClick = onRetry)
+            } else {
+                TextAction(if (loading) "Thinking…" else "Regenerate →", enabled = !loading, onClick = onRegenerate)
+            }
         }
     }
 }
 
 /**
  * LLM-written ledger insights. Mirrors the web dashboard's insights card:
- * a headline over a few short paragraphs read off the caller's focus history.
- * Only rendered when the AI backend returned content (no local fallback).
+ * a headline over a few short paragraphs, with Regenerate / Retry and a
+ * loading state instead of hiding while the model works.
  */
 @Composable
-private fun InsightsCard(insights: app.stackd.data.ai.DashboardInsights) {
+private fun InsightsCard(
+    insights: app.stackd.data.ai.DashboardInsights?,
+    loading: Boolean,
+    error: Boolean,
+    onRegenerate: () -> Unit,
+) {
     val colors = Stackd.colors
     Column(
         modifier = Modifier
@@ -593,26 +642,213 @@ private fun InsightsCard(insights: app.stackd.data.ai.DashboardInsights) {
             .padding(20.dp),
     ) {
         Text("LEDGER INSIGHTS", style = MonoLabelSmall, color = colors.accent)
-        if (insights.headline.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
+        when {
+            loading && insights == null -> {
+                Spacer(Modifier.height(10.dp))
+                Text("Reading…", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+            }
+            insights == null -> {
+                Spacer(Modifier.height(10.dp))
+                Text("SIGNAL LOST", style = MonoLabelSmall, color = colors.textMuted)
+                TextAction("Retry", enabled = !loading, onClick = onRegenerate)
+            }
+            else -> {
+                if (insights.headline.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        insights.headline,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                insights.paragraphs.forEach { para ->
+                    Spacer(Modifier.height(10.dp))
+                    Text(para, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                }
+                if (insights.basedOnSessions > 0) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "BASED ON ${insights.basedOnSessions} SESSIONS",
+                        style = MonoLabelSmall,
+                        color = colors.accent,
+                    )
+                }
+                TextAction(if (loading) "Reading…" else "Regenerate →", enabled = !loading, onClick = onRegenerate)
+            }
+        }
+    }
+}
+
+/** 48dp-tall mono text action (Regenerate / Retry). */
+@Composable
+private fun TextAction(text: String, enabled: Boolean, onClick: () -> Unit) {
+    val colors = Stackd.colors
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text.uppercase(),
+            style = MonoLabelSmall,
+            color = if (enabled) colors.textPrimary else colors.textMuted,
+        )
+    }
+}
+
+private fun shortDate(iso: String?): String {
+    val ms = parseIsoMillis(iso) ?: return "—"
+    return java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault())
+        .toLocalDate()
+        .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT))
+}
+
+private fun isNew(iso: String?): Boolean =
+    parseIsoMillis(iso)?.let { System.currentTimeMillis() - it < 86_400_000L } == true
+
+/** Time-of-day greeting — web's DynamicGreeting: glyph, "Good morning, {name}", stat lines. */
+@Composable
+private fun Greeting(state: DashboardUiState) {
+    val colors = Stackd.colors
+    val now = java.time.LocalTime.now()
+    val (glyph, label) = when {
+        now.hour < 5 -> "🌙" to "Late night"
+        now.hour < 12 -> "☀️" to "Good morning"
+        now.hour < 17 -> "🌤️" to "Good afternoon"
+        now.hour < 21 -> "🌇" to "Good evening"
+        else -> "🌌" to "Good night"
+    }
+    val yesterday = remember(state.history) {
+        val zone = java.time.ZoneId.systemDefault()
+        val day = java.time.LocalDate.now(zone).minusDays(1)
+        state.history.filter {
+            parseIsoMillis(it.createdAt)?.let { ms ->
+                java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalDate() == day
+            } == true
+        }.sumOf { it.durationSeconds }
+    }
+    Text("$glyph ${label.uppercase()} · ANALYTICS", style = MonoLabel, color = colors.textMuted)
+    Spacer(Modifier.height(8.dp))
+    Text(
+        "$label, ${state.name}.",
+        style = MaterialTheme.typography.displaySmall,
+        color = colors.textPrimary,
+        fontWeight = FontWeight.ExtraBold,
+    )
+    val g = state.greeting
+    val lines = buildList {
+        if (yesterday > 0) add("You studied ${Math.round(yesterday / 360.0) / 10.0}h yesterday.")
+        if (g.friendsOnline > 0) {
+            add("${g.friendsOnline} ${if (g.friendsOnline == 1) "friend is" else "friends are"} already focusing.")
+        }
+        if (g.challengeProgress > 0f && g.challengeProgress < 1f) {
+            add("Today's challenge is ${Math.round(g.challengeProgress * 100)}% done.")
+        }
+        if (state.streak > 0) add("Current streak: 🔥 ${state.streak}")
+    }
+    if (lines.isNotEmpty()) {
+        Spacer(Modifier.height(10.dp))
+        lines.forEach {
+            Text("· $it", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        }
+    }
+}
+
+/** Dismissible free-user nudge — web's UpgradeCard. */
+@Composable
+private fun UpgradeCard(onOpenPremium: () -> Unit, onDismiss: () -> Unit) {
+    val colors = Stackd.colors
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.accent.copy(alpha = 0.04f), Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.25f), Radius2Xl)
+            .padding(20.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .heightIn(min = 48.dp)
+                .widthIn(min = 48.dp)
+                .clickable(role = Role.Button, onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) { Text("✕", style = MonoLabelSmall, color = colors.textMuted) }
+        Column {
+            Text("PREMIUM", style = MonoLabelSmall, color = colors.accent)
+            Spacer(Modifier.height(8.dp))
             Text(
-                insights.headline,
+                "See the full picture",
                 style = MaterialTheme.typography.titleLarge,
                 color = colors.textPrimary,
                 fontWeight = FontWeight.Bold,
             )
-        }
-        insights.paragraphs.forEach { para ->
-            Spacer(Modifier.height(10.dp))
-            Text(para, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
-        }
-        if (insights.basedOnSessions > 0) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
-                "BASED ON ${insights.basedOnSessions} SESSIONS",
-                style = MonoLabelSmall,
-                color = colors.accent,
+                "Unlimited history, advanced analytics, and more — from ₹75/mo on annual.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+            )
+            Spacer(Modifier.height(12.dp))
+            GhostButton(text = "See plans", onClick = onOpenPremium)
+        }
+    }
+}
+
+/** Prestige progress; when eligible, "Prestige now" opens the ascend ceremony dialog. */
+@Composable
+private fun PrestigeCard(
+    p: app.stackd.data.progression.PrestigeStatus,
+    ascending: Boolean,
+    notice: String?,
+    onAscend: () -> Unit,
+) {
+    val colors = Stackd.colors
+    var confirming by remember { mutableStateOf(false) }
+    Tile {
+        SectionLabel("PRESTIGE", color = colors.accent)
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("P${p.level}", style = MaterialTheme.typography.headlineLarge, color = colors.textPrimary, fontWeight = FontWeight.Bold)
+            Text("${p.lifetimeXp} / ${p.neededXp} XP", style = MonoLabelSmall, color = colors.textMuted)
+        }
+        Spacer(Modifier.height(10.dp))
+        Box(Modifier.fillMaxWidth().height(4.dp).background(colors.textPrimary.copy(alpha = 0.06f), RadiusMd)) {
+            Box(
+                Modifier
+                    .fillMaxWidth((p.lifetimeXp.toFloat() / p.neededXp).coerceIn(0f, 1f))
+                    .height(4.dp)
+                    .background(colors.accent, RadiusMd),
             )
         }
+        Spacer(Modifier.height(10.dp))
+        if (p.canPrestige) {
+            EmberButton(text = "Prestige now", onClick = { confirming = true })
+        } else {
+            Text("Reach ${p.neededXp} XP to ascend.", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
+        notice?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, style = MonoLabelSmall, color = colors.accent)
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text("Ascend to Prestige ${p.level + 1}?") },
+            text = { Text("Your XP total remains. Your streak resets to zero. A new ring joins your frame.") },
+            confirmButton = {
+                TextButton(
+                    enabled = !ascending,
+                    onClick = { onAscend(); confirming = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(if (ascending) "ASCENDING…" else "ASCEND") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirming = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text("CANCEL") }
+            },
+        )
     }
 }

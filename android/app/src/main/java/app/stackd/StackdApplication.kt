@@ -24,6 +24,7 @@ class StackdApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        app.stackd.core.crash.CrashRecorder.install(this)
         container = AppContainer(this)
         wireFinalizeSubmitter()
         reportTimezoneOnSignIn()

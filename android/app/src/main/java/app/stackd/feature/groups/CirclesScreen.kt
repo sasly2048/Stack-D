@@ -101,6 +101,7 @@ class CirclesViewModel(private val container: AppContainer) : ViewModel() {
 fun CirclesRoute(
     onBack: () -> Unit,
     onManage: () -> Unit,
+    onOpenProfile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     vm: CirclesViewModel = viewModel(factory = stackdViewModel { CirclesViewModel(it) }),
 ) {
@@ -111,6 +112,7 @@ fun CirclesRoute(
         onRetry = vm::load,
         onBack = onBack,
         onManage = onManage,
+        onOpenProfile = onOpenProfile,
         modifier = modifier,
     )
 }
@@ -123,6 +125,7 @@ fun CirclesScreen(
     onBack: () -> Unit,
     onManage: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenProfile: (String) -> Unit = {},
 ) {
     val colors = Stackd.colors
     Box(
@@ -211,7 +214,7 @@ fun CirclesScreen(
                             "This circle is gone.",
                             style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                         )
-                        else -> CircleBoard(state.detail)
+                        else -> CircleBoard(state.detail, onOpenProfile)
                     }
                 }
             }
@@ -224,7 +227,7 @@ fun CirclesScreen(
 }
 
 @Composable
-private fun CircleBoard(detail: CircleDetail) {
+private fun CircleBoard(detail: CircleDetail, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -250,6 +253,7 @@ private fun CircleBoard(detail: CircleDetail) {
                 .padding(vertical = 3.dp)
                 .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
                 .border(1.dp, colors.border, Radius2Xl)
+                .clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenProfile(m.userId) }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
