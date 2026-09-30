@@ -21,6 +21,7 @@ import { QRCode } from "@/components/qr-code";
 import { AmbientPlayer } from "@/components/ambient-player";
 import { SessionMetaForm } from "@/components/session-meta-form";
 import { RoomHeader, JoinRequestsPanel } from "@/components/rooms/room-header";
+import { JoinRequestGate } from "@/components/rooms/join-request-gate";
 import { LiveActivityRail } from "@/components/rooms/live-activity-rail";
 import { PresenceRoster } from "@/components/rooms/presence-roster";
 import { UserHoverCard } from "@/components/profile/user-hover-card";
@@ -106,6 +107,10 @@ function Room() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** claim_room_seat said needs_approval — show the request gate. */
+  const [needsApproval, setNeedsApproval] = useState(false);
+  /** Bumped to re-run the room load (after a join request is approved). */
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [armed, setArmed] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -150,7 +155,9 @@ function Room() {
         ) => PromiseLike<{ data: RoomRow | null; error: { message: string } | null }>
       )("claim_room_seat", { _code: code });
       if (rErr) {
-        if (rErr.message?.includes("not_found")) {
+        if (rErr.message?.includes("needs_approval")) {
+          setNeedsApproval(true);
+        } else if (rErr.message?.includes("not_found")) {
           setError(`Room ${code} not found.`);
         } else {
           setError(rErr.message);
@@ -164,6 +171,7 @@ function Room() {
         return;
       }
       if (!mounted) return;
+      setNeedsApproval(false);
       setRoom(r);
 
       const { data: parts } = await withSessionRetry(() =>
@@ -183,7 +191,7 @@ function Room() {
     return () => {
       mounted = false;
     };
-  }, [code]);
+  }, [code, loadAttempt]);
 
   // Realtime subscriptions
   useEffect(() => {
@@ -611,6 +619,19 @@ function Room() {
         <div className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
           Loading session…
         </div>
+      </Shell>
+    );
+  }
+  if (needsApproval) {
+    return (
+      <Shell>
+        <JoinRequestGate
+          code={code}
+          onApproved={() => {
+            setLoading(true);
+            setLoadAttempt((n) => n + 1);
+          }}
+        />
       </Shell>
     );
   }
