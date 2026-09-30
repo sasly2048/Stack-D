@@ -52,6 +52,7 @@ import app.stackd.data.room.RoomTemplate
 @Composable
 fun StartRoute(
     onRoomCreated: (String) -> Unit,
+    onBack: (() -> Unit)? = null,
     onJoinRoom: (String) -> Unit = {},
     vm: StartViewModel = viewModel(
         factory = stackdViewModel {
@@ -78,6 +79,7 @@ fun StartRoute(
         onDismissIntro = vm::dismissIntro,
         onCreate = vm::create,
         onJoinRoom = onJoinRoom,
+        onBack = onBack,
     )
 }
 
@@ -94,6 +96,7 @@ fun StartScreen(
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
     onJoinRoom: (String) -> Unit = {},
+    onBack: (() -> Unit)? = null,
 ) {
     val colors = Stackd.colors
     androidx.compose.foundation.layout.Box(
@@ -103,7 +106,7 @@ fun StartScreen(
             .verticalScroll(rememberScrollState()),
     ) {
       app.stackd.core.ui.ResponsiveColumn {
-        Text("NEW / CONFIGURE", style = MonoLabel, color = colors.textMuted)
+        app.stackd.core.ui.ScreenHeader("NEW / CONFIGURE", onBack)
         Spacer(Modifier.height(8.dp))
         Text(
             "Set the protocol.",

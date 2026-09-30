@@ -168,7 +168,7 @@ fun PartnersScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / ACCOUNTABILITY", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / ACCOUNTABILITY", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("PARTNERS")
             Spacer(Modifier.height(8.dp))
@@ -239,7 +239,6 @@ fun PartnersScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

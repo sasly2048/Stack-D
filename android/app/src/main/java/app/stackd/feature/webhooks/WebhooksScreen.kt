@@ -179,7 +179,7 @@ fun WebhooksRoute(
     ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
         item(key = "header") {
             Column {
-                Text("STACK'D / WEBHOOKS", style = MonoLabel, color = colors.textMuted)
+                app.stackd.core.ui.ScreenHeader("STACK'D / WEBHOOKS", onBack)
                 Spacer(Modifier.height(16.dp))
                 SectionLabel("WEBHOOKS")
                 Spacer(Modifier.height(8.dp))
@@ -275,7 +275,6 @@ fun WebhooksRoute(
         item(key = "footer") {
             Column {
                 Spacer(Modifier.height(24.dp))
-                GhostButton(text = "Back", onClick = onBack)
             }
         }
     }

@@ -215,7 +215,7 @@ fun InsightsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / INSIGHTS", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / INSIGHTS", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("120-DAY LEDGER")
             Spacer(Modifier.height(16.dp))
@@ -354,7 +354,6 @@ fun InsightsScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

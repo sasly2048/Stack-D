@@ -121,7 +121,7 @@ fun DnaScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / DNA", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / DNA", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("FOCUS DNA")
             Spacer(Modifier.height(16.dp))
@@ -209,7 +209,6 @@ fun DnaScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

@@ -100,7 +100,7 @@ fun ChallengesScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / CHALLENGES", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / CHALLENGES", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("PROVE IT")
             Spacer(Modifier.height(16.dp))
@@ -202,7 +202,6 @@ fun ChallengesScreen(
             }
 
             Spacer(Modifier.height(16.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

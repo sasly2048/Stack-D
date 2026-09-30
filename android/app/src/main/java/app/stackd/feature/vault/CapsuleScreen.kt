@@ -151,7 +151,7 @@ fun CapsuleScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / CAPSULE", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / CAPSULE", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("TIME CAPSULES")
             Spacer(Modifier.height(16.dp))
@@ -257,7 +257,6 @@ fun CapsuleScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

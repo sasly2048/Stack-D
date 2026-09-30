@@ -172,7 +172,7 @@ fun FeedScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / SIGNAL", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / SIGNAL", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("FEED")
             Spacer(Modifier.height(16.dp))
@@ -211,7 +211,6 @@ fun FeedScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

@@ -25,6 +25,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -113,7 +116,7 @@ fun PremiumScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / PREMIUM", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / PREMIUM", onBack)
             Spacer(Modifier.height(24.dp))
 
             val ent = state.entitlement
@@ -193,17 +196,9 @@ fun PremiumScreen(
             // Plans — price display from the live `plans` table; pay on web.
             if (!state.entitlement.isElite && state.plans.isNotEmpty()) {
                 Spacer(Modifier.height(24.dp))
-                SectionLabel("PLANS")
-                Spacer(Modifier.height(8.dp))
-                state.plans.forEach { plan ->
-                    PlanCard(plan, onOpenWeb)
-                    Spacer(Modifier.height(8.dp))
-                }
-                Text(
-                    "Payment opens in your browser — subscriptions are handled on the web app.",
-                    style = MonoLabelSmall,
-                    color = colors.textMuted,
-                )
+                SectionLabel("CHOOSE YOUR PLAN")
+                Spacer(Modifier.height(12.dp))
+                PlanPicker(state.plans, state.entitlement.isPro, onOpenWeb)
             }
 
             // Lifetime coupon.
@@ -280,40 +275,125 @@ fun PremiumScreen(
                 }
 
             Spacer(Modifier.height(16.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }
 }
 
+/**
+ * One plan picker instead of four identical "Continue on the web" cards:
+ * tier + billing toggles, the resulting price (with the real annual saving
+ * computed from the live `plans` rows), what that tier unlocks, one CTA.
+ */
 @Composable
-private fun PlanCard(plan: Plan, onOpenWeb: (String) -> Unit) {
+private fun PlanPicker(plans: List<Plan>, alreadyPro: Boolean, onOpenWeb: (String) -> Unit) {
     val colors = Stackd.colors
-    Card {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    plan.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.textPrimary,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    "₹${plan.priceInr} / ${if (plan.interval == "annual") "year" else "month"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textMuted,
-                )
+    val tiers = listOf("pro", "elite").filter { t -> plans.any { it.tier == t } && !(alreadyPro && t == "pro") }
+    if (tiers.isEmpty()) return
+    var tier by remember { mutableStateOf(tiers.last()) }
+    var annual by remember { mutableStateOf(true) }
+    fun plan(t: String, yearly: Boolean) = plans.firstOrNull { it.tier == t && (it.interval == "annual") == yearly }
+    val monthly = plan(tier, false)
+    val yearly = plan(tier, true)
+    val selected = (if (annual) yearly else monthly) ?: monthly ?: yearly ?: return
+    val savePct = if (monthly != null && yearly != null && monthly.priceInr > 0) {
+        Math.round((1 - yearly.priceInr / (monthly.priceInr * 12.0)) * 100).toInt()
+    } else 0
+
+    if (tiers.size > 1) {
+        Segmented(tiers.map { it.uppercase() }, tiers.indexOf(tier)) { tier = tiers[it] }
+        Spacer(Modifier.height(8.dp))
+    }
+    if (monthly != null && yearly != null) {
+        Segmented(
+            listOf("MONTHLY", if (savePct > 0) "ANNUAL · SAVE $savePct%" else "ANNUAL"),
+            if (annual) 1 else 0,
+        ) { annual = it == 1 }
+        Spacer(Modifier.height(12.dp))
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.accent.copy(alpha = 0.05f), Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.35f), Radius2Xl)
+            .padding(20.dp),
+    ) {
+        Text(
+            if (tier == "elite") "ELITE — OPTIMIZE YOUR FOCUS" else "PRO — UNDERSTAND YOUR FOCUS",
+            style = MonoLabelSmall,
+            color = colors.accent,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "₹${selected.priceInr}",
+                style = MaterialTheme.typography.displaySmall,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                if (selected.interval == "annual") "/ year" else "/ month",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        if (selected.interval == "annual") {
+            Text(
+                "₹${Math.round(selected.priceInr / 12.0)} / month, billed yearly",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        CATALOG.filter { it.tier == tier && it.status == "live" }.take(4).forEach { row ->
+            Row(Modifier.padding(vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("✓", style = MaterialTheme.typography.bodySmall, color = colors.accent)
+                Text(row.label, style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
         EmberButton(
-            text = "Continue on the web",
+            text = "Continue with ${selected.displayName}",
             onClick = { onOpenWeb("/dashboard") },
         )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Checkout opens securely in your browser.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+    }
+}
+
+/** Pill segmented control; each segment is a full 48dp target. */
+@Composable
+private fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    val colors = Stackd.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.04f), CircleShape)
+            .border(1.dp, colors.border, CircleShape)
+            .padding(4.dp),
+    ) {
+        options.forEachIndexed { i, label ->
+            val on = i == selected
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .clip(CircleShape)
+                    .background(if (on) colors.accent.copy(alpha = 0.16f) else androidx.compose.ui.graphics.Color.Transparent, CircleShape)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Tab) { onSelect(i) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(label, style = MonoLabelSmall, color = if (on) colors.accent else colors.textMuted, maxLines = 1)
+            }
+        }
     }
 }
 

@@ -176,7 +176,7 @@ fun TrustScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / SAFETY", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / SAFETY", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("TRUST & SAFETY")
             Spacer(Modifier.height(8.dp))
@@ -262,7 +262,6 @@ fun TrustScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

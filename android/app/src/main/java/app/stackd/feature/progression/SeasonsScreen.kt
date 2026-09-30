@@ -147,7 +147,7 @@ fun SeasonsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / SEASONS", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / SEASONS", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("THE SEASON")
             Spacer(Modifier.height(16.dp))
@@ -269,7 +269,6 @@ fun SeasonsScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

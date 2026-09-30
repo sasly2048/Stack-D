@@ -105,13 +105,13 @@ fun WrappedScreen(
     ) {
         ResponsiveColumn {
             val s = state.stats
-            Text(
+            app.stackd.core.ui.ScreenHeader(
                 "STACK WRAPPED" + when {
                     s == null -> ""
                     s.rolling -> " · LAST 12 MONTHS"
                     else -> " · ${s.year}"
                 },
-                style = MonoLabel, color = colors.accent,
+                onBack,
             )
             Spacer(Modifier.height(16.dp))
 
@@ -193,7 +193,6 @@ fun WrappedScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

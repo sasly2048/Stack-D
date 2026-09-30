@@ -149,16 +149,8 @@ fun CompanionScreen(
                 .padding(horizontal = 20.dp),
         ) {
             Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("STACK'D / COMPANION", style = MonoLabel, color = colors.textMuted)
-                androidx.compose.material3.TextButton(onClick = onBack) {
-                    Text("Back", style = MonoLabel, color = colors.textMuted)
-                }
-            }
+            app.stackd.core.ui.ScreenHeader("STACK'D / COMPANION", onBack)
+
             Text(
                 "Study Companion",
                 style = MaterialTheme.typography.headlineSmall,

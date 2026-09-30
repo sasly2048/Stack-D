@@ -22,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -140,13 +142,22 @@ fun CirclesScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("STUDY CIRCLES", style = MonoLabel, color = colors.textMuted)
-                Text(
-                    "MANAGE →",
-                    style = MonoLabelSmall,
-                    color = colors.textMuted,
-                    modifier = Modifier.clickable { onManage() },
-                )
+                app.stackd.core.ui.ScreenHeader(
+                    "STUDY CIRCLES",
+                    onBack,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        "MANAGE →",
+                        style = MonoLabelSmall,
+                        color = colors.textMuted,
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .clickable(role = androidx.compose.ui.semantics.Role.Button) { onManage() }
+                            .wrapContentHeight(Alignment.CenterVertically)
+                            .padding(horizontal = 4.dp),
+                    )
+                }
             }
             Spacer(Modifier.height(16.dp))
             SectionLabel("YOUR CIRCLES")
@@ -220,7 +231,6 @@ fun CirclesScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

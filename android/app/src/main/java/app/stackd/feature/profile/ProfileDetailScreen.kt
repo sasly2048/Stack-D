@@ -148,7 +148,7 @@ fun ProfileDetailScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / WITNESS", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / WITNESS", onBack)
             Spacer(Modifier.height(16.dp))
 
             when {
@@ -253,7 +253,6 @@ fun ProfileDetailScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

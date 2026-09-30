@@ -217,7 +217,7 @@ fun VaultScreen(
     app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
         item(key = "header") {
             Column {
-                Text("STACK'D / VAULT", style = MonoLabel, color = colors.textMuted)
+                app.stackd.core.ui.ScreenHeader("STACK'D / VAULT", onBack)
                 Spacer(Modifier.height(16.dp))
                 SectionLabel("MEMORY VAULT")
                 Spacer(Modifier.height(16.dp))
@@ -329,7 +329,6 @@ fun VaultScreen(
         item(key = "footer") {
             Column {
                 Spacer(Modifier.height(24.dp))
-                GhostButton(text = "Back", onClick = onBack)
             }
         }
     }

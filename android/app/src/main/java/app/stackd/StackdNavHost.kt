@@ -105,6 +105,7 @@ fun StackdNavHost(
         }
         composable(Dest.Start.route) {
             StartRoute(
+                onBack = { navController.popBackStack() },
                 onJoinRoom = { code -> navController.navigate(Dest.Room.of(code)) },
                 onRoomCreated = { code ->
                     navController.navigate(Dest.Room.of(code)) {

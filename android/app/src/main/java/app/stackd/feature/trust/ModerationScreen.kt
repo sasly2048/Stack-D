@@ -147,7 +147,7 @@ fun ModerationScreen(
     app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
       item(key = "header") {
         Column {
-            Text("STACK'D / MODERATION", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / MODERATION", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("MODERATION")
             Spacer(Modifier.height(8.dp))
@@ -220,7 +220,6 @@ fun ModerationScreen(
         item(key = "footer") {
             Column {
                 Spacer(Modifier.height(24.dp))
-                GhostButton(text = "Back", onClick = onBack)
             }
         }
     }

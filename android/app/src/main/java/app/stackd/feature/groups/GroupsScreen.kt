@@ -243,7 +243,7 @@ fun GroupsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("CIRCLES / LEADERBOARDS", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("CIRCLES / LEADERBOARDS", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("FOCUS CIRCLES")
             Spacer(Modifier.height(16.dp))
@@ -316,7 +316,6 @@ fun GroupsScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }

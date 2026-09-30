@@ -171,7 +171,7 @@ fun ReplayScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            Text("STACK'D / REPLAY", style = MonoLabel, color = colors.textMuted)
+            app.stackd.core.ui.ScreenHeader("STACK'D / REPLAY", onBack)
             Spacer(Modifier.height(16.dp))
             SectionLabel("FOCUS REPLAY")
             Spacer(Modifier.height(8.dp))
@@ -268,7 +268,6 @@ fun ReplayScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
             Spacer(Modifier.height(32.dp))
         }
     }
