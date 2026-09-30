@@ -65,7 +65,9 @@ class LeaderboardViewModel(private val container: AppContainer) : ViewModel() {
         load()
     }
 
-    private val cacheKey = "leaderboard"
+    // A getter, not a stored val: init { load() } above runs before stored
+    // properties below it are initialized, so a stored key read null and crashed.
+    private val cacheKey: String get() = "leaderboard"
 
     fun load() {
         // Rankings tolerate seconds of staleness — show the last set instantly,

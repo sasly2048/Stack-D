@@ -44,7 +44,8 @@ class PremiumViewModel(private val container: AppContainer) : ViewModel() {
         refresh()
     }
 
-    private val cacheKey = "premium:${container.auth.currentUserId ?: "anon"}"
+    // Getter: init { load() } runs before stored properties declared below it.
+    private val cacheKey: String get() = "premium:${container.auth.currentUserId ?: "anon"}"
 
     fun refresh() {
         // Stale-while-revalidate: seed from the last cached state so re-entry

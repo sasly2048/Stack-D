@@ -66,7 +66,8 @@ class ProfileDetailViewModel(
     }
 
     // Keyed by the profile being viewed, not the viewer.
-    private val cacheKey = "profileDetail:$targetId"
+    // Getter: init { load() } runs before stored properties declared below it.
+    private val cacheKey: String get() = "profileDetail:$targetId"
 
     fun load() {
         val viewerId = container.auth.currentUserId ?: return

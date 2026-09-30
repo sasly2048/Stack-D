@@ -69,7 +69,8 @@ class SeasonsViewModel(private val container: AppContainer) : ViewModel() {
 
     // Plain key: the season + standings are global, and userId isn't read at the
     // top of load() (only meId inside onSuccess, for row highlighting).
-    private val cacheKey = "seasons"
+    // Getter: init { load() } runs before stored properties declared below it.
+    private val cacheKey: String get() = "seasons"
 
     fun load() {
         // Stale-while-revalidate: seed from the last cached state so re-entry
