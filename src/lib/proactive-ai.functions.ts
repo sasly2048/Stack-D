@@ -109,21 +109,31 @@ export async function getProactiveInsightsCore(
 
     try {
       const { callAIJson, BRAND_TONE } = await import("./ai.server");
-      const summary = await callAIJson<{
-        schedule?: string;
-        prediction?: string;
-        burnout?: string;
-      }>({
-        temperature: 0.6,
-        messages: [
-          { role: "system", content: BRAND_TONE },
-          {
-            role: "user",
-            content: `Return JSON with keys "schedule", "prediction", "burnout" — each 1 short sentence.
+      const { passiveAi } = await import("./ai-passive");
+      // Tier-gated + cached per latest session; free users keep the
+      // deterministic copy above (see ai-passive.ts).
+      const summary = await passiveAi(
+        supabase,
+        userId,
+        "proactive",
+        sessions[0]?.created_at ?? "",
+        () =>
+          callAIJson<{
+            schedule?: string;
+            prediction?: string;
+            burnout?: string;
+          }>({
+            temperature: 0.6,
+            messages: [
+              { role: "system", content: BRAND_TONE },
+              {
+                role: "user",
+                content: `Return JSON with keys "schedule", "prediction", "burnout" — each 1 short sentence.
               Data: bestHourUTC=${bestHour}, bestHourAvg=${Math.round(bestAvg)}, recentAvg=${Math.round(recentAvg)}, delta=${Math.round(delta)}, burnoutRisk=${risk}, signals=${JSON.stringify(signals)}.`,
-          },
-        ],
-      });
+              },
+            ],
+          }),
+      );
       if (summary.schedule) scheduleRationale = summary.schedule;
       if (summary.prediction) predictionNote = summary.prediction;
       if (summary.burnout) burnoutRec = summary.burnout;
