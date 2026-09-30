@@ -16,6 +16,49 @@ export type AuthedContext = {
   userId: string;
 };
 
+/**
+ * Runs a public AI route: authenticates, parses nothing itself, and maps every
+ * failure to a typed JSON response. Previously an uncaught throw — a gateway
+ * 402 "Not enough credits", a Zod validation error, malformed JSON — escaped
+ * the handler and the platform answered with a 500 HTML error page, which the
+ * Android client could only treat as "unavailable" with no reason.
+ *
+ *   400 { error: "invalid_input" }                bad body / failed validation
+ *   402 { error: "ai_quota", message }            caller's AI allowance exhausted
+ *   503 { error: "ai_unavailable", reason }       gateway refused: credits | rate_limited | gateway
+ *   500 { error: "internal" }                     anything else (logged server-side)
+ */
+export async function aiRoute(
+  request: Request,
+  run: (ctx: AuthedContext) => Promise<unknown>,
+): Promise<Response> {
+  const ctx = await authenticate(request);
+  if (!ctx) return unauthorized("Invalid or missing token.");
+  try {
+    return Response.json(await run(ctx));
+  } catch (err) {
+    return aiErrorResponse(err);
+  }
+}
+
+/** Exported for tests: the error → response mapping used by [aiRoute]. */
+export function aiErrorResponse(err: unknown): Response {
+  const e = err as { name?: string; status?: number; message?: string };
+  if (e?.name === "ZodError" || err instanceof SyntaxError) {
+    return Response.json({ error: "invalid_input" }, { status: 400 });
+  }
+  if (typeof e?.status === "number") {
+    const reason = e.status === 402 ? "credits" : e.status === 429 ? "rate_limited" : "gateway";
+    return Response.json({ error: "ai_unavailable", reason }, { status: 503 });
+  }
+  const message = e?.message ?? "";
+  if (/AI features are available on Pro|used all .* AI actions/.test(message)) {
+    return Response.json({ error: "ai_quota", message }, { status: 402 });
+  }
+  console.error("[ai-route]", err);
+  return Response.json({ error: "internal" }, { status: 500 });
+}
+
 /** A 401 helper for handlers to `return` on auth failure. */
 export function unauthorized(message: string): Response {
   return Response.json({ error: message }, { status: 401 });
