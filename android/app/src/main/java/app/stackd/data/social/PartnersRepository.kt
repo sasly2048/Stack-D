@@ -53,7 +53,7 @@ class PartnersRepository(private val client: SupabaseClient) {
         if (rels.isEmpty()) return emptyList()
 
         val partnerIds = rels.map { if (it.mentorId == userId) it.menteeId else it.mentorId }.distinct()
-        val names = client.postgrest.from("profiles")
+        val names = client.postgrest.from("public_profiles")
             .select(Columns.list("id", "display_name", "avatar_url")) {
                 filter { isIn("id", partnerIds) }
             }

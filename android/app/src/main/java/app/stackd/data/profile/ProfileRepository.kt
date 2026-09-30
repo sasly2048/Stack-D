@@ -30,7 +30,12 @@ class ProfileRepository(private val client: SupabaseClient) {
      * under RLS; the friendship row is the canonical pair either direction.
      */
     suspend fun publicProfile(targetId: String, viewerId: String): PublicProfile? {
-        val prof = getProfile(targetId) ?: return null
+        // `profiles` is own-row-only under RLS (migration 20260924023750); every
+        // other member's card comes from the `public_profiles` mirror, exactly
+        // as the web's profile-card does. Its columns cover all of ProfileRow.
+        val prof = client.postgrest.from("public_profiles")
+            .select { filter { eq("id", targetId) } }
+            .decodeSingleOrNull<ProfileRow>() ?: return null
 
         val sessionCount = client.postgrest.from("focus_history")
             .select(io.github.jan.supabase.postgrest.query.Columns.list("id")) {
@@ -205,14 +210,17 @@ class ProfileRepository(private val client: SupabaseClient) {
         val username = raw.trim()
         validateUsernameFormat(username)?.let { return it }
         val canonical = username.lowercase()
-        val existing = client.postgrest.from("profiles")
-            .select(io.github.jan.supabase.postgrest.query.Columns.list("id")) {
-                filter { eq("username_canonical", canonical) }
-                limit(1)
-            }
-            .decodeList<UsernameIdRow>()
-            .firstOrNull()
-        return if (existing != null && existing.id != userId) {
+        // Other members' rows are invisible under RLS now, so a table probe would
+        // always say "available". The definer RPC checks every account — the
+        // same call the web's checkUsername makes — without exposing who holds it.
+        val taken = client.postgrest.rpc(
+            "username_is_taken",
+            kotlinx.serialization.json.buildJsonObject {
+                put("_canonical", kotlinx.serialization.json.JsonPrimitive(canonical))
+                put("_exclude_user", kotlinx.serialization.json.JsonPrimitive(userId))
+            },
+        ).decodeAs<Boolean>()
+        return if (taken) {
             UsernameResult.Rejected("That username isn't available.")
         } else {
             UsernameResult.Ok(username)
@@ -386,7 +394,7 @@ class ProfileRepository(private val client: SupabaseClient) {
             .decodeList<MilestoneUnlockRow>()
         val unlockMap = unlocks.associate { it.achievementId to it.unlockedAt }
 
-        val prof = client.postgrest.from("profiles")
+        val prof = client.postgrest.from("public_profiles")
             .select(
                 io.github.jan.supabase.postgrest.query.Columns.list("total_focus_seconds", "best_streak"),
             ) {

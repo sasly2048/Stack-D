@@ -62,7 +62,7 @@ class FriendsRepository(private val client: SupabaseClient) {
 
         val otherIds = rows.map { if (it.requesterId == userId) it.addresseeId else it.requesterId }
             .distinct()
-        val profiles = client.postgrest.from("profiles")
+        val profiles = client.postgrest.from("public_profiles")
             .select(Columns.list("id", "display_name", "avatar_url")) {
                 filter { isIn("id", otherIds) }
             }
@@ -87,7 +87,7 @@ class FriendsRepository(private val client: SupabaseClient) {
     }
 
     suspend fun searchPeople(userId: String, q: String): List<PersonRef> =
-        client.postgrest.from("profiles")
+        client.postgrest.from("public_profiles")
             .select(Columns.list("id", "display_name", "avatar_url")) {
                 filter {
                     ilike("display_name", "%${q.trim().take(60)}%")

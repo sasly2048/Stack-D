@@ -98,7 +98,7 @@ class FeedRepository(private val client: SupabaseClient) {
         // splits it into "others" plus a separate self lookup only because its
         // server function already had the caller's row on hand.
         val ids = events.map { it.userId }.distinct()
-        val profiles = client.postgrest.from("profiles")
+        val profiles = client.postgrest.from("public_profiles")
             .select(Columns.list("id", "display_name", "avatar_url")) {
                 filter { isIn("id", ids) }
             }
@@ -134,7 +134,7 @@ class FeedRepository(private val client: SupabaseClient) {
             .map { if (it.requesterId == userId) it.addresseeId else it.requesterId }
         if (friendIds.isEmpty()) return emptyList()
 
-        val profiles = client.postgrest.from("profiles")
+        val profiles = client.postgrest.from("public_profiles")
             .select(
                 Columns.list(
                     "id", "display_name", "avatar_url", "lifetime_xp",

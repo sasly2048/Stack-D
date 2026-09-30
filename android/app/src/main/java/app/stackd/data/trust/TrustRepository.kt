@@ -142,7 +142,7 @@ class TrustRepository(private val client: SupabaseClient) {
             .decodeList<BlockRow>()
         if (blocks.isEmpty()) return emptyList()
 
-        val names = client.postgrest.from("profiles")
+        val names = client.postgrest.from("public_profiles")
             .select(Columns.list("id", "display_name")) {
                 filter { isIn("id", blocks.map { it.blockedId }) }
             }
@@ -197,7 +197,7 @@ class TrustRepository(private val client: SupabaseClient) {
 
         val ids = reports.flatMap { listOfNotNull(it.reporterId, it.targetUserId) }.distinct()
         val names = if (ids.isEmpty()) emptyMap() else
-            client.postgrest.from("profiles")
+            client.postgrest.from("public_profiles")
                 .select(Columns.list("id", "display_name")) { filter { isIn("id", ids) } }
                 .decodeList<ProfileNameRow>()
                 .associate { it.id to it.displayName }

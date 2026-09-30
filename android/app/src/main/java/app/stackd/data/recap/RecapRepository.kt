@@ -148,13 +148,13 @@ class RecapRepository(private val client: SupabaseClient) {
             .firstOrNull()
         val lifetimeXp = prof?.lifetimeXp ?: 0
 
-        val total = client.postgrest.from("profiles")
+        val total = client.postgrest.from("public_profiles")
             .select(Columns.list("id")) {
                 count(Count.EXACT)
                 head = true
             }
             .countOrNull() ?: 0
-        val below = client.postgrest.from("profiles")
+        val below = client.postgrest.from("public_profiles")
             .select(Columns.list("id")) {
                 count(Count.EXACT)
                 head = true
@@ -285,7 +285,7 @@ class RecapRepository(private val client: SupabaseClient) {
 
         // Rank = profiles strictly ahead + 1, now and before this session's XP.
         suspend fun countAhead(xp: Long): Int {
-            val ahead = client.postgrest.from("profiles")
+            val ahead = client.postgrest.from("public_profiles")
                 .select(Columns.list("id")) {
                     count(Count.EXACT)
                     head = true
@@ -349,7 +349,7 @@ class RecapRepository(private val client: SupabaseClient) {
                 xpByUser[a.userId] = (xpByUser[a.userId] ?: 0) + xp
             }
             if (xpByUser.isNotEmpty()) {
-                val profs = client.postgrest.from("profiles")
+                val profs = client.postgrest.from("public_profiles")
                     .select(Columns.list("id", "display_name", "avatar_url")) {
                         filter { isIn("id", xpByUser.keys.toList()) }
                     }

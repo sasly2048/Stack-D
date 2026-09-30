@@ -38,7 +38,7 @@ internal data class GroupMemberRef(@SerialName("group_id") val groupId: String)
 class LeaderboardRepository(private val client: SupabaseClient) {
 
     suspend fun topIndividuals(): List<LeaderboardProfile> =
-        client.postgrest.from("profiles")
+        client.postgrest.from("public_profiles")
             .select(
                 Columns.list(
                     "id", "display_name", "avatar_url", "lifetime_xp", "current_focus_streak",

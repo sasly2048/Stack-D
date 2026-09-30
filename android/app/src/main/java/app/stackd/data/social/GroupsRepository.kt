@@ -30,6 +30,13 @@ internal data class FocusGroupRow(
 )
 
 @Serializable
+internal data class MemberProfileRow(
+    val id: String,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("lifetime_xp") val lifetimeXp: Long = 0,
+)
+
+@Serializable
 internal data class GroupMemberRow(
     @SerialName("group_id") val groupId: String,
     @SerialName("profile_id") val profileId: String,
@@ -121,12 +128,31 @@ class GroupsRepository(private val client: SupabaseClient) {
             }
             .decodeList<FocusGroupRow>()
 
-        val members = if (groups.isEmpty()) emptyList() else
+        // Two reads instead of an embedded `profiles(...)` join: other members'
+        // `profiles` rows are hidden by RLS (own-row only since 20260924023750),
+        // and the `public_profiles` mirror has no FK for PostgREST to embed on.
+        val memberRows = if (groups.isEmpty()) emptyList() else
             client.postgrest.from("group_members")
-                .select(Columns.raw("group_id, profile_id, profiles(display_name, lifetime_xp)")) {
+                .select(Columns.list("group_id", "profile_id")) {
                     filter { isIn("group_id", groups.map { it.id }) }
                 }
                 .decodeList<GroupMemberRow>()
+        val memberProfiles = memberRows.map { it.profileId }.distinct().let { ids ->
+            if (ids.isEmpty()) emptyMap() else
+                client.postgrest.from("public_profiles")
+                    .select(Columns.list("id", "display_name", "lifetime_xp")) {
+                        filter { isIn("id", ids) }
+                    }
+                    .decodeList<MemberProfileRow>()
+                    .associateBy { it.id }
+        }
+        val members = memberRows.map { row ->
+            row.copy(
+                profiles = memberProfiles[row.profileId]?.let {
+                    GroupMemberRow.MemberProfile(it.displayName, it.lifetimeXp)
+                },
+            )
+        }
 
         val byGroup = members.groupBy { it.groupId }
         val summaries = groups.map { g ->
@@ -258,7 +284,7 @@ class GroupsRepository(private val client: SupabaseClient) {
         }
 
         val since = java.time.Instant.ofEpochMilli(nowMillis - 7L * 86_400_000).toString()
-        val profiles = client.postgrest.from("profiles")
+        val profiles = client.postgrest.from("public_profiles")
             .select(
                 Columns.list("id", "display_name", "avatar_url", "current_focus_streak", "last_active_at"),
             ) { filter { isIn("id", memberIds) } }
