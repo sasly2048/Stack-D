@@ -45,7 +45,10 @@ class AppContainer(context: Context) {
      * instead of blanking to a spinner. Lives here because the container
      * outlives the per-destination ViewModels.
      */
-    val cache: app.stackd.core.cache.MemoryCache = app.stackd.core.cache.MemoryCache()
+    val snapshots: app.stackd.core.cache.DiskSnapshots = app.stackd.core.cache.DiskSnapshots(appContext)
+
+    /** Clearing it (sign-out) also wipes [snapshots]. */
+    val cache: app.stackd.core.cache.MemoryCache = app.stackd.core.cache.MemoryCache(onClear = snapshots::clear)
 
     val finalizeQueue: FinalizeQueue = FinalizeQueue(appContext)
 

@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap
  * ponytail: in-memory only, add DataStore persistence if cold-start-after-kill
  * needs to be instant too.
  */
-class MemoryCache {
+class MemoryCache(private val onClear: () -> Unit = {}) {
 
     private val store = ConcurrentHashMap<String, Any>()
 
@@ -46,5 +46,6 @@ class MemoryCache {
     /** Clears everything — call on sign-out so the next user starts clean. */
     fun clear() {
         store.clear()
+        onClear()
     }
 }

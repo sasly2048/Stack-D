@@ -90,6 +90,7 @@ class DashboardViewModel(
     private val prestigeRepo: app.stackd.data.progression.PrestigeRepository,
     private val client: io.github.jan.supabase.SupabaseClient,
     private val prefs: android.content.SharedPreferences,
+    private val snapshots: app.stackd.core.cache.DiskSnapshots? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardUiState())
@@ -208,6 +209,21 @@ class DashboardViewModel(
             atlasDismissed = cur.atlasDismissed, greeting = cur.greeting,
             prestige = cur.prestige, ascending = cur.ascending, prestigeNotice = cur.prestigeNotice,
         ) ?: cur).copy(loading = cached == null, error = false)
+        // Cold start (process was killed): paint the last on-disk ledger at once.
+        // Guarded on loading so it can never overwrite a fresher network result.
+        var fromDisk = false
+        if (cached == null && snapshots != null) {
+            viewModelScope.launch {
+                val snap = snapshots.read(cacheKey(userId), DashboardSnapshot.serializer()) ?: return@launch
+                if (!_state.value.loading) return@launch
+                fromDisk = true
+                _state.value = _state.value.copy(
+                    loading = false, name = snap.name, lifetimeXp = snap.lifetimeXp, streak = snap.streak,
+                    history = snap.history, myRooms = snap.myRooms, myRoomsHasMore = snap.myRoomsHasMore,
+                    meId = userId,
+                )
+            }
+        }
         viewModelScope.launch {
             runCatching {
                 // Three independent reads — fan them out, mirroring the web's
@@ -264,13 +280,20 @@ class DashboardViewModel(
                         cacheKey(userId),
                         fresh.copy(aiRecommendation = null, aiInsights = null),
                     )
+                    snapshots?.write(
+                        cacheKey(userId), DashboardSnapshot.serializer(),
+                        DashboardSnapshot(
+                            fresh.name, fresh.lifetimeXp, fresh.streak, fresh.history,
+                            fresh.myRooms, fresh.myRoomsHasMore,
+                        ),
+                    )
                 },
                 onFailure = {
                     // Keep showing stale data if we have it; only surface the
                     // error card when there was nothing cached to fall back on.
                     _state.value = _state.value.copy(
                         loading = false,
-                        error = cached == null,
+                        error = cached == null && !fromDisk,
                     )
                 },
             )
@@ -323,6 +346,17 @@ class DashboardViewModel(
         }
     }
 }
+
+/** What survives process death — the ledger, not AI cards or live rooms. */
+@kotlinx.serialization.Serializable
+private data class DashboardSnapshot(
+    val name: String,
+    val lifetimeXp: Long,
+    val streak: Int,
+    val history: List<FocusHistoryRow>,
+    val myRooms: List<app.stackd.data.room.RoomListItem>,
+    val myRoomsHasMore: Boolean,
+)
 
 private const val MY_ROOMS_PAGE = 8
 private const val ATLAS_KEY = "atlas_dismissed_until"

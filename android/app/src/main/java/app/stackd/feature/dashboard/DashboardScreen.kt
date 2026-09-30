@@ -76,6 +76,7 @@ fun DashboardRoute(
                 it.auth, it.profiles, it.rooms, it.ai, it.cache, it.premium,
                 app.stackd.data.progression.PrestigeRepository(it.client), it.client,
                 it.appContextForWork.getSharedPreferences("dashboard_prefs", 0),
+                it.snapshots,
             )
         },
     ),
