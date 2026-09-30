@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -142,13 +144,9 @@ fun ModerationScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        ResponsiveColumn {
+    app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
+      item(key = "header") {
+        Column {
             Text("STACK'D / MODERATION", style = MonoLabel, color = colors.textMuted)
             Spacer(Modifier.height(16.dp))
             SectionLabel("MODERATION")
@@ -167,6 +165,7 @@ fun ModerationScreen(
                         style = MonoLabelSmall,
                         color = if (on) colors.accent else colors.textMuted,
                         modifier = Modifier
+                            .heightIn(min = 48.dp)
                             .background(
                                 if (on) colors.accent.copy(alpha = 0.1f) else colors.textPrimary.copy(alpha = 0.04f),
                                 CircleShape,
@@ -176,8 +175,8 @@ fun ModerationScreen(
                                 if (on) colors.accent.copy(alpha = 0.6f) else colors.border,
                                 CircleShape,
                             )
-                            .clickable { onFilter(k) }
-                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                            .clickable(role = androidx.compose.ui.semantics.Role.Tab) { onFilter(k) }
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
                     )
                 }
             }
@@ -186,14 +185,19 @@ fun ModerationScreen(
                 Spacer(Modifier.height(12.dp))
                 Text(it, style = MonoLabelSmall, color = colors.accent)
             }
-
             Spacer(Modifier.height(20.dp))
-            when {
-                state.loading -> Text(
+        }
+      }
+
+        when {
+            state.loading -> item(key = "loading") {
+                Text(
                     "Loading reports…",
                     style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                 )
-                state.error -> {
+            }
+            state.error -> item(key = "error") {
+                Column {
                     Text(
                         "Couldn't load reports.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
@@ -201,18 +205,23 @@ fun ModerationScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                state.visible.isEmpty() -> Text(
+            }
+            state.visible.isEmpty() -> item(key = "empty") {
+                Text(
                     "No reports here. Rooms you host are clean.",
                     style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                 )
-                else -> state.visible.forEach { r ->
-                    HostReportCard(r, acting = state.actingId == r.id, onAct = onAct)
-                }
             }
+            else -> items(state.visible, key = { it.id }) { r ->
+                HostReportCard(r, acting = state.actingId == r.id, onAct = onAct)
+            }
+        }
 
-            Spacer(Modifier.height(24.dp))
-            GhostButton(text = "Back", onClick = onBack)
-            Spacer(Modifier.height(32.dp))
+        item(key = "footer") {
+            Column {
+                Spacer(Modifier.height(24.dp))
+                GhostButton(text = "Back", onClick = onBack)
+            }
         }
     }
 }
