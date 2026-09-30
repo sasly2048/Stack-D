@@ -203,6 +203,9 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
     fun cancelIdentity() {
         viewModelScope.launch {
             container.auth.signOut()
+            // Same cleanup as the Profile sign-out: no screen state from the
+            // dropped session may linger for whoever signs in next.
+            container.cache.clear()
             _state.update {
                 it.copy(
                     confirmStep = false,

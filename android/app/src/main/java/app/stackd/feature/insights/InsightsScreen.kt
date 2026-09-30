@@ -64,34 +64,36 @@ data class InsightsUiState(
     /** LLM-written weekly narrative. Renders only when the AI backend answers. */
     val weeklyStory: String? = null,
 ) {
-    val totals: AnalyticsEngine.Totals get() = AnalyticsEngine.totals(rows)
-    val hourBuckets: List<AnalyticsEngine.HourBucket> get() = AnalyticsEngine.hourBuckets(rows)
-    val dna: AnalyticsEngine.Dna get() = AnalyticsEngine.dna(rows)
+    // Computed once per state instance (lazy), not on every read during
+    // recomposition — each of these walks up to 1000 history rows.
+    val totals: AnalyticsEngine.Totals by lazy { AnalyticsEngine.totals(rows) }
+    val hourBuckets: List<AnalyticsEngine.HourBucket> by lazy { AnalyticsEngine.hourBuckets(rows) }
+    val dna: AnalyticsEngine.Dna by lazy { AnalyticsEngine.dna(rows) }
 
     /** Best focus hour by seconds held — the web's "Signal" callout. */
-    val bestHour: Int?
-        get() = hourBuckets.filter { it.seconds > 0 }.maxByOrNull { it.seconds }?.hour
+    val bestHour: Int? by lazy {
+        hourBuckets.filter { it.seconds > 0 }.maxByOrNull { it.seconds }?.hour
+    }
 
     /** Best weekday by seconds held (local zone), or null when empty. */
-    val bestWeekday: String?
-        get() {
-            if (rows.isEmpty()) return null
-            val byDay = LongArray(7)
-            rows.forEach { r ->
-                val millis = app.stackd.core.parseIsoMillis(r.createdAt) ?: return@forEach
-                val dow = java.time.Instant.ofEpochMilli(millis)
-                    .atZone(java.time.ZoneId.systemDefault()).dayOfWeek.value % 7
-                byDay[dow] += r.durationSeconds.toLong()
-            }
-            val top = byDay.indices.maxByOrNull { byDay[it] } ?: return null
-            return if (byDay[top] > 0) WEEKDAY_NAMES[top] else null
+    val bestWeekday: String? by lazy {
+        if (rows.isEmpty()) return@lazy null
+        val byDay = LongArray(7)
+        rows.forEach { r ->
+            val millis = app.stackd.core.parseIsoMillis(r.createdAt) ?: return@forEach
+            val dow = java.time.Instant.ofEpochMilli(millis)
+                .atZone(java.time.ZoneId.systemDefault()).dayOfWeek.value % 7
+            byDay[dow] += r.durationSeconds.toLong()
         }
+        val top = byDay.indices.maxByOrNull { byDay[it] } ?: return@lazy null
+        if (byDay[top] > 0) WEEKDAY_NAMES[top] else null
+    }
 
-    val forecast: Forecast get() = forecast(rows, lifetimeXp)
+    val forecast: Forecast by lazy { forecast(rows, lifetimeXp) }
 
     /** Top session tags by frequency — web's tag-distribution bars. */
-    val tagDistribution: List<Pair<String, Int>>
-        get() = rows.flatMap { it.tags.orEmpty() }
+    val tagDistribution: List<Pair<String, Int>> by lazy {
+        rows.flatMap { it.tags.orEmpty() }
             .filter { it.isNotBlank() }
             .groupingBy { it }
             .eachCount()
@@ -99,6 +101,7 @@ data class InsightsUiState(
             .sortedByDescending { it.value }
             .take(8)
             .map { it.key to it.value }
+    }
 }
 
 /** 120-day analytics — the web's `insights.tsx` over `getAnalytics`. */

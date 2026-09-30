@@ -39,22 +39,44 @@ class AiRepository(private val client: SupabaseClient) {
     private val webBase: String get() = BuildConfig.WEB_BASE_URL.trimEnd('/')
 
     suspend fun recommendNextSession(): SessionRecommendation? =
-        getJson("/api/public/ai/recommend", post = true)
+        cached("/api/public/ai/recommend") { getJson("/api/public/ai/recommend", post = true) }
 
     suspend fun dashboardInsights(): DashboardInsights? =
-        getJson("/api/public/ai/dashboard-insights", post = true)
+        cached("/api/public/ai/dashboard-insights") {
+            getJson("/api/public/ai/dashboard-insights", post = true)
+        }
 
     suspend fun sessionRecap(input: SessionRecapInput): SessionRecap? =
         getJson("/api/public/ai/session-recap", post = true, body = json.encodeToString(input))
 
     suspend fun weeklyStory(): WeeklyStory? =
-        getJson("/api/public/ai/weekly-story", post = true)
+        cached("/api/public/ai/weekly-story") { getJson("/api/public/ai/weekly-story", post = true) }
 
     suspend fun discoverPatterns(): DiscoveredPatterns? =
-        getJson("/api/public/ai/discover-patterns", post = true)
+        cached("/api/public/ai/discover-patterns") {
+            getJson("/api/public/ai/discover-patterns", post = true)
+        }
 
     suspend fun proactiveInsights(): ProactiveInsight? =
-        getJson("/api/public/ai/proactive", post = false)
+        cached("/api/public/ai/proactive") { getJson("/api/public/ai/proactive", post = false) }
+
+    /**
+     * Per-user TTL cache for the read-style AI routes. Screens are recreated on
+     * every navigation, so the Dashboard alone fired two LLM calls per visit —
+     * that is what drained the AI credits. These answers describe the user's
+     * history and don't change minute to minute; one per [AI_TTL_MS] is plenty.
+     * Only successes are cached, so a failure retries on the next visit.
+     * Chat, recaps and vault summaries are never cached.
+     */
+    private suspend inline fun <reified T : Any> cached(route: String, fetch: () -> T?): T? {
+        val user = client.auth.currentUserOrNull()?.id ?: return fetch()
+        val key = "$user:$route"
+        val hit = aiCache[key]
+        if (hit != null && System.currentTimeMillis() - hit.first < AI_TTL_MS) {
+            (hit.second as? T)?.let { return it }
+        }
+        return fetch()?.also { aiCache[key] = System.currentTimeMillis() to it }
+    }
 
     suspend fun askCompanion(input: CompanionInput): CompanionReply? =
         getJson("/api/public/ai/companion", post = true, body = json.encodeToString(input))
@@ -91,6 +113,8 @@ class AiRepository(private val client: SupabaseClient) {
     }.getOrNull()
 
     private companion object {
+        const val AI_TTL_MS = 30 * 60 * 1000L
+        val aiCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Any>>()
         val json = Json { ignoreUnknownKeys = true }
 
         // A hard timeout matters: a stalled AI call must fail fast to the local

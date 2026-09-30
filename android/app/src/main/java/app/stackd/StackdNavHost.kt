@@ -92,7 +92,9 @@ fun StackdNavHost(
                     "Integrations" to Dest.Integrations,
                     "Profile" to Dest.Profile,
                 ).map { (label, dest) ->
-                    label to { navController.navigate(dest.route); Unit }
+                    // Single-top: a double tap on a menu row must not stack two
+                    // copies of the same screen.
+                    label to { navController.navigate(dest.route) { launchSingleTop = true }; Unit }
                 },
             )
         }

@@ -38,11 +38,14 @@ val MonoFamily = FontFamily(
 val MonoLabel = TextStyle(
     fontFamily = MonoFamily,
     fontWeight = FontWeight.Normal,
-    fontSize = 10.sp,
-    letterSpacing = 0.3.em,
+    // 11.5sp / 0.26em (was 10sp / 0.3em): at 9–10sp the labels — several of
+    // them tappable — sat under the ~11sp legibility floor on a phone. Tracking
+    // is eased slightly so the wider glyphs keep roughly the old line length.
+    fontSize = 11.5.sp,
+    letterSpacing = 0.26.em,
 )
 
-val MonoLabelSmall = MonoLabel.copy(fontSize = 9.sp, letterSpacing = 0.25.em)
+val MonoLabelSmall = MonoLabel.copy(fontSize = 11.sp, letterSpacing = 0.2.em)
 
 val StackdTypography = Typography(
     displayLarge = TextStyle(

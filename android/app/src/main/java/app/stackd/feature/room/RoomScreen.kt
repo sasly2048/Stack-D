@@ -91,6 +91,25 @@ fun RoomRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // Android 13+ hides the session countdown notification unless the app holds
+    // POST_NOTIFICATIONS — declared but never requested before. Ask once, in the
+    // lobby, before the session's foreground service posts it.
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val notifLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+        ) { /* Declining is fine: the session still runs, just without the shade timer. */ }
+        LaunchedEffect(state.phase == RoomPhase.LOBBY) {
+            if (state.phase == RoomPhase.LOBBY &&
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.POST_NOTIFICATIONS,
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
     // A live session must not end on an accidental back gesture. Leaving is
     // allowed — the service keeps guarding and records breaches without this
     // screen, and the floating timer pill brings the user back — but it's a
