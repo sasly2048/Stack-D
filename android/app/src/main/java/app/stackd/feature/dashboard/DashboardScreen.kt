@@ -329,12 +329,22 @@ private fun StatTiles(state: DashboardUiState) {
         Tile(modifier = Modifier.weight(1f)) {
             SectionLabel("CURRENT_STREAK", color = colors.textMuted)
             Spacer(Modifier.height(8.dp))
-            Text(
-                "${state.streak} ${if (state.streak == 1) "Session" else "Sessions"}",
-                style = MaterialTheme.typography.headlineSmall,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.Bold,
-            )
+            // Big number + small mono unit, as on web (the unit at headline size
+            // out-weighed the XP tile beside it).
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "${state.streak}",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (state.streak == 1) "SESSION" else "SESSIONS",
+                    style = MonoLabelSmall,
+                    color = colors.textMuted,
+                    modifier = Modifier.padding(bottom = 5.dp),
+                )
+            }
         }
     }
     Spacer(Modifier.height(12.dp))
@@ -419,7 +429,8 @@ private fun MyRooms(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenRoom(room.code) }
+                    .heightIn(min = 48.dp)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenRoom(room.code) }
                     .background(colors.textPrimary.copy(alpha = 0.03f), RadiusMd)
                     .border(1.dp, colors.border, RadiusMd)
                     .padding(12.dp),
@@ -507,56 +518,60 @@ private fun SessionHistory(history: List<FocusHistoryRow>, onOpenRoom: (String) 
     Tile {
         SectionLabel("SESSION_HISTORY", color = colors.textMuted)
         Spacer(Modifier.height(12.dp))
-        history.forEach { h ->
+        // Two-line rows: web's 6-column grid can't fit a phone at label size —
+        // it wrapped tier names mid-word and let columns drift row to row.
+        history.forEachIndexed { i, h ->
             val tier = FocusScore.tierForScore(h.score.toDouble())
+            val tint = Color(tier.hex)
             val code = h.room?.code
+            if (i > 0) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(colors.border.copy(alpha = 0.5f)))
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(if (code != null) Modifier.clickable { onOpenRoom(code) } else Modifier)
-                    .padding(vertical = 10.dp),
+                    .heightIn(min = 56.dp)
+                    .then(
+                        if (code != null) {
+                            Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenRoom(code) }
+                        } else Modifier,
+                    )
+                    .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    shortDate(h.createdAt),
-                    style = MonoLabelSmall,
-                    color = colors.textPrimary,
-                )
-                Text(
-                    code ?: "—",
-                    style = MonoLabelSmall,
-                    color = colors.textMuted,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    formatDuration(h.durationSeconds),
-                    style = MonoLabelSmall,
-                    color = colors.textPrimary,
-                )
-                Text(
-                    h.score.toString(),
-                    style = MonoLabelSmall,
-                    color = Color(tier.hex),
-                )
-                Text("+${h.xp}", style = MonoLabelSmall, color = colors.textPrimary)
-                Text(
-                    tier.label.uppercase(),
-                    style = MonoLabelSmall,
-                    color = Color(tier.hex),
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.weight(1f),
-                )
-                if (isNew(h.createdAt)) {
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(code ?: "—", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, fontFamily = app.stackd.core.theme.MonoFamily)
+                        if (isNew(h.createdAt)) {
+                            Text(
+                                "NEW",
+                                style = MonoLabelSmall,
+                                color = colors.live,
+                                modifier = Modifier
+                                    .border(1.dp, colors.live.copy(alpha = 0.5f), RadiusMd)
+                                    .padding(horizontal = 6.dp, vertical = 1.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(tier.label.uppercase(), style = MonoLabelSmall, color = tint, maxLines = 1, softWrap = false)
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "NEW",
+                        "${shortDate(h.createdAt)} · ${formatDuration(h.durationSeconds)} · +${h.xp} XP",
                         style = MonoLabelSmall,
-                        color = colors.live,
-                        modifier = Modifier
-                            .border(1.dp, colors.live.copy(alpha = 0.5f), RadiusMd)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                        color = colors.textMuted,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
                 }
+                Text(
+                    h.score.toString(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = tint,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = app.stackd.core.theme.MonoFamily,
+                )
             }
         }
     }

@@ -152,7 +152,8 @@ fun StartScreen(
             label = "Collective goal — hours (optional)",
             value = if (state.goalHours == 0) "" else state.goalHours.toString(),
             onValueChange = { onGoalHoursChange(it.filter(Char::isDigit).toIntOrNull() ?: 0) },
-            placeholder = "0",
+            // "0" read as an entered value; an example reads as a hint.
+            placeholder = "e.g. 10",
             keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
         )
         Spacer(Modifier.height(28.dp))

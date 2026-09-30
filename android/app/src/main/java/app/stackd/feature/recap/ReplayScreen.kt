@@ -58,7 +58,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 data class ReplayUiState(
-    val date: String = LocalDate.now(ZoneOffset.UTC).toString(),
+    val date: String = LocalDate.now().toString(),
     val loading: Boolean = false,
     val events: List<ReplayEvent> = emptyList(),
     val playing: Boolean = false,
@@ -299,7 +299,7 @@ private fun HourHeat(events: List<ReplayEvent>) {
     val perHour = LongArray(24)
     events.filter { it.kind == "session" }.forEach { e ->
         val h = parseIsoMillis(e.at)?.let {
-            Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).hour
+            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).hour
         } ?: return@forEach
         perHour[h] += e.durationSeconds
     }

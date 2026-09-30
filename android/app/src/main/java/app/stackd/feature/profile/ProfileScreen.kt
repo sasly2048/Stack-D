@@ -257,7 +257,7 @@ fun ProfileScreen(
                     Spacer(Modifier.height(20.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
-                            "LIFETIME XP" to "${p.lifetimeXp}",
+                            "XP" to "${p.lifetimeXp}",
                             "STREAK" to "${p.currentFocusStreak}d",
                             "BEST" to "${p.bestStreak}d",
                             "FOCUSED" to formatHours(p.totalFocusSeconds.toInt()),

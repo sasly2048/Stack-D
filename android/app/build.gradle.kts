@@ -60,6 +60,15 @@ android {
         debug {
             applicationIdSuffix = ".debug"
         }
+        // Release code paths (R8, no debuggable) signed with the debug key, so
+        // startup/jank can be measured on a device without the upload key.
+        // Never distributed.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".bench"
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {

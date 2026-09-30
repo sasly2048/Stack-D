@@ -241,12 +241,22 @@ fun AchievementsScreen(
                                 color = if (unlocked) colors.textPrimary else colors.textMuted,
                                 fontWeight = if (unlocked) FontWeight.Bold else FontWeight.Normal,
                             )
+                            // Sans body text, as web (text-sm): the tracked mono
+                            // label style broke sentences into cramped columns.
+                            Spacer(Modifier.height(2.dp))
                             Text(
                                 a.description,
-                                style = MonoLabelSmall,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = colors.textMuted,
                             )
+                            // "Unlocked {date}" sits under the text so the right
+                            // column stays a compact tier/XP stack.
+                            a.unlockedAt?.let { at ->
+                                Spacer(Modifier.height(4.dp))
+                                Text("UNLOCKED ${at.take(10)}", style = MonoLabelSmall, color = colors.textMuted)
+                            }
                         }
+                        Spacer(Modifier.width(12.dp))
                         Column(horizontalAlignment = Alignment.End) {
                             // "New" badge for a fresh unlock (< 24h), like web.
                             val unlockedMs = a.unlockedAt?.let {
@@ -263,14 +273,6 @@ fun AchievementsScreen(
                                 style = MonoLabelSmall,
                                 color = if (unlocked) colors.accent else colors.textMuted,
                             )
-                            // "Unlocked {date}" line web shows per unlocked card.
-                            a.unlockedAt?.let { at ->
-                                Text(
-                                    "UNLOCKED ${at.take(10)}",
-                                    style = MonoLabelSmall,
-                                    color = colors.textMuted,
-                                )
-                            }
                         }
                     }
                 }

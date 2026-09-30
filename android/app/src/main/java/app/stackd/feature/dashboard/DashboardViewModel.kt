@@ -11,6 +11,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -109,7 +110,12 @@ class DashboardViewModel(
             _state.value = _state.value.copy(isPremium = ent?.isPremium)
         }
         viewModelScope.launch {
-            _state.value = _state.value.copy(greeting = loadGreetingExtras(client))
+            // Suspend first, then apply to the CURRENT state. The old form
+            // `_state.value.copy(greeting = loadGreetingExtras(client))` read the
+            // receiver before suspending and wrote that stale copy back — undoing
+            // a dashboard load that finished meanwhile (stuck on "Loading").
+            val extras = loadGreetingExtras(client)
+            _state.update { it.copy(greeting = extras) }
         }
         refreshPrestige()
     }

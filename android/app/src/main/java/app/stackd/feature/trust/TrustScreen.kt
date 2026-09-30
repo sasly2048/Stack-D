@@ -25,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -333,12 +335,15 @@ private fun ReportRoomForm(filing: Boolean, onFile: (String, String, String) -> 
                 style = MonoLabelSmall,
                 color = if (on) colors.accent else colors.textMuted,
                 modifier = Modifier
+                    // 48dp touch area; the chip itself stays compact.
+                    .minimumInteractiveComponentSize()
+                    .clip(RadiusMd)
                     .background(
                         if (on) colors.accent.copy(alpha = 0.1f) else colors.textPrimary.copy(alpha = 0.04f),
                         RadiusMd,
                     )
                     .border(1.dp, if (on) colors.accent.copy(alpha = 0.6f) else colors.border, RadiusMd)
-                    .clickable { kind = k }
+                    .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { kind = k }
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             )
         }

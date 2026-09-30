@@ -60,9 +60,12 @@ fun DailyRewardCard(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Streak · ${reward.streak} days · Day ${reward.nextDayOfStreak}/7 in cycle",
+                    // Same facts as web, phone-width: the long form wrapped "cycle".
+                    "${reward.streak}-day streak · Day ${reward.nextDayOfStreak}/7",
                     style = MonoLabelSmall,
                     color = colors.textMuted,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
             Text(

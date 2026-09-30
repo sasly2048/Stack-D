@@ -44,6 +44,13 @@ import app.stackd.core.ui.QueueBadge
 import app.stackd.core.workmanager.FinalizeQueueWorker
 import io.github.jan.supabase.auth.status.SessionStatus
 import androidx.lifecycle.lifecycleScope
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.ui.graphics.Brush
+import app.stackd.core.theme.Obsidian
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -206,6 +213,23 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                                 val entry by navController.currentBackStackEntryAsState()
+
+                                // Status-bar scrim: edge-to-edge screens scroll under
+                                // the clock/icons; without this both are unreadable.
+                                // Fades out below the bar so there's no hard seam.
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopCenter)
+                                        .fillMaxWidth()
+                                        .windowInsetsTopHeight(WindowInsets.statusBars)
+                                        .background(
+                                            Brush.verticalGradient(
+                                                0f to Obsidian,
+                                                0.75f to Obsidian.copy(alpha = 0.92f),
+                                                1f to Obsidian.copy(alpha = 0f),
+                                            ),
+                                        ),
+                                )
 
                                 // Offline banner pinned to the top; queue badge
                                 // and floating timer share the bottom.

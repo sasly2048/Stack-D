@@ -43,6 +43,7 @@ import app.stackd.feature.dashboard.ActivityHeatmap
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -136,11 +137,11 @@ class InsightsViewModel(private val container: AppContainer) : ViewModel() {
             // Story and patterns load together, as on the web's narrative card.
             val story = async { container.ai.weeklyStory() }
             val patterns = async { container.ai.discoverPatterns() }
-            _state.value = _state.value.copy(
-                weeklyStory = story.await()?.story,
-                patterns = patterns.await()?.patterns.orEmpty(),
-                aiLoading = false,
-            )
+            // Await BEFORE reading state: `_state.value.copy(x = await())` reads
+            // the receiver first, so a load() finishing meanwhile was overwritten.
+            val s = story.await()?.story
+            val p = patterns.await()?.patterns.orEmpty()
+            _state.update { it.copy(weeklyStory = s, patterns = p, aiLoading = false) }
         }
         viewModelScope.launch {
             runCatching { container.premium.aiUsage() }.getOrNull()?.let {
@@ -337,11 +338,7 @@ fun InsightsScreen(
                         Spacer(Modifier.height(16.dp))
                         SectionLabel("THIS WEEK")
                         Spacer(Modifier.height(8.dp))
-                        WeeklyStoryCard(story ?: "Composing…")
-                        state.patterns.forEach { p ->
-                            Spacer(Modifier.height(6.dp))
-                            Text("· $p", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                        }
+                        WeeklyStoryCard(story ?: "Composing…", state.patterns)
                     }
                     state.aiUsage?.takeIf { it.unlimited || it.allowance > 0 }?.let { u ->
                         Spacer(Modifier.height(16.dp))
@@ -544,9 +541,9 @@ private fun ProactiveCard(p: app.stackd.data.ai.ProactiveInsight) {
 
 /** LLM-written weekly narrative — web's weekly-story card. */
 @Composable
-private fun WeeklyStoryCard(story: String) {
+private fun WeeklyStoryCard(story: String, patterns: List<String> = emptyList()) {
     val colors = Stackd.colors
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(colors.accent.copy(alpha = 0.06f), Radius2Xl)
@@ -554,5 +551,17 @@ private fun WeeklyStoryCard(story: String) {
             .padding(20.dp),
     ) {
         Text(story, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+        // Patterns belong to the story card (web narrative card), not below it.
+        if (patterns.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(colors.accent.copy(alpha = 0.15f)))
+            patterns.forEach { p ->
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("◆", style = MonoLabelSmall, color = colors.accent, modifier = Modifier.padding(top = 3.dp))
+                    Text(p, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                }
+            }
+        }
     }
 }

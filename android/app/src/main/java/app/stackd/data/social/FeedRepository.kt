@@ -66,7 +66,7 @@ data class FeedItem(
                     val mins = Math.round((str("duration_seconds")?.toDoubleOrNull() ?: 0.0) / 60)
                     "completed a $mins-minute session · $tier"
                 }
-                "achievement_unlock" -> "unlocked ${str("id") ?: "an achievement"}"
+                "achievement_unlock" -> "unlocked ${str("id")?.let { app.stackd.core.humanizeKey(it) } ?: "an achievement"}"
                 "challenge_complete" -> "finished the ${str("name") ?: "challenge"} rite"
                 "friend_add" -> "formed a new tie"
                 else -> kind.replace('_', ' ')

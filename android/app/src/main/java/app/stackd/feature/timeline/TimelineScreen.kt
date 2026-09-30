@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -339,6 +341,8 @@ private fun ReactionBar(reactions: List<Reaction>, onReact: (String) -> Unit) {
                 style = MonoLabelSmall,
                 color = if (r.mine) colors.accent else colors.textMuted,
                 modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clip(CircleShape)
                     .clickable { onReact(r.emoji) }
                     .background(
                         if (r.mine) colors.accent.copy(alpha = 0.1f)
@@ -358,6 +362,8 @@ private fun ReactionBar(reactions: List<Reaction>, onReact: (String) -> Unit) {
             style = MonoLabelSmall,
             color = colors.textMuted,
             modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .clip(CircleShape)
                 .clickable { picking = !picking }
                 .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape)
                 .border(1.dp, colors.border, CircleShape)
@@ -372,6 +378,8 @@ private fun ReactionBar(reactions: List<Reaction>, onReact: (String) -> Unit) {
                     e,
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .clip(RadiusMd)
                         .clickable {
                             picking = false
                             onReact(e)
@@ -434,6 +442,7 @@ private fun ProactiveCard(ai: ProactiveInsight) {
                 ai.focusPrediction.note,
                 style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
             )
+            Spacer(Modifier.height(6.dp))
             Text(
                 "CONFIDENCE · ${ai.focusPrediction.confidence.uppercase()}",
                 style = MonoLabelSmall, color = colors.textMuted,

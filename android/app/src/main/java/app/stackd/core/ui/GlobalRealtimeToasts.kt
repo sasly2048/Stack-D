@@ -77,7 +77,7 @@ private fun messageFor(record: JsonObject): String? {
     val payload = record["payload"] as? JsonObject
     fun p(key: String): String? = payload?.get(key)?.jsonPrimitive?.content
     return when (kind) {
-        "achievement_unlock" -> "🏅 Achievement unlocked" + (p("id")?.let { " · $it" } ?: "")
+        "achievement_unlock" -> "🏅 Achievement unlocked" + (p("id")?.let { " · ${app.stackd.core.humanizeKey(it)}" } ?: "")
         "challenge_complete" ->
             "🎯 Challenge complete" +
                 (p("name")?.let { " · $it" } ?: "") +

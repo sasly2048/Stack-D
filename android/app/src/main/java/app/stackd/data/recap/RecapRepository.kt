@@ -132,8 +132,12 @@ class RecapRepository(private val client: SupabaseClient) {
         val weekdaySeconds = LongArray(7)
         val hourCounts = IntArray(24)
         val monthlyHours = DoubleArray(12)
+        // Device-local, like the web (browser local time) and Insights. UTC put
+        // an IST user's 13:00 peak at "07:00" and could shift the weekday too.
+        val zone = java.time.ZoneId.systemDefault()
         hist.forEach { r ->
-            val z = Instant.parse(r.createdAt).atZone(ZoneOffset.UTC)
+            val ms = app.stackd.core.parseIsoMillis(r.createdAt) ?: return@forEach
+            val z = Instant.ofEpochMilli(ms).atZone(zone)
             weekdaySeconds[z.dayOfWeek.value % 7] += r.durationSeconds
             hourCounts[z.hour] += 1
             monthlyHours[z.monthValue - 1] += r.durationSeconds / 3600.0
@@ -204,10 +208,16 @@ class RecapRepository(private val client: SupabaseClient) {
         )
     }
 
-    /** One UTC day's focus + achievement events, chronological. */
+    /**
+     * One local day's focus + achievement events, chronological. Local, not UTC:
+     * for an IST user a UTC "day" runs 05:30–05:30, so late-night sessions landed
+     * on the wrong date. Next-midnight (not +24h) keeps DST days correct.
+     */
     suspend fun getDayReplay(userId: String, isoDate: String): List<ReplayEvent> {
-        val start = Instant.parse("${isoDate}T00:00:00Z")
-        val end = start.plusSeconds(86_400)
+        val zone = java.time.ZoneId.systemDefault()
+        val day = java.time.LocalDate.parse(isoDate)
+        val start = day.atStartOfDay(zone).toInstant()
+        val end = day.plusDays(1).atStartOfDay(zone).toInstant()
 
         val history = client.postgrest.from("focus_history")
             .select(
@@ -329,8 +339,9 @@ class RecapRepository(private val client: SupabaseClient) {
 
         var friendsFinished = emptyList<FriendFinish>()
         if (friendIds.isNotEmpty()) {
+            val zone = java.time.ZoneId.systemDefault()
             val dayStart = Instant.ofEpochMilli(nowMillis())
-                .atZone(ZoneOffset.UTC).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant()
+                .atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
             val acts = client.postgrest.from("activity_events")
                 .select(Columns.list("user_id", "payload", "created_at")) {
                     filter {

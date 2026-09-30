@@ -35,3 +35,11 @@ fun formatHours(totalSeconds: Int): String {
 fun parseIsoMillis(iso: String?): Long? =
     iso?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
 
+
+/**
+ * A server key as display text: "no_breach" -> "No Breach". Activity payloads
+ * carry achievement/challenge ids, which were leaking into the feed verbatim.
+ */
+fun humanizeKey(key: String): String =
+    key.split('_', '-').filter { it.isNotBlank() }
+        .joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } }

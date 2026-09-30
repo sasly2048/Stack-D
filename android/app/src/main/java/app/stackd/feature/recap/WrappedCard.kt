@@ -76,7 +76,7 @@ object WrappedCard {
             "SESSIONS" to stats.totalSessions.toString(),
             "XP EARNED" to stats.totalXp.toString(),
             "LONGEST SESSION" to "${stats.longestSessionMinutes} min",
-            "BEST STREAK" to "${stats.bestStreak} days",
+            "BEST STREAK" to "${stats.bestStreak} ${if (stats.bestStreak == 1) "day" else "days"}",
             "PEAK DAY" to stats.topWeekday,
             "PEAK HOUR" to "${stats.peakHour.toString().padStart(2, '0')}:00",
             "UNBROKEN" to stats.perfectSessions.toString(),

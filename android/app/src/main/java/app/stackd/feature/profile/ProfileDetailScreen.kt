@@ -196,7 +196,7 @@ fun ProfileDetailScreen(
                     Spacer(Modifier.height(20.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
-                            "LIFETIME XP" to "${p.lifetimeXp}",
+                            "XP" to "${p.lifetimeXp}",
                             "FOCUSED" to formatHours(p.totalFocusSeconds.toInt()),
                             "SESSIONS" to "${state.profile.sessionCount}",
                             "BEST" to "${p.bestStreak}d",

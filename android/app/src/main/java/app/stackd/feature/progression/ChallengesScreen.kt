@@ -164,7 +164,8 @@ fun ChallengesScreen(
                                         color = colors.textPrimary,
                                         fontWeight = FontWeight.Bold,
                                     )
-                                    Text(c.description, style = MonoLabelSmall, color = colors.textMuted)
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(c.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                                 }
                                 Text(
                                     if (done) "DONE · +${c.xpReward} XP" else "+${c.xpReward} XP",

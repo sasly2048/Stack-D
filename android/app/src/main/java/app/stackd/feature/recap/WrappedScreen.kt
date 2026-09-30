@@ -158,7 +158,7 @@ fun WrappedScreen(
                             "SESSIONS" to s.totalSessions.toString(),
                             "XP EARNED" to s.totalXp.toString(),
                             "LONGEST SESSION" to "${s.longestSessionMinutes} min",
-                            "BEST STREAK" to "${s.bestStreak} days",
+                            "BEST STREAK" to "${s.bestStreak} ${if (s.bestStreak == 1) "day" else "days"}",
                             "UNBROKEN" to s.perfectSessions.toString(),
                             "FLOW STATES" to s.flowSessions.toString(),
                             "PEAK DAY" to s.topWeekday,
