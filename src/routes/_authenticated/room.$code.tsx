@@ -347,6 +347,10 @@ function Room() {
   useEffect(() => {
     if (!room || !me || !myPart) return;
     if (room.status !== "complete" && room.status !== "aborted") return;
+    // Aborted before the clock started (lobby / placement): nothing to record.
+    // The server now returns no row for this too; skipping avoids a pointless
+    // call and a "results" card for a session that never happened.
+    if (!room.started_at) return;
     if (finalizeLockRef.current) return;
     finalizeLockRef.current = true;
 
