@@ -109,6 +109,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.compose.material.icons.extended)
+    // Real backdrop blur for the floating tab bar (web's backdrop-filter glass).
+    implementation(libs.haze)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.navigation.compose)

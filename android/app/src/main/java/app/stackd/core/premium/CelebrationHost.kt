@@ -211,7 +211,7 @@ private fun CelebratePro(onClose: () -> Unit) {
             Spacer(Modifier.height(32.dp))
             Text(if (beat == 0) "ACQUIRING SIGNAL" else "SIGNAL LOCKED", style = MonoLabel, color = Ember)
             Spacer(Modifier.height(12.dp))
-            Text("Pro", fontFamily = FontFamily.Serif, fontSize = 52.sp, color = Silver)
+            Text("Pro", fontFamily = app.stackd.core.theme.SerifFamily, fontSize = 52.sp, color = Silver)
             Spacer(Modifier.height(16.dp))
             Text(
                 "Your focus, now fully mapped. Analytics, DNA and unlimited history are yours.",
@@ -378,7 +378,7 @@ private fun CelebrateElite(onClose: () -> Unit) {
             Text(
                 "Elite",
                 style = TextStyle(
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = app.stackd.core.theme.SerifFamily,
                     fontSize = 68.sp,
                     brush = if (low) {
                         Brush.linearGradient(listOf(Accent, Ember, EmberGlow))

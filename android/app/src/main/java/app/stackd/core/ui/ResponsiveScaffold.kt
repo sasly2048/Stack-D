@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -68,10 +70,17 @@ fun ResponsiveColumn(
                 .padding(horizontal = horizontalPadding, vertical = verticalPadding),
             horizontalAlignment = horizontalAlignment,
             verticalArrangement = verticalArrangement,
-            content = content,
-        )
+        ) {
+            content()
+            // Room to scroll the last item clear of the floating tab bar, which
+            // now overlays content (it blurs what's behind it).
+            Spacer(Modifier.height(LocalBottomBarInset.current))
+        }
     }
 }
+
+/** Height a floating bottom bar covers at the end of scroll content; 0 when none. */
+val LocalBottomBarInset = androidx.compose.runtime.compositionLocalOf { 0.dp }
 
 /**
  * The lazy counterpart of [ResponsiveColumn] for screens with long lists.
@@ -118,7 +127,7 @@ fun ResponsiveLazyColumn(
                 start = horizontalPadding,
                 end = horizontalPadding,
                 top = verticalPadding,
-                bottom = verticalPadding + bottom,
+                bottom = verticalPadding + bottom + LocalBottomBarInset.current,
             ),
             content = content,
         )

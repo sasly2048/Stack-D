@@ -119,7 +119,13 @@ val StackdTypography = Typography(
 
 /**
  * Editorial serif for featured values/titles, as the web uses its serif stack
- * (Iowan / Palatino / Georgia) for '+10 XP waiting', 'P0', Atlas titles.
- * Android's system serif (Noto Serif) is the closest offline match.
+ * ("Iowan Old Style", "Palatino Linotype", Palatino, Georgia) for "+10 XP
+ * waiting", "P0" and Atlas titles. Bundled TeX Gyre Pagella is the Palatino
+ * design the web resolves to on Windows/Android browsers, so app and site
+ * render the same letterforms. GUST Font License (free to redistribute
+ * unmodified); source: CTAN fonts/tex-gyre.
  */
-val SerifFamily: FontFamily = FontFamily.Serif
+val SerifFamily: FontFamily = FontFamily(
+    Font(R.font.serif_regular, FontWeight.Normal),
+    Font(R.font.serif_bold, FontWeight.Bold),
+)

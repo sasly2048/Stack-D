@@ -55,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.stackd.core.theme.Obsidian
+import dev.chrisbanes.haze.hazeChild
 import app.stackd.core.theme.Obsidian2
 import app.stackd.core.theme.Silver
 import app.stackd.core.theme.Stackd
@@ -91,6 +92,7 @@ fun TabBar(
     onSelect: (String) -> Unit,
     onStart: () -> Unit,
     modifier: Modifier = Modifier,
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
 ) {
     val shape = RoundedCornerShape(BarHeight / 2)
     Box(
@@ -105,7 +107,23 @@ fun TabBar(
                 .height(BarHeight)
                 .shadow(24.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(shape)
-                .background(Obsidian2.copy(alpha = 0.94f))
+                // Real backdrop blur where supported (Android 12+); a denser
+                // scrim stands in on older devices.
+                .then(
+                    if (hazeState != null) {
+                        Modifier.hazeChild(
+                            state = hazeState,
+                            style = dev.chrisbanes.haze.HazeStyle(
+                                backgroundColor = Obsidian,
+                                tint = dev.chrisbanes.haze.HazeTint(Obsidian2.copy(alpha = 0.62f)),
+                                blurRadius = 24.dp,
+                                noiseFactor = 0f,
+                            ),
+                        )
+                    } else {
+                        Modifier.background(Obsidian2.copy(alpha = 0.94f))
+                    },
+                )
                 // Top-edge sheen: a hint of light on the upper rim sells "glass".
                 .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)))
                 .border(1.dp, Color.White.copy(alpha = 0.10f), shape)

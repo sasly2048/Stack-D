@@ -44,6 +44,7 @@ import app.stackd.core.ui.QueueBadge
 import app.stackd.core.workmanager.FinalizeQueueWorker
 import io.github.jan.supabase.auth.status.SessionStatus
 import androidx.lifecycle.lifecycleScope
+import dev.chrisbanes.haze.haze
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -214,12 +215,20 @@ class MainActivity : ComponentActivity() {
                                 val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                                 // Content stops above the bar instead of scrolling under it.
                                 val barSpace = if (showTabs) app.stackd.core.ui.TabBarHeight + navInset else 0.dp
+                                // The floating bar blurs whatever scrolls beneath it
+                                // (web glass: backdrop-filter blur), so content runs
+                                // full-height and screens pad their own scroll end.
+                                val hazeState = remember { dev.chrisbanes.haze.HazeState() }
                                 key(epoch) {
-                                    StackdNavHost(
-                                        navController = navController,
-                                        startDestination = start,
-                                        modifier = Modifier.padding(bottom = barSpace),
-                                    )
+                                    androidx.compose.runtime.CompositionLocalProvider(
+                                        app.stackd.core.ui.LocalBottomBarInset provides barSpace,
+                                    ) {
+                                        StackdNavHost(
+                                            navController = navController,
+                                            startDestination = start,
+                                            modifier = Modifier.haze(hazeState),
+                                        )
+                                    }
                                 }
 
                                 // Status-bar scrim: edge-to-edge screens scroll under
@@ -290,6 +299,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         onStart = { navController.navigate(Dest.Start.route) { launchSingleTop = true } },
+                                        hazeState = hazeState,
                                         modifier = Modifier.align(Alignment.BottomCenter),
                                     )
                                 }
