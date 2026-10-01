@@ -1,6 +1,16 @@
 package app.stackd.feature.dashboard
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import app.stackd.core.theme.MonoLabelSmall
+import app.stackd.core.theme.SerifFamily
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
@@ -67,6 +77,77 @@ fun ActivityHeatmap(history: List<FocusHistoryRow>, weeks: Int = 26) {
                 topLeft = Offset(col * (cell + gapPx), row * (cellH + gapPx)),
                 size = Size(cell, cellH),
                 cornerRadius = CornerRadius(2.dp.toPx()),
+            )
+        }
+    }
+}
+
+/**
+ * Home's at-a-glance week: seven bars, Monday–Sunday, today highlighted.
+ * Replaces the 26-week heatmap on Home — a mostly-empty half-year grid reads
+ * as "you haven't done anything"; a week is a horizon you can still fill.
+ */
+@Composable
+fun WeekBars(history: List<FocusHistoryRow>) {
+    val colors = Stackd.colors
+    val zone = remember { ZoneId.systemDefault() }
+    val today = remember { LocalDate.now(zone) }
+    val todayIdx = today.dayOfWeek.value - 1
+    val minutes = remember(history, today) {
+        val monday = today.minusDays(todayIdx.toLong())
+        val byDay = history.groupBy(
+            { row -> parseIsoMillis(row.createdAt)?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() } },
+            { it.durationSeconds / 60 },
+        )
+        (0..6).map { byDay[monday.plusDays(it.toLong())]?.sum() ?: 0 }
+    }
+    val total = minutes.sum()
+    val max = maxOf(30, minutes.max())
+    val grow = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { grow.animateTo(1f, tween(700)) }
+
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(
+            if (total >= 60) "${total / 60}h ${total % 60}m" else "${total}m",
+            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = SerifFamily),
+            color = colors.textPrimary,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            if (total == 0) "A fresh week. Make today count." else "focused this week",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+    }
+    Spacer(Modifier.height(14.dp))
+    val accent = colors.accent
+    val track = colors.textPrimary.copy(alpha = 0.05f)
+    Canvas(Modifier.fillMaxWidth().height(72.dp)) {
+        val gap = 10.dp.toPx()
+        val w = (size.width - gap * 6) / 7
+        val r = CornerRadius(6.dp.toPx())
+        minutes.forEachIndexed { i, m ->
+            val x = i * (w + gap)
+            drawRoundRect(track, Offset(x, 0f), Size(w, size.height), r)
+            if (m > 0) {
+                val h = size.height * (m.toFloat() / max).coerceIn(0.08f, 1f) * grow.value
+                drawRoundRect(
+                    accent.copy(alpha = if (i == todayIdx) 1f else 0.55f),
+                    Offset(x, size.height - h), Size(w, h), r,
+                )
+            }
+        }
+    }
+    Spacer(Modifier.height(6.dp))
+    Row(Modifier.fillMaxWidth()) {
+        listOf("M", "T", "W", "T", "F", "S", "S").forEachIndexed { i, d ->
+            Text(
+                d,
+                style = MonoLabelSmall,
+                color = if (i == todayIdx) colors.accent else colors.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
             )
         }
     }

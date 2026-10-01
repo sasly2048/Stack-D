@@ -393,9 +393,8 @@ private fun Lobby(
     Spacer(Modifier.height(12.dp))
     Text(
         state.room?.title?.takeIf { it.isNotBlank() } ?: "Waiting to begin",
-        style = MaterialTheme.typography.headlineMedium,
+        style = MaterialTheme.typography.displaySmall.copy(fontFamily = app.stackd.core.theme.SerifFamily),
         color = colors.textPrimary,
-        fontWeight = FontWeight.ExtraBold,
         textAlign = TextAlign.Center,
     )
     Spacer(Modifier.height(8.dp))
@@ -406,9 +405,15 @@ private fun Lobby(
     )
     // Rhythm: 8dp inside a group, 16dp between cards, 24dp between groups.
     Spacer(Modifier.height(24.dp))
-    CopyInviteButton(state.code)
-    Spacer(Modifier.height(8.dp))
-    QrInvite(state.code)
+    InviteRow(state.code)
+    Spacer(Modifier.height(24.dp))
+    // The one decision this screen exists for sits above the fold; setup
+    // panels below are optional detail.
+    if (state.isHost) {
+        EmberButton(text = "Start Session", onClick = onStart)
+    } else {
+        NoticeBanner("Waiting for the host to start the session.")
+    }
     Spacer(Modifier.height(24.dp))
     RoomHeaderPanel(state, onSaveMeta)
     Spacer(Modifier.height(16.dp))
@@ -427,54 +432,38 @@ private fun Lobby(
     }
     Spacer(Modifier.height(24.dp))
 
-    if (state.isHost) {
-        EmberButton(text = "Start Session", onClick = onStart)
-        Spacer(Modifier.height(12.dp))
-        GhostButton(text = "Abort Room", onClick = onAbort)
-    } else {
-        NoticeBanner("Waiting for the host to start the session.")
-        Spacer(Modifier.height(12.dp))
-        GhostButton(text = "Leave", onClick = onExit)
-    }
+    GhostButton(text = if (state.isHost) "Abort Room" else "Leave", onClick = if (state.isHost) onAbort else onExit)
 }
 
-/** Copies {WEB_BASE_URL}/room/{code} — the web's copyCode, minus the toast. */
+/**
+ * Invite: the system share sheet (one tap to WhatsApp/Messages — where
+ * invites actually go) beside a QR toggle for the person sitting next to you.
+ * Same {WEB_BASE_URL}/room/{code} link the web copies.
+ */
 @Composable
-private fun CopyInviteButton(code: String) {
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-    var copied by remember { androidx.compose.runtime.mutableStateOf(false) }
-    GhostButton(
-        text = if (copied) "Invite link copied ✓" else "Copy invite link",
-        onClick = {
-            val link = "${app.stackd.BuildConfig.WEB_BASE_URL}/room/$code"
-            clipboard.setText(androidx.compose.ui.text.AnnotatedString(link))
-            copied = true
-        },
-    )
-    // Reset the label a couple seconds after a copy, matching the web's 2s flip.
-    androidx.compose.runtime.LaunchedEffect(copied) {
-        if (copied) {
-            kotlinx.coroutines.delay(2000)
-            copied = false
+private fun InviteRow(code: String) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val link = "${app.stackd.BuildConfig.WEB_BASE_URL}/room/$code"
+    var showQr by remember { androidx.compose.runtime.mutableStateOf(false) }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.weight(1f)) {
+            app.stackd.core.ui.AccentButton(
+                text = "Share invite",
+                onClick = {
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(android.content.Intent.EXTRA_TEXT, "Stack with me on Stack'd — room $code\n$link")
+                    ctx.startActivity(android.content.Intent.createChooser(send, "Invite to room $code"))
+                },
+            )
+        }
+        Box(Modifier.weight(0.5f)) {
+            GhostButton(text = if (showQr) "Hide QR" else "QR", onClick = { showQr = !showQr })
         }
     }
-}
-
-/** Show-QR toggle → the web's inline invite QR. Collapsed by default so the
- *  lobby stays compact; the link is the same one CopyInviteButton copies. */
-@Composable
-private fun QrInvite(code: String) {
-    var show by remember { androidx.compose.runtime.mutableStateOf(false) }
-    GhostButton(
-        text = if (show) "Hide QR" else "Show invite QR",
-        onClick = { show = !show },
-    )
-    if (show) {
+    if (showQr) {
         Spacer(Modifier.height(12.dp))
-        app.stackd.core.ui.QrCode(
-            content = "${app.stackd.BuildConfig.WEB_BASE_URL}/room/$code",
-            size = 180.dp,
-        )
+        app.stackd.core.ui.QrCode(content = link, size = 180.dp)
     }
 }
 

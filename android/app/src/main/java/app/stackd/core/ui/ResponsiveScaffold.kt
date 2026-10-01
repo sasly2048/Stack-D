@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.unit.Dp
@@ -60,6 +61,7 @@ fun ResponsiveColumn(
         // routing through ResponsiveColumn is inset once, correctly.
         modifier = modifier
             .fillMaxWidth()
+            .ambientGlow()
             .safeDrawingPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -112,6 +114,7 @@ fun ResponsiveLazyColumn(
     androidx.compose.foundation.layout.Box(
         modifier = modifier
             .fillMaxSize()
+            .ambientGlow()
             .windowInsetsPadding(
                 insets.only(
                     androidx.compose.foundation.layout.WindowInsetsSides.Top +
@@ -139,3 +142,23 @@ val DEFAULT_MAX_CONTENT_WIDTH: Dp = 560.dp
 
 /** Wider ceiling for analytics/grid screens that legitimately use more room. */
 val WIDE_MAX_CONTENT_WIDTH: Dp = 840.dp
+
+/**
+ * The web's warm top light (its hero cards fade from ember into obsidian):
+ * a soft ember radial at the top edge of every screen. Pure black reads as
+ * flat; a little light from above gives depth without adding chrome.
+ */
+internal fun Modifier.ambientGlow(): Modifier = drawBehind {
+    val r = size.width * 0.95f
+    drawCircle(
+        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+            0f to app.stackd.core.theme.Ember.copy(alpha = 0.16f),
+            0.45f to app.stackd.core.theme.Ember.copy(alpha = 0.05f),
+            1f to androidx.compose.ui.graphics.Color.Transparent,
+            center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, -r * 0.35f),
+            radius = r,
+        ),
+        radius = r,
+        center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, -r * 0.35f),
+    )
+}

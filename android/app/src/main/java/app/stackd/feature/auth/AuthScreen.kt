@@ -42,8 +42,10 @@ import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.RadiusMd
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.ambientGlow
 import app.stackd.core.ui.ErrorBanner
 import app.stackd.core.ui.HairlineDivider
 import app.stackd.core.ui.LinkButton
@@ -109,6 +111,7 @@ fun AuthScreen(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
+            .ambientGlow()
             .verticalScroll(rememberScrollState())
             // Edge-to-edge draw: clear the status bar / nav bar / cutout so the
             // eyebrow isn't tucked under the clock. safeDrawingPadding before the
@@ -116,12 +119,18 @@ fun AuthScreen(
             .safeDrawingPadding()
             .padding(horizontal = 24.dp, vertical = 32.dp),
     ) {
+        // First impression = the brand, not a system label.
         Text(
-            "STACK'D / PROTOCOL.01",
-            style = MonoLabel,
+            "Stack'd",
+            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = SerifFamily),
+            color = colors.textPrimary,
+        )
+        Text(
+            "Phones down. Focus up. Together.",
+            style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
         )
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(48.dp))
 
         Column(modifier = Modifier.widthIn(max = 480.dp).align(Alignment.CenterHorizontally)) {
             SectionLabel(
@@ -134,7 +143,7 @@ fun AuthScreen(
                 } else {
                     "Claim your presence."
                 },
-                style = MaterialTheme.typography.displayMedium,
+                style = MaterialTheme.typography.displayMedium.copy(fontFamily = SerifFamily),
                 color = colors.textPrimary,
             )
             Spacer(Modifier.height(36.dp))

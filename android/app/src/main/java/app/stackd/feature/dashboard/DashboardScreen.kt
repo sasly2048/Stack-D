@@ -252,15 +252,24 @@ fun DashboardScreen(
                             InsightsCard(state.aiInsights, state.aiInsLoading, state.aiInsError, onRegenInsights)
                         }
                     }
-                    if (state.myRooms.isNotEmpty() || state.myRoomsPage > 0) {
-                        Section("My rooms") { MyRooms(state, onOpenRoom, onMyRoomsPage) }
+                    // Home shows only rooms you can still walk into; finished
+                    // ones are history and live under "See all".
+                    val openRooms = remember(state.myRooms, state.live) {
+                        val liveCodes = state.live.map { it.code }.toSet()
+                        state.myRooms.filter {
+                            it.statusEnum == app.stackd.data.room.RoomStatus.LOBBY ||
+                                it.statusEnum == app.stackd.data.room.RoomStatus.ACTIVE
+                        }.filterNot { it.code in liveCodes }
+                    }
+                    if (openRooms.isNotEmpty() || state.myRoomsError) {
+                        Section("Open rooms") { MyRooms(state, openRooms, onOpenRoom, onMyRoomsPage) }
                     }
                     if (!state.isEmpty) {
+                        Section("This week") { Tile { WeekBars(state.history) } }
                         Section(
                             "Recent sessions",
                             action = openTimeline?.let { "See all" to it },
                         ) { SessionHistory(state.history.take(RECENT_SESSIONS), onOpenRoom) }
-                        Section("Activity") { Tile { ActivityHeatmap(state.history) } }
                     }
                 }
             }
@@ -373,19 +382,21 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
                     Icon(
                         app.stackd.core.ui.StackdIcons.LocalFireDepartment,
                         contentDescription = null,
-                        tint = if (state.streak > 0) colors.accent else colors.textMuted,
+                        tint = if (state.streak > 0) colors.accent else colors.accent.copy(alpha = 0.45f),
                         modifier = Modifier.size(26.dp),
                     )
                     Spacer(Modifier.width(4.dp))
+                    // A zero is a failure signal; a 0-streak is really an
+                    // invitation, so it gets words instead of a number.
                     Text(
-                        "${state.streak}",
+                        if (state.streak > 0) "${state.streak}" else "Day one",
                         style = MaterialTheme.typography.headlineMedium,
                         color = colors.textPrimary,
                         fontWeight = FontWeight.Bold,
                     )
                 }
                 Text(
-                    "session streak",
+                    if (state.streak > 0) "session streak" else "one session starts a streak",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted,
                 )
@@ -708,6 +719,7 @@ private fun LiveNow(live: List<RoomRow>, onOpenRoom: (String) -> Unit) {
 @Composable
 private fun MyRooms(
     state: DashboardUiState,
+    rooms: List<app.stackd.data.room.RoomListItem>,
     onOpenRoom: (String) -> Unit,
     onPage: (Int) -> Unit,
 ) {
@@ -725,7 +737,7 @@ private fun MyRooms(
         Spacer(Modifier.height(8.dp))
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        state.myRooms.forEach { room ->
+        rooms.forEach { room ->
             val elapsed = remember(room.startedAt, room.endedAt) {
                 val s = parseIsoMillis(room.startedAt)
                 val e = parseIsoMillis(room.endedAt)
@@ -759,18 +771,6 @@ private fun MyRooms(
                     color = colors.textMuted,
                 )
             }
-        }
-    }
-    if (state.myRoomsPage > 0 || state.myRoomsHasMore) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextAction("← Prev", enabled = state.myRoomsPage > 0, onClick = { onPage(state.myRoomsPage - 1) })
-            Text(
-                "Page ${state.myRoomsPage + 1}",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted,
-                modifier = Modifier.align(Alignment.CenterVertically),
-            )
-            TextAction("Next →", enabled = state.myRoomsHasMore, onClick = { onPage(state.myRoomsPage + 1) })
         }
     }
 }
