@@ -180,8 +180,6 @@ fun FeedScreen(
         ResponsiveColumn {
             app.stackd.core.ui.ScreenHeader("STACK'D / SIGNAL", onBack, title = "Feed")
             Spacer(Modifier.height(16.dp))
-            SectionLabel("FEED")
-            Spacer(Modifier.height(16.dp))
 
             when {
                 state.loading -> {
