@@ -1,7 +1,9 @@
 package app.stackd.core.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -10,13 +12,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
@@ -36,7 +40,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -46,13 +55,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.stackd.core.theme.Obsidian
+import app.stackd.core.theme.Obsidian2
+import app.stackd.core.theme.Silver
 import app.stackd.core.theme.Stackd
 
 /** True on a tab's root screen: there is nowhere to go "back" to, so headers hide the chevron. */
 val LocalIsTabRoot = compositionLocalOf { false }
 
-/** Height of the bar's content row (excludes the system navigation inset). */
-val TabBarHeight = 64.dp
+private val BarHeight = 66.dp
+private val BarMargin = 14.dp
+
+/** Vertical space the floating bar occupies above the system nav inset (bar + its bottom margin). */
+val TabBarHeight = BarHeight + BarMargin
 
 data class TabItem(val route: String, val label: String, val icon: ImageVector, val iconSelected: ImageVector)
 
@@ -64,9 +78,12 @@ val StackdTabs = listOf(
 )
 
 /**
- * Persistent bottom navigation: four destinations you can always see (vs a
- * 21-item hidden menu) around a raised Start button — the app's one core
- * action gets the largest, most central, most reachable target.
+ * Floating navigation: an inset glass capsule (web `glass-strong` — obsidian
+ * at ~92%, white/10% hairline, deep soft shadow) rather than an edge-to-edge
+ * slab. Detached from the screen edge it reads as a control layer over the
+ * content, the convention of current premium apps. Four destinations stay
+ * visible (recognition over recall) around a silver Start — the web's primary
+ * colour — for the one action the app exists for.
  */
 @Composable
 fun TabBar(
@@ -75,26 +92,31 @@ fun TabBar(
     onStart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = Stackd.colors
-    Box(modifier.fillMaxWidth()) {
-        Column(
+    val shape = RoundedCornerShape(BarHeight / 2)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(start = 16.dp, end = 16.dp, bottom = BarMargin),
+    ) {
+        Row(
             Modifier
                 .fillMaxWidth()
-                .background(Obsidian.copy(alpha = 0.97f))
-                .windowInsetsPadding(WindowInsets.navigationBars),
+                .height(BarHeight)
+                .shadow(24.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
+                .clip(shape)
+                .background(Obsidian2.copy(alpha = 0.94f))
+                // Top-edge sheen: a hint of light on the upper rim sells "glass".
+                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)))
+                .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+                .padding(horizontal = 6.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.fillMaxWidth().height(1.dp).background(colors.border))
-            Row(
-                Modifier.fillMaxWidth().height(TabBarHeight),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                StackdTabs.take(2).forEach { TabCell(it, it.route == currentRoute, onSelect, Modifier.weight(1f)) }
-                Spacer(Modifier.weight(1f)) // room for the raised Start button
-                StackdTabs.drop(2).forEach { TabCell(it, it.route == currentRoute, onSelect, Modifier.weight(1f)) }
-            }
+            StackdTabs.take(2).forEach { TabCell(it, it.route == currentRoute, onSelect, Modifier.weight(1f)) }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { StartButton(onStart) }
+            StackdTabs.drop(2).forEach { TabCell(it, it.route == currentRoute, onSelect, Modifier.weight(1f)) }
         }
-        StartButton(onStart, Modifier.align(Alignment.TopCenter).offset(y = (-18).dp))
     }
 }
 
@@ -103,41 +125,50 @@ private fun TabCell(item: TabItem, selected: Boolean, onSelect: (String) -> Unit
     val colors = Stackd.colors
     val source = remember { MutableInteractionSource() }
     val tint by animateColorAsState(if (selected) colors.accent else colors.textMuted, label = "tint")
+    val glow by animateFloatAsState(if (selected) 1f else 0f, label = "glow")
     Column(
         modifier
-            .height(TabBarHeight)
+            .fillMaxHeight()
+            .padding(vertical = 7.dp)
+            .clip(RoundedCornerShape(18.dp))
+            // Soft capsule behind the active tab — position at a glance.
+            .background(Color.White.copy(alpha = 0.05f * glow))
             .clickable(interactionSource = source, indication = null, role = Role.Tab) { onSelect(item.route) }
             .pressFeedback(source, pressedScale = 0.92f)
             .semantics { this.selected = selected },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(if (selected) item.iconSelected else item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.height(4.dp))
-        Text(
-            item.label,
-            color = tint,
-            fontSize = 11.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+        Icon(if (selected) item.iconSelected else item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.height(3.dp))
+        Text(item.label, color = tint, fontSize = 10.5.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
+        // Web's active-nav glow dot (`--dot-glow`).
+        Box(
+            Modifier
+                .padding(top = 3.dp)
+                .size(4.dp)
+                .graphicsLayer { alpha = glow }
+                .drawBehind {
+                    drawCircle(colors.accent.copy(alpha = 0.45f), radius = size.minDimension * 1.6f, center = Offset(size.width / 2, size.height / 2))
+                    drawCircle(colors.accent)
+                },
         )
     }
 }
 
 @Composable
-private fun StartButton(onStart: () -> Unit, modifier: Modifier) {
-    val colors = Stackd.colors
+private fun StartButton(onStart: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     Box(
-        modifier
-            .size(60.dp)
+        Modifier
+            .size(50.dp)
             .pressFeedback(source, pressedScale = 0.9f)
-            .shadow(16.dp, CircleShape, ambientColor = colors.accent, spotColor = colors.accent)
             .clip(CircleShape)
-            .background(colors.accent)
+            .background(Silver)
             .clickable(interactionSource = source, indication = null, role = Role.Button, onClick = onStart)
             .semantics { contentDescription = "Start a focus session" },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.Add, contentDescription = null, tint = Obsidian, modifier = Modifier.size(30.dp))
+        Icon(Icons.Filled.Add, contentDescription = null, tint = Obsidian, modifier = Modifier.size(28.dp))
     }
 }

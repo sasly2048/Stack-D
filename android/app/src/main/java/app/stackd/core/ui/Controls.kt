@@ -65,12 +65,50 @@ fun SectionLabel(
 )
 
 /**
- * Primary call to action — the ONE filled element on a screen. Solid ember
- * with dark text so it out-weighs every ghost/outline control around it
- * (isolation effect: the next step must look different from everything else).
+ * Primary call to action — the ONE filled element on a screen. Silver fill,
+ * obsidian text, 10dp corners: exactly the web's primary (`--primary` is
+ * silver; "New session" is `bg-silver text-obsidian rounded-lg`). Ember is the
+ * web's accent, not its action colour, so it stays off the big buttons.
  */
 @Composable
 fun EmberButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    busy: Boolean = false,
+) {
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val ink = app.stackd.core.theme.Obsidian
+    Button(
+        onClick = onClick,
+        enabled = enabled && !busy,
+        shape = app.stackd.core.theme.RadiusLg,
+        interactionSource = source,
+        modifier = modifier.fillMaxWidth().height(54.dp).pressFeedback(source),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = app.stackd.core.theme.Silver,
+            contentColor = ink,
+            disabledContainerColor = app.stackd.core.theme.Silver.copy(alpha = 0.18f),
+            disabledContentColor = ink.copy(alpha = 0.6f),
+        ),
+        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
+    ) {
+        if (busy) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = ink)
+            Spacer(Modifier.width(12.dp))
+        }
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
+/**
+ * Ember-outlined action — the web's `.btn-ember` at rest (ember hairline +
+ * ember text). For warm, featured actions (Claim, Upgrade) that should glow
+ * without competing with the silver primary.
+ */
+@Composable
+fun AccentButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -82,26 +120,23 @@ fun EmberButton(
     Button(
         onClick = onClick,
         enabled = enabled && !busy,
-        shape = RadiusMd,
+        shape = app.stackd.core.theme.RadiusLg,
         interactionSource = source,
-        modifier = modifier.fillMaxWidth().height(54.dp).pressFeedback(source),
+        modifier = modifier.height(48.dp).pressFeedback(source),
+        border = BorderStroke(1.dp, colors.accent.copy(alpha = if (enabled) 0.7f else 0.3f)),
         colors = ButtonDefaults.buttonColors(
-            containerColor = colors.accent,
-            contentColor = app.stackd.core.theme.Obsidian,
-            disabledContainerColor = colors.accent.copy(alpha = 0.22f),
-            disabledContentColor = app.stackd.core.theme.Obsidian.copy(alpha = 0.55f),
+            containerColor = colors.accent.copy(alpha = 0.08f),
+            contentColor = colors.accent,
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = colors.accent.copy(alpha = 0.4f),
         ),
         elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
     ) {
         if (busy) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(16.dp),
-                strokeWidth = 2.dp,
-                color = app.stackd.core.theme.Obsidian,
-            )
-            Spacer(Modifier.width(12.dp))
+            CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = colors.accent)
+            Spacer(Modifier.width(10.dp))
         }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold)
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -119,7 +154,7 @@ fun GhostButton(
     Button(
         onClick = onClick,
         enabled = enabled && !busy,
-        shape = RadiusMd,
+        shape = app.stackd.core.theme.RadiusLg,
         interactionSource = source,
         modifier = modifier.fillMaxWidth().height(52.dp).pressFeedback(source),
         border = BorderStroke(1.dp, colors.textPrimary.copy(alpha = 0.15f)),

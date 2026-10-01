@@ -229,11 +229,13 @@ class MainActivity : ComponentActivity() {
                                     Modifier
                                         .align(Alignment.TopCenter)
                                         .fillMaxWidth()
-                                        .windowInsetsTopHeight(WindowInsets.statusBars)
+                                        // Solid behind the icons, then a 16dp fade below
+                                        // them: text no longer ghosts under the clock.
+                                        .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp)
                                         .background(
                                             Brush.verticalGradient(
                                                 0f to Obsidian,
-                                                0.75f to Obsidian.copy(alpha = 0.92f),
+                                                0.62f to Obsidian,
                                                 1f to Obsidian.copy(alpha = 0f),
                                             ),
                                         ),

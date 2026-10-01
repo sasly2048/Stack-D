@@ -113,8 +113,9 @@ private fun RewardChip(
                     claiming -> "Claiming…"
                     else -> "Claim +${reward.nextRewardXp} XP"
                 },
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
+                // Web renders the reward line in its serif ("+10 XP waiting").
+                style = MaterialTheme.typography.titleMedium,
+                fontFamily = app.stackd.core.theme.SerifFamily,
                 color = colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -163,8 +164,9 @@ private fun ChallengeChip(progress: Float, modifier: Modifier) {
         Column(Modifier.weight(1f)) {
             Text(
                 if (done) "Challenge done" else "Challenge ${Math.round(progress * 100)}%",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
+                // Web renders the reward line in its serif ("+10 XP waiting").
+                style = MaterialTheme.typography.titleMedium,
+                fontFamily = app.stackd.core.theme.SerifFamily,
                 color = colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

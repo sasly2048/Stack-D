@@ -335,13 +335,17 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
     ) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).padding(top = 8.dp)) {
-                Text(dayPart.uppercase(), style = MonoLabelSmall, color = colors.textMuted)
-                Spacer(Modifier.height(4.dp))
+                val clock = remember(hour) {
+                    LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+                }
+                Text("${dayPart.uppercase()} · $clock", style = MonoLabelSmall, color = colors.textMuted)
+                Spacer(Modifier.height(6.dp))
+                // Web's greeting: "Afternoon, Raghavendra Sujith." — large, tight, bold.
                 Text(
-                    state.name,
-                    style = MaterialTheme.typography.headlineSmall,
+                    "${dayPart.removePrefix("Good ").replaceFirstChar { it.uppercase() }}, ${state.name.substringBefore(' ').ifBlank { state.name }}.",
+                    style = MaterialTheme.typography.headlineMedium,
                     color = colors.textPrimary,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -398,6 +402,10 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
                     when {
                         state.loading -> " "
                         left <= 0 -> "Daily goal reached. Anything more is a bonus."
+                        // Hook (loss aversion): a streak you can lose motivates
+                        // more than minutes you could gain.
+                        todayMin == 0 && state.streak > 0 ->
+                            "Keep your ${state.streak}-session streak alive today."
                         todayMin == 0 -> "$DAILY_GOAL_MIN min goal today."
                         else -> "$left min to today's goal."
                     },
@@ -500,9 +508,11 @@ private fun SuggestedSession(
             Spacer(Modifier.height(4.dp))
             Text(
                 "${rec.durationMinutes} min · ${rec.topic}",
-                style = MaterialTheme.typography.titleMedium,
+                // Web sets Atlas titles in its editorial serif.
+                style = MaterialTheme.typography.titleLarge,
+                fontFamily = app.stackd.core.theme.SerifFamily,
                 color = colors.textPrimary,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -615,15 +625,46 @@ private fun StatTiles(state: DashboardUiState) {
         modifier = Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        StatTile(formatHours(state.totalSeconds), "Focused", Modifier.weight(1f))
-        StatTile(state.lifetimeXp.toString(), "Lifetime XP", Modifier.weight(1f))
-        StatTile(
-            state.avgScore.toString(),
-            // Tier reads from the value colour; naming it truncated ("Protocol Co…").
-            "Avg score",
-            Modifier.weight(1f),
-            valueColor = Color(tier.hex),
-        )
+        // Bento, as the web's LIFETIME_PRESENCE panel: one hero number in display
+        // type carries the section; the supporting stats stack beside it.
+        val colors = Stackd.colors
+        Column(
+            Modifier
+                .weight(1.25f)
+                .fillMaxHeight()
+                .background(colors.textPrimary.copy(alpha = 0.04f), RadiusMd)
+                .border(1.dp, colors.border, RadiusMd)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .semantics(mergeDescendants = true) {},
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("LIFETIME PRESENCE", style = MonoLabelSmall, color = colors.textMuted)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    String.format(java.util.Locale.US, "%.1f", state.totalSeconds / 3600.0),
+                    style = MaterialTheme.typography.displayMedium,
+                    color = colors.textPrimary,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                )
+                Text(
+                    "HOURS",
+                    style = MonoLabelSmall,
+                    color = colors.textMuted,
+                    modifier = Modifier.padding(start = 6.dp, bottom = 10.dp),
+                )
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatTile(state.lifetimeXp.toString(), "Lifetime XP", Modifier.fillMaxWidth())
+            StatTile(
+                state.avgScore.toString(),
+                // Tier reads from the value colour; naming it truncated ("Protocol Co…").
+                "Avg score",
+                Modifier.fillMaxWidth(),
+                valueColor = Color(tier.hex),
+            )
+        }
     }
 }
 
@@ -637,7 +678,6 @@ private fun StatTile(
     val colors = Stackd.colors
     Column(
         modifier = modifier
-            .fillMaxHeight()
             .background(colors.textPrimary.copy(alpha = 0.04f), RadiusMd)
             .border(1.dp, colors.border, RadiusMd)
             .padding(horizontal = 14.dp, vertical = 16.dp)
@@ -987,11 +1027,12 @@ private fun PrestigeCard(
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("PRESTIGE", style = MonoLabelSmall, color = colors.accent, modifier = Modifier.padding(end = 10.dp))
             Text(
-                "Prestige ${p.level}",
-                style = MaterialTheme.typography.bodyMedium,
+                "P${p.level}",
+                style = MaterialTheme.typography.headlineSmall,
+                fontFamily = app.stackd.core.theme.SerifFamily,
                 color = colors.textPrimary,
-                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
             Text("${p.lifetimeXp} / ${p.neededXp} XP", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)

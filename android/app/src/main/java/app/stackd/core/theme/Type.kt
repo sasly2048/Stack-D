@@ -116,3 +116,10 @@ val StackdTypography = Typography(
     labelMedium = MonoLabel,
     labelSmall = MonoLabelSmall,
 )
+
+/**
+ * Editorial serif for featured values/titles, as the web uses its serif stack
+ * (Iowan / Palatino / Georgia) for '+10 XP waiting', 'P0', Atlas titles.
+ * Android's system serif (Noto Serif) is the closest offline match.
+ */
+val SerifFamily: FontFamily = FontFamily.Serif
