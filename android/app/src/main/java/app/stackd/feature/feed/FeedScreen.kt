@@ -67,6 +67,7 @@ data class FeedUiState(
     val rows: List<FeedItem> = emptyList(),
     val circle: List<FriendPresence> = emptyList(),
     val nowMillis: Long = System.currentTimeMillis(),
+    val meId: String? = null,
 )
 
 /**
@@ -123,7 +124,9 @@ class FeedViewModel(private val container: AppContainer) : ViewModel() {
             }.fold(
                 onSuccess = { (rows, circle) ->
                     val fresh = FeedUiState(
-                        loading = false, rows = rows, circle = circle, nowMillis = now,
+                        loading = false, circle = circle, nowMillis = now, meId = userId,
+                        // Daily-reward claims are personal bookkeeping, not news.
+                        rows = rows.filterNot { it.kind == "daily_reward" },
                     )
                     _state.value = fresh
                     container.cache.put(cacheKey(userId), fresh)
@@ -226,7 +229,7 @@ fun FeedScreen(
                         )
                         EmberButton(text = "Start a session", onClick = onStart)
                     } else {
-                        Activity(state.rows, state.nowMillis, onOpenProfile)
+                        Activity(state.rows, state.nowMillis, state.meId, onOpenProfile)
                     }
                 }
             }
@@ -335,7 +338,7 @@ private fun Bubble(
         Spacer(Modifier.height(6.dp))
         Text(
             label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = if (status == PresenceStatus.FOCUSING) colors.textPrimary else colors.textMuted,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -345,7 +348,7 @@ private fun Bubble(
 
 /** Activity as a calm list grouped by day — dividers, not a stack of boxes. */
 @Composable
-private fun Activity(rows: List<FeedItem>, now: Long, onOpenProfile: (String) -> Unit) {
+private fun Activity(rows: List<FeedItem>, now: Long, meId: String?, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
     val zone = remember { java.time.ZoneId.systemDefault() }
     val groups = remember(rows, now) {
@@ -363,7 +366,7 @@ private fun Activity(rows: List<FeedItem>, now: Long, onOpenProfile: (String) ->
         Text(day.uppercase(), style = MonoLabelSmall, color = colors.textMuted)
         Spacer(Modifier.height(4.dp))
         items.forEachIndexed { i, item ->
-            FeedRow(item, now, onOpenProfile)
+            FeedRow(item, now, item.userId == meId, onOpenProfile)
             if (i < items.lastIndex) app.stackd.core.ui.HairlineDivider()
         }
         Spacer(Modifier.height(24.dp))
@@ -371,9 +374,10 @@ private fun Activity(rows: List<FeedItem>, now: Long, onOpenProfile: (String) ->
 }
 
 @Composable
-private fun FeedRow(item: FeedItem, now: Long, onOpenProfile: (String) -> Unit) {
+private fun FeedRow(item: FeedItem, now: Long, mine: Boolean, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
-    val name = item.displayName?.takeIf { it.isNotBlank() } ?: "Anonymous"
+    val fullName = item.displayName?.takeIf { it.isNotBlank() } ?: "Anonymous"
+    val name = if (mine) "You" else fullName
     val source = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
@@ -388,7 +392,7 @@ private fun FeedRow(item: FeedItem, now: Long, onOpenProfile: (String) -> Unit) 
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        app.stackd.core.ui.Avatar(url = item.avatarUrl, name = name, size = 40.dp)
+        app.stackd.core.ui.Avatar(url = item.avatarUrl, name = fullName, size = 40.dp)
         Text(
             androidx.compose.ui.text.buildAnnotatedString {
                 pushStyle(androidx.compose.ui.text.SpanStyle(color = colors.textPrimary, fontWeight = FontWeight.SemiBold))
@@ -401,7 +405,7 @@ private fun FeedRow(item: FeedItem, now: Long, onOpenProfile: (String) -> Unit) 
             color = colors.textMuted,
             modifier = Modifier.weight(1f),
         )
-        Text(feedTimeAgo(item.createdAt, now), style = MonoLabelSmall, color = colors.textMuted)
+        Text(feedTimeAgo(item.createdAt, now), style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
     }
 }
 

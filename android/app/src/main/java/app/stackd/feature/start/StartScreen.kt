@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -179,6 +181,7 @@ private fun BlockLabel(text: String) {
 }
 
 /** The headline choice: a big serif number, its consequence, and the controls. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
     val colors = Stackd.colors
@@ -236,18 +239,37 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
             },
             valueRange = StartUiState.MIN_MINUTES.toFloat()..StartUiState.MAX_MINUTES.toFloat(),
             enabled = !state.durationLocked,
-            colors = SliderDefaults.colors(
-                thumbColor = colors.textPrimary,
-                activeTrackColor = colors.accent,
-                inactiveTrackColor = colors.textPrimary.copy(alpha = 0.12f),
-                disabledThumbColor = colors.textMuted,
-                disabledActiveTrackColor = colors.textMuted,
-            ),
+            // Own thumb + track: M3's default draws a detached bar thumb and a
+            // stop dot that read as a broken control at the low end.
+            thumb = {
+                Box(
+                    Modifier
+                        .size(26.dp)
+                        .background(if (state.durationLocked) colors.textMuted else colors.textPrimary, CircleShape),
+                )
+            },
+            track = { s ->
+                val frac = ((s.value - s.valueRange.start) / (s.valueRange.endInclusive - s.valueRange.start)).coerceIn(0f, 1f)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .background(colors.textPrimary.copy(alpha = 0.12f), CircleShape),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(frac)
+                            .height(6.dp)
+                            .background(if (state.durationLocked) colors.textMuted else colors.accent, CircleShape),
+                    )
+                }
+            },
         )
         Spacer(Modifier.height(8.dp))
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             StartUiState.QUICK_DURATIONS.forEach { m ->
                 Pill(
@@ -286,7 +308,7 @@ private fun Pill(label: String, badge: String?, selected: Boolean, enabled: Bool
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = FontWeight.SemiBold)
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = fg, fontWeight = FontWeight.SemiBold)
         badge?.let {
             Text(it, style = MonoLabelSmall, color = if (selected) colors.background.copy(alpha = 0.6f) else colors.accent)
         }
@@ -380,7 +402,7 @@ private fun ModeSegment(mode: String, onSetMode: (String) -> Unit) {
             ) {
                 Text(
                     label,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = if (selected) colors.background else colors.textMuted,
                 )
