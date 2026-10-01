@@ -121,7 +121,7 @@ fun PremiumScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / PREMIUM", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / PREMIUM", onBack, title = "Premium")
             Spacer(Modifier.height(24.dp))
 
             val ent = state.entitlement

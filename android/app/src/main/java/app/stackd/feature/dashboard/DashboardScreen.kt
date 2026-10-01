@@ -23,12 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -359,7 +353,7 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
                 }
             }
             IconButton(onClick = onMore) {
-                Icon(Icons.Outlined.GridView, contentDescription = "More", tint = colors.textMuted)
+                Icon(app.stackd.core.ui.StackdIcons.GridView, contentDescription = "More", tint = colors.textMuted)
             }
         }
         Spacer(Modifier.height(20.dp))
@@ -377,7 +371,7 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Filled.LocalFireDepartment,
+                        app.stackd.core.ui.StackdIcons.LocalFireDepartment,
                         contentDescription = null,
                         tint = if (state.streak > 0) colors.accent else colors.textMuted,
                         modifier = Modifier.size(26.dp),
@@ -450,7 +444,7 @@ private fun GoalRing(minutes: Int, goal: Int, modifier: Modifier = Modifier) {
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                "$minutes",
+                "${app.stackd.core.ui.animatedCount(minutes.toFloat()).toInt()}",
                 style = MaterialTheme.typography.headlineMedium,
                 color = colors.textPrimary,
                 fontWeight = FontWeight.Bold,
@@ -496,7 +490,7 @@ private fun SuggestedSession(
             Modifier.size(44.dp).background(colors.accent.copy(alpha = 0.14f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = colors.accent)
+            Icon(app.stackd.core.ui.StackdIcons.PlayArrow, contentDescription = null, tint = colors.accent)
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
@@ -528,7 +522,7 @@ private fun SuggestedSession(
         Column {
             IconButton(onClick = onDismiss) {
                 Icon(
-                    Icons.Outlined.Close,
+                    app.stackd.core.ui.StackdIcons.Close,
                     contentDescription = "Dismiss suggestion",
                     tint = colors.textMuted,
                     modifier = Modifier.size(18.dp),
@@ -543,7 +537,7 @@ private fun SuggestedSession(
                     )
                 } else {
                     Icon(
-                        Icons.Outlined.Refresh,
+                        app.stackd.core.ui.StackdIcons.Refresh,
                         contentDescription = "New suggestion",
                         tint = colors.textMuted,
                         modifier = Modifier.size(18.dp),
@@ -641,7 +635,7 @@ private fun StatTiles(state: DashboardUiState) {
             Text("LIFETIME PRESENCE", style = MonoLabelSmall, color = colors.textMuted)
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    String.format(java.util.Locale.US, "%.1f", state.totalSeconds / 3600.0),
+                    String.format(java.util.Locale.US, "%.1f", app.stackd.core.ui.animatedCount((state.totalSeconds / 3600.0).toFloat())),
                     style = MaterialTheme.typography.displayMedium,
                     color = colors.textPrimary,
                     fontWeight = FontWeight.ExtraBold,
@@ -656,7 +650,7 @@ private fun StatTiles(state: DashboardUiState) {
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile(state.lifetimeXp.toString(), "Lifetime XP", Modifier.fillMaxWidth())
+            StatTile(app.stackd.core.ui.animatedCount(state.lifetimeXp.toFloat()).toInt().toString(), "Lifetime XP", Modifier.fillMaxWidth())
             StatTile(
                 state.avgScore.toString(),
                 // Tier reads from the value colour; naming it truncated ("Protocol Co…").
@@ -1001,7 +995,7 @@ private fun UpgradeRow(onOpenPremium: () -> Unit, onDismiss: () -> Unit) {
         TextAction("See plans", enabled = true, onClick = onOpenPremium)
         IconButton(onClick = onDismiss) {
             Icon(
-                Icons.Outlined.Close,
+                app.stackd.core.ui.StackdIcons.Close,
                 contentDescription = "Dismiss Premium offer",
                 tint = colors.textMuted,
                 modifier = Modifier.size(18.dp),

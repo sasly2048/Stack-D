@@ -37,8 +37,6 @@ import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.feature.profile.FeatureEmptyState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Flag
 import app.stackd.data.progression.Challenge
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,7 +103,7 @@ fun ChallengesScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / CHALLENGES", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / CHALLENGES", onBack, title = "Challenges")
             Spacer(Modifier.height(16.dp))
             SectionLabel("PROVE IT")
             Spacer(Modifier.height(16.dp))
@@ -139,7 +137,7 @@ fun ChallengesScreen(
                         // this a user with no active challenges — every new user —
                         // saw a blank screen.
                         FeatureEmptyState(
-                            icon = Icons.Outlined.Flag,
+                            icon = app.stackd.core.ui.StackdIcons.Flag,
                             title = if (cadence == "daily") "No challenges today" else "No challenges this week",
                             body = "Hold a focus session to earn ${
                                 if (cadence == "daily") "today's" else "this week's"

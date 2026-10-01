@@ -52,9 +52,6 @@ import app.stackd.feature.profile.FeatureEmptyState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.ui.graphics.Color
 import app.stackd.data.social.LeaderboardGroup
 import app.stackd.data.social.LeaderboardProfile
@@ -137,7 +134,7 @@ fun LeaderboardScreen(
     app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
         item(key = "header") {
             Column {
-                app.stackd.core.ui.ScreenHeader("STACK'D / LEADERBOARD", onBack)
+                app.stackd.core.ui.ScreenHeader("STACK'D / LEADERBOARD", onBack, title = "Leaderboard")
                 Spacer(Modifier.height(16.dp))
                 SectionLabel("THE STANDINGS")
                 Spacer(Modifier.height(16.dp))
@@ -206,14 +203,14 @@ fun LeaderboardScreen(
             }
             tab == "individual" && state.individuals.isEmpty() -> item(key = "empty-p") {
                 FeatureEmptyState(
-                    icon = Icons.Outlined.Leaderboard,
+                    icon = app.stackd.core.ui.StackdIcons.Leaderboard,
                     title = "The board is empty",
                     body = "Hold a session to earn XP and claim the first spot.",
                 )
             }
             tab == "groups" && state.groups.isEmpty() -> item(key = "empty-g") {
                 FeatureEmptyState(
-                    icon = Icons.Outlined.Groups,
+                    icon = app.stackd.core.ui.StackdIcons.Groups,
                     title = "No groups ranked yet",
                     body = "Groups appear here once their members start earning XP.",
                 )

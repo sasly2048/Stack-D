@@ -47,9 +47,6 @@ import app.stackd.core.ui.SkeletonCard
 import app.stackd.core.ui.pressFeedback
 import app.stackd.feature.profile.FeatureEmptyState
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.runtime.remember
 import app.stackd.data.social.FeedItem
 import app.stackd.data.social.FriendPresence
@@ -181,7 +178,7 @@ fun FeedScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / SIGNAL", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / SIGNAL", onBack, title = "Feed")
             Spacer(Modifier.height(16.dp))
             SectionLabel("FEED")
             Spacer(Modifier.height(16.dp))
@@ -223,7 +220,7 @@ fun FeedScreen(
                         // An empty state that only names the problem is a dead
                         // end — both ways out of it are one tap away.
                         FeatureEmptyState(
-                            icon = Icons.Outlined.Sensors,
+                            icon = app.stackd.core.ui.StackdIcons.Sensors,
                             title = "No signal yet",
                             body = "Finished sessions from you and your ties show up here.",
                         )
@@ -253,7 +250,7 @@ private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit,
     Spacer(Modifier.height(8.dp))
     if (circle.isEmpty()) {
         FeatureEmptyState(
-            icon = Icons.Outlined.Group,
+            icon = app.stackd.core.ui.StackdIcons.Group,
             title = "No ties yet",
             body = "Add a friend to see when they're focusing.",
             actionText = "Find someone",

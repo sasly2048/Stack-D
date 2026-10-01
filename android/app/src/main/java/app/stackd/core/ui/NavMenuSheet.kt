@@ -19,28 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountTree
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Diamond
-import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.Extension
-import androidx.compose.material.icons.outlined.Fingerprint
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Handshake
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.HourglassTop
-import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.Leaderboard
-import androidx.compose.material.icons.outlined.MoreHoriz
-import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material.icons.outlined.Replay
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -72,30 +50,30 @@ private val GROUPS: List<Pair<String, List<String>>> = listOf(
 private val ON_TAB_BAR = setOf("Feed", "Insights", "Profile")
 
 private fun iconFor(label: String): ImageVector = when (label) {
-    "Atlas" -> Icons.Outlined.AutoAwesome
-    "Challenges" -> Icons.Outlined.Flag
-    "Seasons" -> Icons.Outlined.CalendarMonth
-    "Timeline" -> Icons.Outlined.History
-    "Replay" -> Icons.Outlined.Replay
-    "Achievements" -> Icons.Outlined.EmojiEvents
-    "Leaderboard" -> Icons.Outlined.Leaderboard
-    "Focus DNA" -> Icons.Outlined.Fingerprint
-    "Wrapped" -> Icons.Outlined.Bolt
-    "Friends" -> Icons.Outlined.PersonAdd
-    "Circles" -> Icons.Outlined.Groups
-    "Groups" -> Icons.Outlined.AccountTree
-    "Partners" -> Icons.Outlined.Handshake
-    "Memory Vault" -> Icons.Outlined.Inventory2
-    "Time Capsule" -> Icons.Outlined.HourglassTop
-    "Premium" -> Icons.Outlined.WorkspacePremium
-    "Trust & Safety" -> Icons.Outlined.Shield
-    "Integrations" -> Icons.Outlined.Extension
+    "Atlas" -> app.stackd.core.ui.StackdIcons.AutoAwesome
+    "Challenges" -> app.stackd.core.ui.StackdIcons.Flag
+    "Seasons" -> app.stackd.core.ui.StackdIcons.CalendarMonth
+    "Timeline" -> app.stackd.core.ui.StackdIcons.History
+    "Replay" -> app.stackd.core.ui.StackdIcons.Replay
+    "Achievements" -> app.stackd.core.ui.StackdIcons.EmojiEvents
+    "Leaderboard" -> app.stackd.core.ui.StackdIcons.Leaderboard
+    "Focus DNA" -> app.stackd.core.ui.StackdIcons.Fingerprint
+    "Wrapped" -> app.stackd.core.ui.StackdIcons.Bolt
+    "Friends" -> app.stackd.core.ui.StackdIcons.PersonAdd
+    "Circles" -> app.stackd.core.ui.StackdIcons.Groups
+    "Groups" -> app.stackd.core.ui.StackdIcons.AccountTree
+    "Partners" -> app.stackd.core.ui.StackdIcons.Handshake
+    "Memory Vault" -> app.stackd.core.ui.StackdIcons.Inventory2
+    "Time Capsule" -> app.stackd.core.ui.StackdIcons.HourglassTop
+    "Premium" -> app.stackd.core.ui.StackdIcons.WorkspacePremium
+    "Trust & Safety" -> app.stackd.core.ui.StackdIcons.Shield
+    "Integrations" -> app.stackd.core.ui.StackdIcons.Extension
     else -> if (label.contains("CSV", ignoreCase = true) || label.contains("Export", ignoreCase = true)) {
-        Icons.Outlined.FileDownload
+        app.stackd.core.ui.StackdIcons.FileDownload
     } else if (label.contains("Premium", ignoreCase = true)) {
-        Icons.Outlined.Diamond
+        app.stackd.core.ui.StackdIcons.Diamond
     } else {
-        Icons.Outlined.MoreHoriz
+        app.stackd.core.ui.StackdIcons.MoreHoriz
     }
 }
 

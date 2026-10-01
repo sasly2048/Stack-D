@@ -41,8 +41,6 @@ import app.stackd.core.ui.pressFeedback
 import app.stackd.feature.profile.FeatureEmptyState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.runtime.remember
 import androidx.compose.ui.semantics.Role
 import app.stackd.core.theme.SerifFamily
@@ -194,7 +192,7 @@ fun CirclesScreen(
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
                 state.circles.isEmpty() -> FeatureEmptyState(
-                    icon = Icons.Outlined.Groups,
+                    icon = app.stackd.core.ui.StackdIcons.Groups,
                     title = "No circles yet",
                     body = "Study with a small crew and climb a shared weekly board.",
                     actionText = "Create or join",

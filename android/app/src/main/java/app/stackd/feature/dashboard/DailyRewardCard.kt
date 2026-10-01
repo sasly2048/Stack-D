@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CardGiftcard
-import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -100,7 +97,7 @@ private fun RewardChip(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            Icons.Outlined.CardGiftcard,
+            app.stackd.core.ui.StackdIcons.CardGiftcard,
             contentDescription = null,
             tint = if (claimable) colors.accent else colors.textMuted,
             modifier = Modifier.size(20.dp),
@@ -155,7 +152,7 @@ private fun ChallengeChip(progress: Float, modifier: Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            Icons.Outlined.EmojiEvents,
+            app.stackd.core.ui.StackdIcons.EmojiEvents,
             contentDescription = null,
             tint = if (done) colors.accent else colors.textMuted,
             modifier = Modifier.size(20.dp),

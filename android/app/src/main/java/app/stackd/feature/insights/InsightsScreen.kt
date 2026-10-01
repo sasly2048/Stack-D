@@ -221,7 +221,7 @@ fun InsightsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / INSIGHTS", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / INSIGHTS", onBack, title = "Your progress")
             Spacer(Modifier.height(16.dp))
             SectionLabel("120-DAY LEDGER")
             Spacer(Modifier.height(16.dp))

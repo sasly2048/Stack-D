@@ -49,9 +49,6 @@ import app.stackd.core.ui.SkeletonBlock
 import app.stackd.core.ui.SkeletonCard
 import app.stackd.feature.profile.FeatureEmptyState
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.ui.semantics.Role
 import app.stackd.data.trust.BlockedUser
 import app.stackd.data.trust.MyReport
@@ -184,7 +181,7 @@ fun TrustScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / SAFETY", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / SAFETY", onBack, title = "Trust & safety")
             Spacer(Modifier.height(16.dp))
             SectionLabel("TRUST & SAFETY")
             Spacer(Modifier.height(8.dp))
@@ -229,7 +226,7 @@ fun TrustScreen(
                     Spacer(Modifier.height(8.dp))
                     if (state.blocks.isEmpty()) {
                         FeatureEmptyState(
-                            icon = Icons.Outlined.VerifiedUser,
+                            icon = app.stackd.core.ui.StackdIcons.VerifiedUser,
                             title = "Nobody blocked",
                             body = "You're on good terms with everyone.",
                         )
@@ -271,7 +268,7 @@ fun TrustScreen(
                     Spacer(Modifier.height(8.dp))
                     if (state.reports.isEmpty()) {
                         FeatureEmptyState(
-                            icon = Icons.Outlined.Flag,
+                            icon = app.stackd.core.ui.StackdIcons.Flag,
                             title = "No reports filed",
                             body = "Report from any profile or room when something's off.",
                         )

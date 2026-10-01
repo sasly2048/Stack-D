@@ -50,8 +50,6 @@ import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonCard
 import app.stackd.feature.profile.FeatureEmptyState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Webhook
 import androidx.compose.ui.graphics.Color
 import app.stackd.data.webhooks.WEBHOOK_EVENTS
 import app.stackd.data.webhooks.Webhook
@@ -185,7 +183,7 @@ fun WebhooksRoute(
     ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
         item(key = "header") {
             Column {
-                app.stackd.core.ui.ScreenHeader("STACK'D / WEBHOOKS", onBack)
+                app.stackd.core.ui.ScreenHeader("STACK'D / WEBHOOKS", onBack, title = "Webhooks")
                 Spacer(Modifier.height(16.dp))
                 SectionLabel("WEBHOOKS")
                 Spacer(Modifier.height(8.dp))
@@ -261,7 +259,7 @@ fun WebhooksRoute(
             }
             state.hooks.isEmpty() -> item(key = "empty") {
                 FeatureEmptyState(
-                    icon = Icons.Outlined.Webhook,
+                    icon = app.stackd.core.ui.StackdIcons.Webhook,
                     title = "No webhooks yet",
                     body = "Add an endpoint above to get events as they happen.",
                 )

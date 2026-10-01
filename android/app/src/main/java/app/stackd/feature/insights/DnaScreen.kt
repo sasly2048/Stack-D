@@ -125,7 +125,7 @@ fun DnaScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / DNA", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / DNA", onBack, title = "Focus DNA")
             Spacer(Modifier.height(16.dp))
             SectionLabel("FOCUS DNA")
             Spacer(Modifier.height(16.dp))

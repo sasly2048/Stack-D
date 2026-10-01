@@ -88,7 +88,7 @@ fun IntegrationsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / ECOSYSTEM", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / ECOSYSTEM", onBack, title = "Integrations")
             Spacer(Modifier.height(16.dp))
             SectionLabel("INTEGRATIONS")
             Spacer(Modifier.height(8.dp))

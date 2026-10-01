@@ -41,8 +41,6 @@ import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.core.ui.SkeletonCard
 import app.stackd.feature.profile.FeatureEmptyState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.EmojiEvents
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
@@ -168,7 +166,7 @@ fun AchievementsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / ACHIEVEMENTS", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / ACHIEVEMENTS", onBack, title = "Achievements")
             Spacer(Modifier.height(16.dp))
             SectionLabel("YOUR MARKS")
             Spacer(Modifier.height(4.dp))
@@ -223,7 +221,7 @@ fun AchievementsScreen(
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
                 state.rows.isEmpty() -> FeatureEmptyState(
-                    icon = Icons.Outlined.EmojiEvents,
+                    icon = app.stackd.core.ui.StackdIcons.EmojiEvents,
                     title = "No achievements yet",
                     body = "Marks appear here as the catalog fills. Keep holding sessions.",
                 )

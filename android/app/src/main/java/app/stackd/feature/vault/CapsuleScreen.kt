@@ -42,8 +42,6 @@ import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.feature.profile.FeatureEmptyState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.Alignment
@@ -158,7 +156,7 @@ fun CapsuleScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / CAPSULE", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / CAPSULE", onBack, title = "Time capsule")
             Spacer(Modifier.height(16.dp))
             SectionLabel("TIME CAPSULES")
             Spacer(Modifier.height(16.dp))
@@ -216,7 +214,7 @@ fun CapsuleScreen(
                     Spacer(Modifier.height(24.dp))
                     if (state.rows.isEmpty()) {
                         FeatureEmptyState(
-                            icon = Icons.Outlined.HourglassEmpty,
+                            icon = app.stackd.core.ui.StackdIcons.HourglassEmpty,
                             title = "No capsules yet",
                             body = "Write a note above and seal it for your future self.",
                         )

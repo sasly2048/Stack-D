@@ -24,6 +24,7 @@ androidxJunit = "1.2.1"
 espresso = "3.6.1"
 
 [libraries]
+lucide = { group = "com.composables", name = "icons-lucide-android", version = "1.1.0" }
 haze = { group = "dev.chrisbanes.haze", name = "haze", version = "1.1.1" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }

@@ -46,8 +46,6 @@ import app.stackd.core.ui.pressFeedback
 import app.stackd.feature.profile.FeatureEmptyState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.ui.semantics.Role
 import app.stackd.data.social.BoardEntry
 import app.stackd.data.social.GroupSummary
@@ -251,7 +249,7 @@ fun GroupsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("CIRCLES / LEADERBOARDS", onBack)
+            app.stackd.core.ui.ScreenHeader("CIRCLES / LEADERBOARDS", onBack, title = "Focus circles")
             Spacer(Modifier.height(16.dp))
             SectionLabel("FOCUS CIRCLES")
             Spacer(Modifier.height(16.dp))
@@ -303,7 +301,7 @@ fun GroupsScreen(
                     if (state.groups.isEmpty()) {
                         // The create field sits right above, so no extra button here.
                         FeatureEmptyState(
-                            icon = Icons.Outlined.Groups,
+                            icon = app.stackd.core.ui.StackdIcons.Groups,
                             title = "No circles yet",
                             body = "Name one above to forge the first circle.",
                         )

@@ -111,6 +111,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     // Real backdrop blur for the floating tab bar (web's backdrop-filter glass).
     implementation(libs.haze)
+    // Lucide — the icon set the web uses (lucide-react); thinner, rounded strokes.
+    implementation(libs.lucide)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.navigation.compose)

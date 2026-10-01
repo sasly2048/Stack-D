@@ -21,16 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Insights
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -72,10 +62,10 @@ val TabBarHeight = BarHeight + BarMargin
 data class TabItem(val route: String, val label: String, val icon: ImageVector, val iconSelected: ImageVector)
 
 val StackdTabs = listOf(
-    TabItem("dashboard", "Home", Icons.Outlined.Home, Icons.Filled.Home),
-    TabItem("insights", "Progress", Icons.Outlined.Insights, Icons.Filled.Insights),
-    TabItem("feed", "Social", Icons.Outlined.People, Icons.Filled.People),
-    TabItem("profile", "Profile", Icons.Outlined.Person, Icons.Filled.Person),
+    TabItem("dashboard", "Home", app.stackd.core.ui.StackdIcons.Home, app.stackd.core.ui.StackdIcons.Home),
+    TabItem("insights", "Progress", app.stackd.core.ui.StackdIcons.Insights, app.stackd.core.ui.StackdIcons.Insights),
+    TabItem("feed", "Social", app.stackd.core.ui.StackdIcons.People, app.stackd.core.ui.StackdIcons.People),
+    TabItem("profile", "Profile", app.stackd.core.ui.StackdIcons.Person, app.stackd.core.ui.StackdIcons.Person),
 )
 
 /**
@@ -187,6 +177,6 @@ private fun StartButton(onStart: () -> Unit) {
             .semantics { contentDescription = "Start a focus session" },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.Add, contentDescription = null, tint = Obsidian, modifier = Modifier.size(28.dp))
+        Icon(app.stackd.core.ui.StackdIcons.Add, contentDescription = null, tint = Obsidian, modifier = Modifier.size(28.dp))
     }
 }

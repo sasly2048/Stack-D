@@ -44,8 +44,6 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SkeletonBlock
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.EmojiEvents
 import app.stackd.data.profile.PublicProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -269,7 +267,7 @@ fun ProfileDetailScreen(
                     Spacer(Modifier.height(8.dp))
                     if (state.profile.achievements.isEmpty()) {
                         FeatureEmptyState(
-                            icon = Icons.Outlined.EmojiEvents,
+                            icon = app.stackd.core.ui.StackdIcons.EmojiEvents,
                             title = "No unlocks yet",
                             body = "Achievements show up here as they're earned.",
                         )

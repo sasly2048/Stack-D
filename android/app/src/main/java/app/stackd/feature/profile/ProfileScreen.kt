@@ -1,8 +1,6 @@
 package app.stackd.feature.profile
 
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MilitaryTech
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.core.ui.SkeletonCard
 import androidx.compose.ui.Alignment
@@ -452,7 +450,7 @@ private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf)
 
     if (shelf.earned.isEmpty()) {
         FeatureEmptyState(
-            icon = Icons.Outlined.MilitaryTech,
+            icon = app.stackd.core.ui.StackdIcons.MilitaryTech,
             title = "No milestones yet",
             body = "Your first plate is engraved at 100 hours held.",
         )

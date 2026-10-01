@@ -40,8 +40,6 @@ import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonCard
 import app.stackd.feature.profile.FeatureEmptyState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.VerifiedUser
 import app.stackd.data.trust.HostReport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -151,7 +149,7 @@ fun ModerationScreen(
     app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
       item(key = "header") {
         Column {
-            app.stackd.core.ui.ScreenHeader("STACK'D / MODERATION", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / MODERATION", onBack, title = "Moderation")
             Spacer(Modifier.height(16.dp))
             SectionLabel("MODERATION")
             Spacer(Modifier.height(8.dp))
@@ -209,7 +207,7 @@ fun ModerationScreen(
             }
             state.visible.isEmpty() -> item(key = "empty") {
                 FeatureEmptyState(
-                    icon = Icons.Outlined.VerifiedUser,
+                    icon = app.stackd.core.ui.StackdIcons.VerifiedUser,
                     title = "All clear",
                     body = "No reports here. Rooms you host are clean.",
                 )

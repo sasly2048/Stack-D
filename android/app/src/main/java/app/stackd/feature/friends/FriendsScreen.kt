@@ -42,8 +42,6 @@ import app.stackd.core.ui.SkeletonBlock
 import app.stackd.core.ui.pressFeedback
 import app.stackd.feature.profile.FeatureEmptyState
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.PersonAddAlt
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.semantics.Role
 import app.stackd.core.theme.Stackd
@@ -177,7 +175,7 @@ fun FriendsScreen(
     app.stackd.core.ui.ResponsiveLazyColumn(modifier = modifier.background(colors.background)) {
         item(key = "header") {
             Column {
-                app.stackd.core.ui.ScreenHeader("STACK'D / FRIENDS", onBack)
+                app.stackd.core.ui.ScreenHeader("STACK'D / FRIENDS", onBack, title = "Friends")
                 Spacer(Modifier.height(16.dp))
                 SectionLabel("YOUR PEOPLE")
                 Spacer(Modifier.height(16.dp))
@@ -262,7 +260,7 @@ fun FriendsScreen(
                         if (state.friends.isEmpty()) {
                             // Search sits right above, so no extra button.
                             FeatureEmptyState(
-                                icon = Icons.Outlined.PersonAddAlt,
+                                icon = app.stackd.core.ui.StackdIcons.PersonAddAlt,
                                 title = "No friends yet",
                                 body = "Search above to send your first request.",
                             )

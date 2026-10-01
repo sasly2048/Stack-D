@@ -50,8 +50,6 @@ import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.feature.profile.FeatureEmptyState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.History
 import app.stackd.data.timeline.REACTION_PICKER
 import app.stackd.data.timeline.Reaction
 import app.stackd.data.timeline.TimelineSession
@@ -204,7 +202,7 @@ fun TimelineScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("RECORD / SESSIONS", onBack)
+            app.stackd.core.ui.ScreenHeader("RECORD / SESSIONS", onBack, title = "Timeline")
             Spacer(Modifier.height(16.dp))
             SectionLabel("TIMELINE")
             Spacer(Modifier.height(16.dp))
@@ -227,7 +225,7 @@ fun TimelineScreen(
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
                 state.items.isEmpty() -> FeatureEmptyState(
-                    icon = Icons.Outlined.History,
+                    icon = app.stackd.core.ui.StackdIcons.History,
                     title = "No sessions yet",
                     body = "Start one to write the first line of your record.",
                 )

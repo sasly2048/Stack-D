@@ -21,8 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.ui.semantics.Role
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.feature.profile.FeatureEmptyState
@@ -177,7 +175,7 @@ fun ReplayScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / REPLAY", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / REPLAY", onBack, title = "Replay")
             Spacer(Modifier.height(16.dp))
             SectionLabel("FOCUS REPLAY")
             Spacer(Modifier.height(8.dp))
@@ -267,7 +265,7 @@ fun ReplayScreen(
                     SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(40.dp))
                 }
                 state.events.isEmpty() -> FeatureEmptyState(
-                    icon = Icons.Outlined.EventBusy,
+                    icon = app.stackd.core.ui.StackdIcons.EventBusy,
                     title = "A quiet day",
                     body = "No focus activity on this day. Try another date.",
                 )

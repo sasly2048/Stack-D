@@ -39,6 +39,8 @@ fun ScreenHeader(
     path: String,
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** Large serif page title under the breadcrumb (web pages' ont-serif h1). */
+    title: String? = null,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = Stackd.colors
@@ -46,7 +48,8 @@ fun ScreenHeader(
     val back = if (LocalIsTabRoot.current) null else onBack
     // Fixed 48dp row: the room screen shows/hides back by phase, and a header
     // that changed height made the content below jump.
-    Row(modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+    androidx.compose.foundation.layout.Column(modifier.fillMaxWidth()) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
         if (back != null) {
             Box(
                 Modifier
@@ -83,6 +86,20 @@ fun ScreenHeader(
                 .offset(x = if (back != null) (-32).dp else 0.dp),
         )
         trailing()
+    }
+    // Large title: one clear 'you are here' per screen, in the web's serif, so a
+    // page reads as a destination rather than a stack of small labels.
+    if (title != null) {
+        androidx.compose.foundation.layout.Spacer(Modifier.heightIn(min = 6.dp))
+        Text(
+            title,
+            style = androidx.compose.material3.MaterialTheme.typography.displaySmall,
+            fontFamily = app.stackd.core.theme.SerifFamily,
+            color = colors.textPrimary,
+            maxLines = 2,
+        )
+        androidx.compose.foundation.layout.Spacer(Modifier.heightIn(min = 4.dp))
+    }
     }
 }
 

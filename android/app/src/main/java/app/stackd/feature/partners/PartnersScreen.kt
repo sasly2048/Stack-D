@@ -42,8 +42,6 @@ import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.feature.profile.FeatureEmptyState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Handshake
 import app.stackd.data.social.Partner
 import app.stackd.data.social.PersonRef
 import kotlinx.coroutines.delay
@@ -172,7 +170,7 @@ fun PartnersScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / ACCOUNTABILITY", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / ACCOUNTABILITY", onBack, title = "Partners")
             Spacer(Modifier.height(16.dp))
             SectionLabel("PARTNERS")
             Spacer(Modifier.height(8.dp))
@@ -241,7 +239,7 @@ fun PartnersScreen(
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
                 state.partners.isEmpty() -> FeatureEmptyState(
-                    icon = Icons.Outlined.Handshake,
+                    icon = app.stackd.core.ui.StackdIcons.Handshake,
                     title = "No partners yet",
                     body = "Search above and invite someone as your mentor or mentee.",
                 )

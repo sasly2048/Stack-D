@@ -45,9 +45,6 @@ import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.feature.profile.FeatureEmptyState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Leaderboard
 import app.stackd.data.progression.Season
 import app.stackd.data.progression.SeasonStanding
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -154,7 +151,7 @@ fun SeasonsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / SEASONS", onBack)
+            app.stackd.core.ui.ScreenHeader("STACK'D / SEASONS", onBack, title = "Seasons")
             Spacer(Modifier.height(16.dp))
             SectionLabel("THE SEASON")
             Spacer(Modifier.height(16.dp))
@@ -180,7 +177,7 @@ fun SeasonsScreen(
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
                 state.season == null -> FeatureEmptyState(
-                    icon = Icons.Outlined.CalendarMonth,
+                    icon = app.stackd.core.ui.StackdIcons.CalendarMonth,
                     title = "No season running",
                     body = "The next season opens soon. Your sessions still earn XP meanwhile.",
                 )
@@ -251,7 +248,7 @@ fun SeasonsScreen(
                     Spacer(Modifier.height(8.dp))
                     if (state.standings.isEmpty()) {
                         FeatureEmptyState(
-                            icon = Icons.Outlined.Leaderboard,
+                            icon = app.stackd.core.ui.StackdIcons.Leaderboard,
                             title = "No entries yet",
                             body = "Join and hold a session to take the first spot.",
                         )
