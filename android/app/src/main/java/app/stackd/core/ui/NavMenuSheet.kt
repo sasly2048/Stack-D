@@ -118,7 +118,10 @@ fun NavMenuSheet(
         .plus("More" to byLabel.keys.filter { it !in known })
         .filter { it.second.isNotEmpty() }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface) {
+    // Open fully: 18 tiles never fit the half-height peek, which cut the grid
+    // mid-row and made Back collapse instead of close.
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = colors.surface) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             modifier = Modifier.padding(horizontal = 16.dp),

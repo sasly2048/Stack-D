@@ -46,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -609,12 +610,17 @@ private fun StatTiles(state: DashboardUiState) {
     val tier = FocusScore.tierForScore(state.avgScore.toDouble())
     // Three equal tiles in one row: one glance, no scrolling past a giant
     // hours number. Streak lives in the hero, so it isn't repeated here.
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    // IntrinsicSize.Min + fillMaxHeight: tiles share one height whatever the text.
+    Row(
+        modifier = Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         StatTile(formatHours(state.totalSeconds), "Focused", Modifier.weight(1f))
         StatTile(state.lifetimeXp.toString(), "Lifetime XP", Modifier.weight(1f))
         StatTile(
             state.avgScore.toString(),
-            "Avg score · ${tier.label}",
+            // Tier reads from the value colour; naming it truncated ("Protocol Co…").
+            "Avg score",
             Modifier.weight(1f),
             valueColor = Color(tier.hex),
         )
@@ -631,6 +637,7 @@ private fun StatTile(
     val colors = Stackd.colors
     Column(
         modifier = modifier
+            .fillMaxHeight()
             .background(colors.textPrimary.copy(alpha = 0.04f), RadiusMd)
             .border(1.dp, colors.border, RadiusMd)
             .padding(horizontal = 14.dp, vertical = 16.dp)
@@ -648,7 +655,7 @@ private fun StatTile(
             label,
             style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
