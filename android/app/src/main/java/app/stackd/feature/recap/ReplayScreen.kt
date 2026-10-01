@@ -20,6 +20,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.ui.semantics.Role
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.feature.profile.FeatureEmptyState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -191,8 +197,9 @@ fun ReplayScreen(
                 color = colors.accent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showPicker = true }
-                    .padding(vertical = 10.dp),
+                    .heightIn(min = 48.dp)
+                    .clickable(role = Role.Button, onClickLabel = "Pick a date") { showPicker = true }
+                    .padding(vertical = 14.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
@@ -249,26 +256,25 @@ fun ReplayScreen(
             Spacer(Modifier.height(16.dp))
             ProgressBar(state.progress)
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
             Text("HOURLY HEAT", style = MonoLabelSmall, color = colors.textMuted)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             HourHeat(state.events)
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
             when {
-                state.loading -> Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
-                state.events.isEmpty() -> Text(
-                    "No focus activity on this day.",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                state.loading -> repeat(5) {
+                    SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(40.dp))
+                }
+                state.events.isEmpty() -> FeatureEmptyState(
+                    icon = Icons.Outlined.EventBusy,
+                    title = "A quiet day",
+                    body = "No focus activity on this day. Try another date.",
                 )
                 else -> state.visible.forEach { TimelineRow(it) }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }

@@ -45,6 +45,14 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.ui.semantics.Role
 import app.stackd.data.trust.BlockedUser
 import app.stackd.data.trust.MyReport
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -184,23 +192,30 @@ fun TrustScreen(
                 "Blocks are silent. Reports go to moderators.",
                 style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
             GhostButton(text = "Host moderation dashboard", onClick = onOpenModeration)
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
             ReportRoomForm(filing = state.filing, onFile = onFileReport)
 
             state.notice?.let {
-                Spacer(Modifier.height(12.dp))
-                Text(it, style = MonoLabelSmall, color = colors.accent)
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall, color = colors.accent)
             }
 
             Spacer(Modifier.height(24.dp))
             when {
-                state.loading -> Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    SkeletonBlock(Modifier.fillMaxWidth(0.3f).height(10.dp))
+                    Spacer(Modifier.height(8.dp))
+                    repeat(2) {
+                        SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(56.dp), Radius2Xl)
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth(0.3f).height(10.dp))
+                    Spacer(Modifier.height(8.dp))
+                    SkeletonCard(height = 88.dp)
+                }
                 state.error -> {
                     Text(
                         "Couldn't load your safety settings.",
@@ -211,18 +226,19 @@ fun TrustScreen(
                 }
                 else -> {
                     Text("BLOCKED USERS", style = MonoLabelSmall, color = colors.textMuted)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     if (state.blocks.isEmpty()) {
-                        Text(
-                            "Nobody blocked. You're on good terms with everyone.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.VerifiedUser,
+                            title = "Nobody blocked",
+                            body = "You're on good terms with everyone.",
                         )
                     }
                     state.blocks.forEach { b ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 3.dp)
+                                .padding(vertical = 4.dp)
                                 .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
                                 .border(1.dp, colors.border, Radius2Xl)
                                 .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -240,29 +256,31 @@ fun TrustScreen(
                                 style = MonoLabelSmall,
                                 color = colors.accent,
                                 modifier = Modifier
-                                    .clickable(enabled = state.unblocking == null) {
+                                    .minimumInteractiveComponentSize()
+                                    .clickable(enabled = state.unblocking == null, role = Role.Button) {
                                         onUnblock(b.userId)
                                     }
-                                    .padding(8.dp),
+                                    .wrapContentHeight(Alignment.CenterVertically)
+                                    .padding(horizontal = 8.dp),
                             )
                         }
                     }
 
                     Spacer(Modifier.height(24.dp))
                     Text("YOUR REPORTS", style = MonoLabelSmall, color = colors.textMuted)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     if (state.reports.isEmpty()) {
-                        Text(
-                            "No reports filed. Report from any profile or room when needed.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.Flag,
+                            title = "No reports filed",
+                            body = "Report from any profile or room when something's off.",
                         )
                     }
                     state.reports.forEach { ReportCard(it) }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }
@@ -354,7 +372,7 @@ private fun ReportRoomForm(filing: Boolean, onFile: (String, String, String) -> 
         label = { Text("Reason (optional)") },
         modifier = Modifier.fillMaxWidth(),
     )
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(16.dp))
     EmberButton(
         text = if (filing) "Filing…" else "File report",
         onClick = {

@@ -42,6 +42,15 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
+import app.stackd.core.ui.pressFeedback
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Sensors
+import androidx.compose.runtime.remember
 import app.stackd.data.social.FeedItem
 import app.stackd.data.social.FriendPresence
 import app.stackd.data.social.PresenceStatus
@@ -178,10 +187,26 @@ fun FeedScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Loading your feed…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    // Circle panel, then feed rows (avatar + two lines).
+                    SkeletonBlock(Modifier.fillMaxWidth(0.25f).height(10.dp))
+                    Spacer(Modifier.height(8.dp))
+                    SkeletonCard(height = 112.dp)
+                    Spacer(Modifier.height(12.dp))
+                    repeat(4) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            SkeletonBlock(Modifier.size(36.dp), CircleShape)
+                            Column(Modifier.weight(1f)) {
+                                SkeletonBlock(Modifier.fillMaxWidth(0.4f).height(14.dp))
+                                Spacer(Modifier.height(6.dp))
+                                SkeletonBlock(Modifier.fillMaxWidth(0.85f).height(12.dp))
+                            }
+                        }
+                    }
+                }
                 state.error -> {
                     Text(
                         "Couldn't load your feed.",
@@ -192,26 +217,28 @@ fun FeedScreen(
                 }
                 else -> {
                     CirclePanel(state.circle, onOpenFriends, onOpenProfile)
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
 
                     if (state.rows.isEmpty()) {
                         // An empty state that only names the problem is a dead
                         // end — both ways out of it are one tap away.
-                        Text(
-                            "No signal yet. Complete a session or add friends.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.Sensors,
+                            title = "No signal yet",
+                            body = "Finished sessions from you and your ties show up here.",
                         )
-                        Spacer(Modifier.height(12.dp))
                         EmberButton(text = "Start a session", onClick = onStart)
-                        Spacer(Modifier.height(8.dp))
-                        GhostButton(text = "Find friends", onClick = onOpenFriends)
+                        // The empty circle panel above already offers "Find someone".
+                        if (state.circle.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            GhostButton(text = "Find friends", onClick = onOpenFriends)
+                        }
                     }
                     state.rows.forEach { FeedRow(it, state.nowMillis, onOpenProfile) }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }
@@ -223,14 +250,15 @@ private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit,
         if (circle.isEmpty()) "CIRCLE" else "CIRCLE · ${circle.size}",
         style = MonoLabelSmall, color = colors.textMuted,
     )
-    Spacer(Modifier.height(6.dp))
+    Spacer(Modifier.height(8.dp))
     if (circle.isEmpty()) {
-        Text(
-            "No ties yet.",
-            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+        FeatureEmptyState(
+            icon = Icons.Outlined.Group,
+            title = "No ties yet",
+            body = "Add a friend to see when they're focusing.",
+            actionText = "Find someone",
+            onAction = onOpenFriends,
         )
-        Spacer(Modifier.height(8.dp))
-        GhostButton(text = "Find someone", onClick = onOpenFriends)
         return
     }
     Column(
@@ -241,11 +269,17 @@ private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit,
             .padding(vertical = 4.dp),
     ) {
         circle.forEach { f ->
+            val source = remember { MutableInteractionSource() }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
-                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenProfile(f.id) }
+                    .pressFeedback(source)
+                    .clickable(
+                        interactionSource = source,
+                        indication = null,
+                        role = androidx.compose.ui.semantics.Role.Button,
+                    ) { onOpenProfile(f.id) }
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -283,13 +317,19 @@ private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit,
 private fun FeedRow(item: FeedItem, now: Long, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
     val name = item.displayName?.takeIf { it.isNotBlank() } ?: "Anonymous"
+    val source = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp)
+            .padding(vertical = 4.dp)
+            .pressFeedback(source)
             .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
-            .clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenProfile(item.userId) }
+            .clickable(
+                interactionSource = source,
+                indication = null,
+                role = androidx.compose.ui.semantics.Role.Button,
+            ) { onOpenProfile(item.userId) }
             .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

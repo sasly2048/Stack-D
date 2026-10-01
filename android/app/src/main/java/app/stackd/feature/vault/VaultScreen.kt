@@ -43,6 +43,12 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.SearchOff
 import app.stackd.data.vault.VaultItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -226,10 +232,11 @@ fun VaultScreen(
 
         when {
             state.loading -> item(key = "loading") {
-                Text(
-                    "Unlocking…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                Column {
+                    SkeletonBlock(Modifier.fillMaxWidth().height(52.dp))
+                    Spacer(Modifier.height(16.dp))
+                    repeat(4) { SkeletonCard(height = 112.dp) }
+                }
             }
             state.error -> item(key = "error") {
                 Column {
@@ -279,7 +286,7 @@ fun VaultScreen(
                             label = { Text("Tags, comma-separated") }, singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(16.dp))
                         EmberButton(
                             text = if (state.saving) "Saving…" else "Store it",
                             onClick = {
@@ -302,15 +309,17 @@ fun VaultScreen(
                         )
                         Spacer(Modifier.height(12.dp))
                     }
-                    if (state.items.isEmpty()) {
-                        Text(
-                            "Nothing stored yet.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                    if (state.items.isEmpty() && !showForm) {
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.Inventory2,
+                            title = "Your vault is empty",
+                            body = "Store notes, links and artifacts from a session so they're never lost.",
                         )
-                    } else if (shown.isEmpty()) {
-                        Text(
-                            "No entries match “$query”.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                    } else if (state.items.isNotEmpty() && shown.isEmpty()) {
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.SearchOff,
+                            title = "No matches",
+                            body = "Nothing matches “$query”. Try a different word.",
                         )
                     }
                   }

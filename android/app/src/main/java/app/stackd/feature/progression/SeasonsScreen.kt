@@ -41,6 +41,11 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Leaderboard
 import app.stackd.data.progression.Season
 import app.stackd.data.progression.SeasonStanding
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -153,10 +158,17 @@ fun SeasonsScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    SkeletonBlock(Modifier.fillMaxWidth(0.6f).height(36.dp))
+                    Spacer(Modifier.height(8.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth(0.4f).height(12.dp))
+                    Spacer(Modifier.height(24.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth().height(54.dp))
+                    Spacer(Modifier.height(24.dp))
+                    repeat(5) {
+                        SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(52.dp), Radius2Xl)
+                    }
+                }
                 state.error -> {
                     Text(
                         "Couldn't load the season.",
@@ -165,9 +177,10 @@ fun SeasonsScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                state.season == null -> Text(
-                    "No season is running right now.",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                state.season == null -> FeatureEmptyState(
+                    icon = Icons.Outlined.CalendarMonth,
+                    title = "No season running",
+                    body = "The next season opens soon. Your sessions still earn XP meanwhile.",
                 )
                 else -> {
                     val s = state.season
@@ -190,7 +203,7 @@ fun SeasonsScreen(
                     // Your standing at a glance — web shows Your XP + Your Rank
                     // as headline stats, not buried in the list.
                     state.mine?.let { me ->
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(16.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                             Column {
                                 Text("YOUR XP", style = MonoLabelSmall, color = colors.textMuted)
@@ -210,7 +223,7 @@ fun SeasonsScreen(
                             }
                         }
                     }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
 
                     if (state.mine == null) {
                         EmberButton(
@@ -218,15 +231,16 @@ fun SeasonsScreen(
                             onClick = onJoin,
                             busy = state.joining,
                         )
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(24.dp))
                     }
 
                     Text("STANDINGS", style = MonoLabelSmall, color = colors.textMuted)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     if (state.standings.isEmpty()) {
-                        Text(
-                            "No entries yet — be the first.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.Leaderboard,
+                            title = "No entries yet",
+                            body = "Join and hold a session to take the first spot.",
                         )
                     }
                     state.standings.forEach { row ->
@@ -234,7 +248,7 @@ fun SeasonsScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 3.dp)
+                                .padding(vertical = 4.dp)
                                 .background(
                                     if (isMe) colors.accent.copy(alpha = 0.08f)
                                     else colors.textPrimary.copy(alpha = 0.02f),

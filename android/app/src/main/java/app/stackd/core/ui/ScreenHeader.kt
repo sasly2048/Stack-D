@@ -42,16 +42,18 @@ fun ScreenHeader(
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = Stackd.colors
+    // A tab's root has nowhere to go back to — the tab bar is the navigation.
+    val back = if (LocalIsTabRoot.current) null else onBack
     // Fixed 48dp row: the room screen shows/hides back by phase, and a header
     // that changed height made the content below jump.
     Row(modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (onBack != null) {
+        if (back != null) {
             Box(
                 Modifier
                     .offset(x = (-20).dp)
                     .size(48.dp)
                     .clip(CircleShape)
-                    .clickable(role = Role.Button, onClick = onBack)
+                    .clickable(role = Role.Button, onClick = back)
                     .semantics { contentDescription = "Back" },
                 contentAlignment = Alignment.Center,
             ) {
@@ -78,7 +80,7 @@ fun ScreenHeader(
             // edge, ~10dp to the label.
             modifier = Modifier
                 .weight(1f)
-                .offset(x = if (onBack != null) (-32).dp else 0.dp),
+                .offset(x = if (back != null) (-32).dp else 0.dp),
         )
         trailing()
     }

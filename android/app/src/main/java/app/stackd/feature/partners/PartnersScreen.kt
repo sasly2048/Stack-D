@@ -40,6 +40,10 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Handshake
 import app.stackd.data.social.Partner
 import app.stackd.data.social.PersonRef
 import kotlinx.coroutines.delay
@@ -186,41 +190,48 @@ fun PartnersScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             state.results.forEach { p ->
-                Row(
+                // Name above, actions below: GhostButton fills its width, so two
+                // of them beside a weighted name squeezed the second to nothing.
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 3.dp)
+                        .padding(vertical = 4.dp)
                         .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
                         .border(1.dp, colors.border, Radius2Xl)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(14.dp),
                 ) {
                     Text(
                         p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textPrimary,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
                     )
-                    GhostButton(text = "Mentor", onClick = { onInvite(p.id, "mentor") }, enabled = !state.busy)
-                    Spacer(Modifier.width(6.dp))
-                    GhostButton(text = "Mentee", onClick = { onInvite(p.id, "mentee") }, enabled = !state.busy)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GhostButton(
+                            text = "Mentor", onClick = { onInvite(p.id, "mentor") },
+                            enabled = !state.busy, modifier = Modifier.weight(1f),
+                        )
+                        GhostButton(
+                            text = "Mentee", onClick = { onInvite(p.id, "mentee") },
+                            enabled = !state.busy, modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
 
             state.notice?.let {
-                Spacer(Modifier.height(12.dp))
-                Text(it, style = MonoLabelSmall, color = colors.accent)
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall, color = colors.accent)
             }
 
             Spacer(Modifier.height(24.dp))
             Text("ACTIVE", style = MonoLabelSmall, color = colors.textMuted)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             when {
-                state.loading -> Text(
-                    "Loading your partners…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> repeat(2) {
+                    SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(112.dp), Radius2Xl)
+                }
                 state.error -> {
                     Text(
                         "Couldn't load your partners.",
@@ -229,17 +240,17 @@ fun PartnersScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                state.partners.isEmpty() -> Text(
-                    "No partners yet.",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                state.partners.isEmpty() -> FeatureEmptyState(
+                    icon = Icons.Outlined.Handshake,
+                    title = "No partners yet",
+                    body = "Search above and invite someone as your mentor or mentee.",
                 )
                 else -> state.partners.forEach { p ->
                     PartnerRow(p, busy = state.busy, onRespond = onRespond, onEnd = onEnd)
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }
@@ -255,7 +266,7 @@ private fun PartnerRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp)
+            .padding(vertical = 4.dp)
             .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(14.dp),
@@ -273,7 +284,7 @@ private fun PartnerRow(
                 )
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (p.incoming) {
                 GhostButton(

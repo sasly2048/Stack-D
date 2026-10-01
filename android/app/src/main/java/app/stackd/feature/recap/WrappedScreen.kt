@@ -36,6 +36,8 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import androidx.compose.foundation.layout.Row
 import app.stackd.data.recap.WrappedStats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -116,10 +118,23 @@ fun WrappedScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Gathering your year…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    // Headline, sentence, then the stat-tile grid.
+                    SkeletonBlock(Modifier.fillMaxWidth(0.7f).height(52.dp))
+                    Spacer(Modifier.height(8.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth(0.3f).height(36.dp))
+                    Spacer(Modifier.height(16.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth().height(14.dp))
+                    Spacer(Modifier.height(8.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth(0.8f).height(14.dp))
+                    Spacer(Modifier.height(24.dp))
+                    repeat(3) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            repeat(3) { SkeletonBlock(Modifier.weight(1f).height(64.dp), Radius2Xl) }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
                 state.error || s == null -> {
                     Text(
                         "Couldn't load your Wrapped.",
@@ -143,7 +158,7 @@ fun WrappedScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "You stacked ${s.totalSessions} sessions, earned ${s.totalXp} XP, and held " +
+                        "You stacked ${s.totalSessions} ${if (s.totalSessions == 1) "session" else "sessions"}, earned ${s.totalXp} XP, and held " +
                             "the line best on ${s.topWeekday}s around " +
                             "${s.peakHour.toString().padStart(2, '0')}:00.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
@@ -168,7 +183,7 @@ fun WrappedScreen(
                     }
 
                     s.personality?.takeIf { it.isNotBlank() }?.let {
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(24.dp))
                         Text(
                             it,
                             style = MaterialTheme.typography.titleLarge,
@@ -184,7 +199,7 @@ fun WrappedScreen(
                         "Render your year as a 1080×1350 card and send it anywhere.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(16.dp))
                     EmberButton(
                         text = "Share Wrapped",
                         onClick = { WrappedCard.share(context, s) },
@@ -192,8 +207,7 @@ fun WrappedScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }

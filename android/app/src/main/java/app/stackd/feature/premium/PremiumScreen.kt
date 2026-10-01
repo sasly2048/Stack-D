@@ -43,6 +43,9 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.pressFeedback
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
 import app.stackd.data.premium.Plan
 
 /**
@@ -142,7 +145,7 @@ fun PremiumScreen(
 
             // Manage / cancel lives on the web (Razorpay key secret is server-side).
             state.subscription?.let { sub ->
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
                 Card {
                     Text("SUBSCRIPTION", style = MonoLabelSmall, color = colors.textMuted)
                     Spacer(Modifier.height(4.dp))
@@ -222,7 +225,8 @@ fun PremiumScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(8.dp))
-                    EmberButton(
+                    // Secondary: the plan CTA above is this screen's one primary action.
+                    GhostButton(
                         text = if (state.redeeming) "Redeeming…" else "Redeem",
                         onClick = { onRedeem(code) },
                         enabled = code.isNotBlank(),
@@ -271,11 +275,10 @@ fun PremiumScreen(
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
                 }
 
-            Spacer(Modifier.height(16.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(40.dp))
         }
     }
 }
@@ -324,7 +327,7 @@ private fun PlanPicker(plans: List<Plan>, alreadyPro: Boolean, onOpenWeb: (Strin
             style = MonoLabelSmall,
             color = colors.accent,
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 "₹${selected.priceInr}",
@@ -346,7 +349,7 @@ private fun PlanPicker(plans: List<Plan>, alreadyPro: Boolean, onOpenWeb: (Strin
                 color = colors.textMuted,
             )
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
         CATALOG.filter { it.tier == tier && it.status == "live" }.take(4).forEach { row ->
             Row(Modifier.padding(vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("✓", style = MaterialTheme.typography.bodySmall, color = colors.accent)
@@ -382,13 +385,20 @@ private fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> U
     ) {
         options.forEachIndexed { i, label ->
             val on = i == selected
+            val source = remember { MutableInteractionSource() }
             Box(
                 Modifier
                     .weight(1f)
                     .heightIn(min = 48.dp)
+                    .pressFeedback(source)
                     .clip(CircleShape)
                     .background(if (on) colors.accent.copy(alpha = 0.16f) else androidx.compose.ui.graphics.Color.Transparent, CircleShape)
-                    .clickable(role = androidx.compose.ui.semantics.Role.Tab) { onSelect(i) },
+                    .selectable(
+                        selected = on,
+                        interactionSource = source,
+                        indication = null,
+                        role = androidx.compose.ui.semantics.Role.Tab,
+                    ) { onSelect(i) },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(label, style = MonoLabelSmall, color = if (on) colors.accent else colors.textMuted, maxLines = 1)

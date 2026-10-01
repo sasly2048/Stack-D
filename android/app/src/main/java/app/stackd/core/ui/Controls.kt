@@ -64,7 +64,11 @@ fun SectionLabel(
     modifier = modifier,
 )
 
-/** Primary call to action — the web's `.btn-ember` with its silver hairline. */
+/**
+ * Primary call to action — the ONE filled element on a screen. Solid ember
+ * with dark text so it out-weighs every ghost/outline control around it
+ * (isolation effect: the next step must look different from everything else).
+ */
 @Composable
 fun EmberButton(
     text: String,
@@ -74,28 +78,30 @@ fun EmberButton(
     busy: Boolean = false,
 ) {
     val colors = Stackd.colors
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled && !busy,
         shape = RadiusMd,
-        modifier = modifier.fillMaxWidth().height(52.dp),
-        border = BorderStroke(1.dp, colors.textPrimary.copy(alpha = 0.4f)),
+        interactionSource = source,
+        modifier = modifier.fillMaxWidth().height(54.dp).pressFeedback(source),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = colors.textPrimary,
-            disabledContainerColor = Color.Transparent,
-            disabledContentColor = colors.textPrimary.copy(alpha = 0.5f),
+            containerColor = colors.accent,
+            contentColor = app.stackd.core.theme.Obsidian,
+            disabledContainerColor = colors.accent.copy(alpha = 0.22f),
+            disabledContentColor = app.stackd.core.theme.Obsidian.copy(alpha = 0.55f),
         ),
+        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
     ) {
         if (busy) {
             CircularProgressIndicator(
                 modifier = Modifier.size(16.dp),
                 strokeWidth = 2.dp,
-                color = colors.textPrimary,
+                color = app.stackd.core.theme.Obsidian,
             )
             Spacer(Modifier.width(12.dp))
         }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -109,11 +115,13 @@ fun GhostButton(
     busy: Boolean = false,
 ) {
     val colors = Stackd.colors
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled && !busy,
         shape = RadiusMd,
-        modifier = modifier.fillMaxWidth().height(52.dp),
+        interactionSource = source,
+        modifier = modifier.fillMaxWidth().height(52.dp).pressFeedback(source),
         border = BorderStroke(1.dp, colors.textPrimary.copy(alpha = 0.15f)),
         colors = ButtonDefaults.buttonColors(
             containerColor = colors.textPrimary.copy(alpha = 0.05f),

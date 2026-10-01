@@ -35,6 +35,8 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -127,10 +129,18 @@ fun DnaScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Sequencing…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    // Archetype title, meta line, radar, trait bars.
+                    SkeletonBlock(Modifier.fillMaxWidth(0.6f).height(36.dp))
+                    Spacer(Modifier.height(8.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth(0.8f).height(12.dp))
+                    Spacer(Modifier.height(24.dp))
+                    SkeletonCard(height = 220.dp)
+                    repeat(4) {
+                        SkeletonBlock(Modifier.fillMaxWidth().height(12.dp))
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
                 state.error -> {
                     Text(
                         "Couldn't read your DNA.",
@@ -169,14 +179,15 @@ fun DnaScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "SIGNATURE ${dna.signature} · ${dna.totalSessions} SESSIONS · " +
+                        "SIGNATURE ${dna.signature} · ${dna.totalSessions} " +
+                            (if (dna.totalSessions == 1) "SESSION" else "SESSIONS") + " · " +
                             "PEAK ${dna.peakHour}:00 · ${dna.consistencyScore}% CONSISTENT",
                         style = MonoLabelSmall,
                         color = colors.textMuted,
                     )
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     FocusRadar(dna.traits)
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     dna.traits.forEach { t ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
@@ -208,8 +219,7 @@ fun DnaScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }

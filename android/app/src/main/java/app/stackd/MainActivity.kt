@@ -48,6 +48,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.ui.graphics.Brush
 import app.stackd.core.theme.Obsidian
@@ -206,13 +208,19 @@ class MainActivity : ComponentActivity() {
                             )
 
                             Box(Modifier.fillMaxSize()) {
+                                val entry by navController.currentBackStackEntryAsState()
+                                val route = entry?.destination?.route
+                                val showTabs = route != null && app.stackd.core.ui.StackdTabs.any { it.route == route }
+                                val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                                // Content stops above the bar instead of scrolling under it.
+                                val barSpace = if (showTabs) app.stackd.core.ui.TabBarHeight + navInset else 0.dp
                                 key(epoch) {
                                     StackdNavHost(
                                         navController = navController,
                                         startDestination = start,
+                                        modifier = Modifier.padding(bottom = barSpace),
                                     )
                                 }
-                                val entry by navController.currentBackStackEntryAsState()
 
                                 // Status-bar scrim: edge-to-edge screens scroll under
                                 // the clock/icons; without this both are unreadable.
@@ -245,7 +253,7 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
-                                        .padding(start = 16.dp, bottom = 24.dp),
+                                        .padding(start = 16.dp, bottom = 24.dp + barSpace),
                                 )
 
                                 FloatingTimerPill(
@@ -253,7 +261,7 @@ class MainActivity : ComponentActivity() {
                                     onOpenRoom = { code -> navController.navigate(Dest.Room.of(code)) },
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
-                                        .padding(bottom = 32.dp),
+                                        .padding(bottom = 32.dp + barSpace),
                                 )
 
                                 // Sits above the floating timer pill so a toast
@@ -262,8 +270,27 @@ class MainActivity : ComponentActivity() {
                                     hostState = snackbarHost,
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
-                                        .padding(bottom = 96.dp),
+                                        .padding(bottom = 96.dp + barSpace),
                                 )
+
+                                if (showTabs) {
+                                    app.stackd.core.ui.TabBar(
+                                        currentRoute = route,
+                                        onSelect = { target ->
+                                            if (target != route) {
+                                                // Standard tab semantics: one stack per tab,
+                                                // switching back restores where you were.
+                                                navController.navigate(target) {
+                                                    popUpTo(Dest.Dashboard.route) { saveState = true }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            }
+                                        },
+                                        onStart = { navController.navigate(Dest.Start.route) { launchSingleTop = true } },
+                                        modifier = Modifier.align(Alignment.BottomCenter),
+                                    )
+                                }
 
                                 // Post-upgrade celebration over everything; held
                                 // while a room is on screen.

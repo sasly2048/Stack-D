@@ -43,6 +43,16 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.pressFeedback
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Leaderboard
+import androidx.compose.ui.graphics.Color
 import app.stackd.data.social.LeaderboardGroup
 import app.stackd.data.social.LeaderboardProfile
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -132,14 +142,22 @@ fun LeaderboardScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("individual" to "INDIVIDUAL", "groups" to "GROUPS").forEach { (key, label) ->
                         val selected = tab == key
+                        val source = remember { MutableInteractionSource() }
                         Text(
                             label,
                             style = MonoLabelSmall,
                             color = if (selected) colors.accent else colors.textMuted,
                             modifier = Modifier
                                 .heightIn(min = 48.dp)
+                                .pressFeedback(source)
+                                .background(if (selected) colors.accent.copy(alpha = 0.08f) else Color.Transparent, RadiusMd)
                                 .border(1.dp, if (selected) colors.accent else colors.border, RadiusMd)
-                                .clickable(role = androidx.compose.ui.semantics.Role.Tab) { tab = key }
+                                .selectable(
+                                    selected = selected,
+                                    interactionSource = source,
+                                    indication = null,
+                                    role = androidx.compose.ui.semantics.Role.Tab,
+                                ) { tab = key }
                                 .padding(horizontal = 16.dp, vertical = 16.dp),
                         )
                     }
@@ -149,12 +167,8 @@ fun LeaderboardScreen(
         }
 
         when {
-            state.loading -> item(key = "loading") {
-                Text(
-                    "Loading the board…",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textMuted,
-                )
+            state.loading -> items(8, key = { "sk:$it" }) {
+                SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(60.dp), Radius2Xl)
             }
             state.error -> item(key = "error") {
                 Column {
@@ -166,6 +180,20 @@ fun LeaderboardScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
+            }
+            tab == "individual" && state.individuals.isEmpty() -> item(key = "empty-p") {
+                FeatureEmptyState(
+                    icon = Icons.Outlined.Leaderboard,
+                    title = "The board is empty",
+                    body = "Hold a session to earn XP and claim the first spot.",
+                )
+            }
+            tab == "groups" && state.groups.isEmpty() -> item(key = "empty-g") {
+                FeatureEmptyState(
+                    icon = Icons.Outlined.Groups,
+                    title = "No groups ranked yet",
+                    body = "Groups appear here once their members start earning XP.",
+                )
             }
             tab == "individual" -> itemsIndexed(state.individuals, key = { _, p -> "p:${p.id}" }) { i, p ->
                 BoardRow(
@@ -181,7 +209,7 @@ fun LeaderboardScreen(
                 BoardRow(
                     rank = i + 1,
                     title = g.name,
-                    subtitle = "${g.memberCount} members",
+                    subtitle = if (g.memberCount == 1) "1 member" else "${g.memberCount} members",
                     xp = g.totalGroupXp,
                     isMe = false,
                 )
@@ -199,18 +227,29 @@ fun LeaderboardScreen(
 @Composable
 private fun BoardRow(rank: Int, title: String, subtitle: String, xp: Long, isMe: Boolean, onClick: (() -> Unit)? = null) {
     val colors = Stackd.colors
+    val source = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp)
+            .padding(vertical = 4.dp)
+            .then(if (onClick != null) Modifier.pressFeedback(source) else Modifier)
             .background(
                 if (isMe) colors.accent.copy(alpha = 0.08f) else colors.textPrimary.copy(alpha = 0.02f),
                 Radius2Xl,
             )
             .border(1.dp, if (isMe) colors.accent.copy(alpha = 0.5f) else colors.border, Radius2Xl)
             .then(
-                if (onClick != null) Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onClick() } else Modifier,
+                if (onClick != null) {
+                    Modifier.clickable(
+                        interactionSource = source,
+                        indication = null,
+                        role = androidx.compose.ui.semantics.Role.Button,
+                    ) { onClick() }
+                } else {
+                    Modifier
+                },
             )
+            .heightIn(min = 48.dp)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

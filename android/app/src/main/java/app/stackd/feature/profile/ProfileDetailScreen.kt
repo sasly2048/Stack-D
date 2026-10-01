@@ -41,6 +41,9 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
+import app.stackd.core.ui.SkeletonBlock
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EmojiEvents
 import app.stackd.data.profile.PublicProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -152,10 +155,23 @@ fun ProfileDetailScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SkeletonBlock(Modifier.size(72.dp), CircleShape)
+                        Spacer(Modifier.width(16.dp))
+                        Column(Modifier.weight(1f)) {
+                            SkeletonBlock(Modifier.fillMaxWidth(0.6f).height(24.dp))
+                            Spacer(Modifier.height(8.dp))
+                            SkeletonBlock(Modifier.fillMaxWidth(0.35f).height(12.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth().height(54.dp))
+                    Spacer(Modifier.height(24.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(4) { SkeletonBlock(Modifier.weight(1f).height(56.dp), Radius2Xl) }
+                    }
+                }
                 state.error || state.profile == null -> {
                     Text(
                         "Profile not found.",
@@ -186,14 +202,14 @@ fun ProfileDetailScreen(
                         }
                     }
                     p.bio?.takeIf { it.isNotBlank() }?.let {
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(8.dp))
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
                     }
 
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(16.dp))
                     TieButton(state.profile, busy = state.busy, onTie = onTie)
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
                             "XP" to "${p.lifetimeXp}",
@@ -227,9 +243,10 @@ fun ProfileDetailScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     if (state.profile.achievements.isEmpty()) {
-                        Text(
-                            "No unlocks yet.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.EmojiEvents,
+                            title = "No unlocks yet",
+                            body = "Achievements show up here as they're earned.",
                         )
                     } else {
                         FlowRow(
@@ -252,8 +269,7 @@ fun ProfileDetailScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }
@@ -268,10 +284,12 @@ private fun TieButton(p: PublicProfile, busy: Boolean, onTie: () -> Unit) {
         f.direction == "incoming" -> "Accept tie"
         else -> "Awaiting…"
     }
-    EmberButton(
-        text = label,
-        onClick = onTie,
-        // Outgoing requests have nothing to act on until they respond.
-        enabled = !busy && f?.direction != "outgoing",
-    )
+    // Outgoing requests have nothing to act on until they respond.
+    val enabled = !busy && f?.direction != "outgoing"
+    // Severing is destructive, so it must not wear the filled primary style.
+    if (f?.direction == "friend") {
+        GhostButton(text = label, onClick = onTie, enabled = enabled)
+    } else {
+        EmberButton(text = label, onClick = onTie, enabled = enabled)
+    }
 }

@@ -2,120 +2,182 @@ package app.stackd.feature.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.stackd.core.theme.MonoLabelSmall
-import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.RadiusMd
 import app.stackd.core.theme.Stackd
 import app.stackd.data.profile.DAILY_REWARDS
 import app.stackd.data.profile.RewardStatus
 
 /**
- * Daily login reward — web's `daily-reward-card.tsx`: claim button, streak
- * line, and the 7-day XP cycle strip with today's slot highlighted.
+ * Today's small wins, side by side: the daily login reward (web's
+ * `daily-reward-card.tsx`) and the active challenge's progress. Chips, not
+ * cards — they're secondary to starting a session, so they must not compete
+ * with the hero for attention.
  */
 @Composable
-fun DailyRewardCard(
-    reward: RewardStatus,
+fun TodayStrip(
+    reward: RewardStatus?,
     claiming: Boolean,
     notice: String?,
+    challengeProgress: Float,
     onClaim: () -> Unit,
 ) {
+    val showChallenge = challengeProgress > 0f
+    if (reward == null && !showChallenge) return
     val colors = Stackd.colors
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.accent.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.3f), Radius2Xl)
-            .padding(16.dp),
-    ) {
+    Column(Modifier.fillMaxWidth()) {
+        Spacer(Modifier.height(12.dp))
+        // IntrinsicSize.Min so both chips share the taller one's height.
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(Modifier.weight(1f)) {
-                Text("DAILY", style = MonoLabelSmall, color = colors.accent)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    if (reward.claimedToday) "Claimed" else "+${reward.nextRewardXp} XP waiting",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.textPrimary,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    // Same facts as web, phone-width: the long form wrapped "cycle".
-                    "${reward.streak}-day streak · Day ${reward.nextDayOfStreak}/7",
-                    style = MonoLabelSmall,
-                    color = colors.textMuted,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            }
+            reward?.let { RewardChip(it, claiming, onClaim, Modifier.weight(1f).fillMaxHeight()) }
+            if (showChallenge) ChallengeChip(challengeProgress, Modifier.weight(1f).fillMaxHeight())
+        }
+        notice?.let {
+            Spacer(Modifier.height(8.dp))
             Text(
-                when {
-                    reward.claimedToday -> "TOMORROW"
-                    claiming -> "CLAIMING…"
-                    else -> "CLAIM"
-                },
-                style = MonoLabelSmall,
-                color = if (reward.claimedToday) colors.textMuted else colors.accent,
-                modifier = Modifier
-                    .border(
-                        1.dp,
-                        if (reward.claimedToday) colors.border else colors.accent.copy(alpha = 0.5f),
-                        RadiusMd,
-                    )
-                    .clickable(enabled = !reward.claimedToday && !claiming) { onClaim() }
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.accent,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            DAILY_REWARDS.forEachIndexed { i, xp ->
-                val active = i + 1 == reward.nextDayOfStreak && !reward.claimedToday
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(32.dp)
-                        .background(
-                            if (active) colors.accent.copy(alpha = 0.3f)
-                            else colors.textPrimary.copy(alpha = 0.03f),
-                            RadiusMd,
-                        )
-                        .then(
-                            if (active) Modifier.border(1.dp, colors.accent, RadiusMd) else Modifier,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        "$xp",
-                        style = MonoLabelSmall,
-                        color = if (active) colors.accent else colors.textMuted,
-                        textAlign = TextAlign.Center,
+    }
+}
+
+@Composable
+private fun RewardChip(
+    reward: RewardStatus,
+    claiming: Boolean,
+    onClaim: () -> Unit,
+    modifier: Modifier,
+) {
+    val colors = Stackd.colors
+    val claimable = !reward.claimedToday && !claiming
+    // Days of the 7-day cycle already banked. After claiming day 7 the next
+    // day wraps to 1, which would read as an empty cycle, so show it full.
+    val banked = (reward.nextDayOfStreak - 1).let { if (reward.claimedToday && it == 0) DAILY_REWARDS.size else it }
+    Row(
+        modifier = modifier
+            .tappable(enabled = claimable, onClick = onClaim)
+            .background(
+                if (claimable) colors.accent.copy(alpha = 0.10f) else colors.textPrimary.copy(alpha = 0.03f),
+                RadiusMd,
+            )
+            .border(1.dp, if (claimable) colors.accent.copy(alpha = 0.4f) else colors.border, RadiusMd)
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.CardGiftcard,
+            contentDescription = null,
+            tint = if (claimable) colors.accent else colors.textMuted,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(
+                when {
+                    reward.claimedToday -> "Reward claimed"
+                    claiming -> "Claiming…"
+                    else -> "Claim +${reward.nextRewardXp} XP"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(DAILY_REWARDS.size) { i ->
+                    val today = !reward.claimedToday && i + 1 == reward.nextDayOfStreak
+                    Box(
+                        Modifier
+                            .size(6.dp)
+                            .background(
+                                when {
+                                    i < banked -> colors.accent
+                                    today -> colors.accent.copy(alpha = 0.45f)
+                                    else -> colors.textPrimary.copy(alpha = 0.12f)
+                                },
+                                CircleShape,
+                            ),
                     )
                 }
             }
         }
-        notice?.let {
+    }
+}
+
+@Composable
+private fun ChallengeChip(progress: Float, modifier: Modifier) {
+    val colors = Stackd.colors
+    val done = progress >= 1f
+    Row(
+        modifier = modifier
+            .background(colors.textPrimary.copy(alpha = 0.03f), RadiusMd)
+            .border(1.dp, colors.border, RadiusMd)
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.EmojiEvents,
+            contentDescription = null,
+            tint = if (done) colors.accent else colors.textMuted,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (done) "Challenge done" else "Challenge ${Math.round(progress * 100)}%",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Spacer(Modifier.height(8.dp))
-            Text(it, style = MonoLabelSmall, color = colors.accent)
+            Box(Modifier.fillMaxWidth().height(4.dp).background(colors.textPrimary.copy(alpha = 0.08f), CircleShape)) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .height(4.dp)
+                        .background(colors.accent, CircleShape),
+                )
+            }
         }
     }
 }

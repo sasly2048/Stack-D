@@ -43,6 +43,12 @@ import app.stackd.core.ui.ErrorBanner
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.StackdField
+import app.stackd.core.ui.pressFeedback
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.Role
 import app.stackd.data.room.RoomTemplate
 
 /**
@@ -149,7 +155,7 @@ fun StartScreen(
             onValueChange = onTitleChange,
             placeholder = "Deep work Monday",
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
         StackdField(
             label = "Collective goal — hours (optional)",
@@ -159,7 +165,7 @@ fun StartScreen(
             placeholder = "e.g. 10",
             keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Duration
         Row(
@@ -234,7 +240,7 @@ fun StartScreen(
             Spacer(Modifier.height(10.dp))
             Text("${it}m · LAST USED", style = MonoLabelSmall, color = colors.textMuted)
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Enforcement mode
         SectionLabel("ENFORCEMENT PROFILE")
@@ -252,7 +258,7 @@ fun StartScreen(
             selected = state.mode == SettingsStore.MODE_ABSOLUTE,
             onClick = { onSetMode(SettingsStore.MODE_ABSOLUTE) },
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(24.dp))
 
         state.error?.let {
             ErrorBanner(it, onRetry = onCreate)
@@ -268,7 +274,7 @@ fun StartScreen(
         Spacer(Modifier.height(12.dp))
         Text(
             "A 6-character key will be generated. Share it with the table.",
-            style = MonoLabelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -324,12 +330,14 @@ private fun IntroTip(onDismiss: () -> Unit) {
             color = colors.textMuted,
             modifier = Modifier.weight(1f),
         )
-        Text(
-            "GOT IT",
-            style = MonoLabelSmall,
-            color = colors.textMuted,
-            modifier = Modifier.clickable(onClick = onDismiss),
-        )
+        Box(
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .clickable(role = Role.Button, onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("GOT IT", style = MonoLabelSmall, color = colors.textMuted)
+        }
     }
 }
 
@@ -342,10 +350,12 @@ private fun TemplateCard(
     meta: String? = null,
 ) {
     val colors = Stackd.colors
+    val source = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pressFeedback(source)
+            .selectable(selected = selected, interactionSource = source, indication = null, role = Role.RadioButton, onClick = onClick)
             .background(
                 if (selected) colors.accent.copy(alpha = 0.05f) else colors.textPrimary.copy(alpha = 0.03f),
                 RadiusLg,
@@ -381,9 +391,19 @@ private fun DurationChip(
 ) {
     val colors = Stackd.colors
     val alpha = if (enabled) 1f else 0.5f
+    val source = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .minimumInteractiveComponentSize()
+            .pressFeedback(source)
+            .selectable(
+                selected = selected,
+                enabled = enabled,
+                interactionSource = source,
+                indication = null,
+                role = Role.RadioButton,
+                onClick = onClick,
+            )
             .background(
                 if (selected) colors.textPrimary.copy(alpha = 0.08f * alpha) else colors.textPrimary.copy(alpha = 0.03f),
                 RadiusMd,
@@ -416,10 +436,12 @@ private fun ModeOption(
     onClick: () -> Unit,
 ) {
     val colors = Stackd.colors
+    val source = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pressFeedback(source)
+            .selectable(selected = selected, interactionSource = source, indication = null, role = Role.RadioButton, onClick = onClick)
             .background(
                 if (selected) colors.textPrimary.copy(alpha = 0.06f) else colors.background,
                 RadiusXl,

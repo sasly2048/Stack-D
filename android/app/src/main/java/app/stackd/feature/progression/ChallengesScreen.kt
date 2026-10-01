@@ -34,6 +34,10 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Flag
 import app.stackd.data.progression.Challenge
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -106,10 +110,14 @@ fun ChallengesScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> repeat(2) {
+                    SkeletonBlock(Modifier.fillMaxWidth(0.2f).height(10.dp))
+                    Spacer(Modifier.height(8.dp))
+                    repeat(2) {
+                        SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(96.dp), Radius2Xl)
+                    }
+                    Spacer(Modifier.height(24.dp))
+                }
                 state.error -> {
                     Text(
                         "Couldn't load challenges.",
@@ -124,19 +132,19 @@ fun ChallengesScreen(
                 ).forEach { (cadence, heading) ->
                     val rows = state.rows.filter { it.cadence == cadence }
                     Text(heading, style = MonoLabelSmall, color = colors.accent)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     if (rows.isEmpty()) {
                         // Per-group empty state (web renders one too). Without
                         // this a user with no active challenges — every new user —
                         // saw a blank screen.
-                        Text(
-                            "Nothing here yet — hold a focus session to earn ${
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.Flag,
+                            title = if (cadence == "daily") "No challenges today" else "No challenges this week",
+                            body = "Hold a focus session to earn ${
                                 if (cadence == "daily") "today's" else "this week's"
                             } challenges.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textMuted,
                         )
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(8.dp))
                         return@forEach
                     }
                     rows.forEach { c ->
@@ -144,7 +152,7 @@ fun ChallengesScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 3.dp)
+                                .padding(vertical = 4.dp)
                                 .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
                                 .border(
                                     1.dp,
@@ -197,7 +205,7 @@ fun ChallengesScreen(
                             )
                         }
                     }
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(24.dp))
                 }
             }
 

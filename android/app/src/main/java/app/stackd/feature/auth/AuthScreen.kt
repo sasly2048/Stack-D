@@ -193,12 +193,22 @@ fun AuthScreen(
             }
 
             if (onGoogle != null) {
-                Spacer(Modifier.height(12.dp))
-                LinkButton(
-                    text = "Continue with Google",
-                    onClick = onGoogle,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                )
+                // Divider + full-width secondary button: a bare text link read as
+                // a footnote, not as an equal way in (top apps give social sign-in
+                // the same footprint as email, one visual weight lighter).
+                Spacer(Modifier.height(20.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f).height(1.dp).background(colors.border))
+                    Text(
+                        "or",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                    Box(Modifier.weight(1f).height(1.dp).background(colors.border))
+                }
+                Spacer(Modifier.height(20.dp))
+                app.stackd.core.ui.GhostButton(text = "Continue with Google", onClick = onGoogle)
                 if (state.lastUsed == "google") LastUsedBadge()
                 if (state.errorProvider == "google") {
                     state.error?.let {

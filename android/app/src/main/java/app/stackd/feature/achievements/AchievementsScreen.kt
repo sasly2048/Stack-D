@@ -36,6 +36,11 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EmojiEvents
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
@@ -165,11 +170,16 @@ fun AchievementsScreen(
             Spacer(Modifier.height(16.dp))
             SectionLabel("YOUR MARKS")
             Spacer(Modifier.height(4.dp))
-            Text(
-                "${state.unlocked} of ${state.total} unlocked",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted,
-            )
+            if (state.loading) {
+                // "0 of 0 unlocked" would flash a wrong number before data lands.
+                SkeletonBlock(Modifier.fillMaxWidth(0.3f).height(14.dp))
+            } else {
+                Text(
+                    "${state.unlocked} of ${state.total} unlocked",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted,
+                )
+            }
             if (!state.loading && !state.error && state.total > 0) {
                 // Overall unlock progress bar — web renders one at the top.
                 Spacer(Modifier.height(8.dp))
@@ -195,11 +205,12 @@ fun AchievementsScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textMuted,
-                )
+                state.loading -> {
+                    SkeletonCard(height = 112.dp)
+                    repeat(6) {
+                        SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(72.dp), Radius2Xl)
+                    }
+                }
                 state.error -> {
                     Text(
                         "Couldn't load achievements.",
@@ -209,13 +220,18 @@ fun AchievementsScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
+                state.rows.isEmpty() -> FeatureEmptyState(
+                    icon = Icons.Outlined.EmojiEvents,
+                    title = "No achievements yet",
+                    body = "Marks appear here as the catalog fills. Keep holding sessions.",
+                )
                 else -> state.rows.forEach { a ->
                     val unlocked = a.unlockedAt != null
                     val accent = tierColor(a.tier, colors.accent)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 3.dp)
+                            .padding(vertical = 4.dp)
                             .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
                             .border(
                                 1.dp,
@@ -278,8 +294,7 @@ fun AchievementsScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }

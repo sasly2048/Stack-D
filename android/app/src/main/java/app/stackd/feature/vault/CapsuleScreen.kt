@@ -40,6 +40,13 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.Alignment
 import app.stackd.data.vault.Capsule
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -157,10 +164,17 @@ fun CapsuleScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    SkeletonBlock(Modifier.fillMaxWidth().height(96.dp))
+                    Spacer(Modifier.height(8.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth().height(56.dp))
+                    Spacer(Modifier.height(16.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth().height(54.dp))
+                    Spacer(Modifier.height(24.dp))
+                    repeat(3) {
+                        SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(64.dp), Radius2Xl)
+                    }
+                }
                 state.error -> {
                     Text(
                         "Couldn't load your capsules.",
@@ -191,7 +205,7 @@ fun CapsuleScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(16.dp))
                     EmberButton(
                         text = if (state.saving) "Sealing…" else "Seal it",
                         onClick = { onSeal(message, days.toIntOrNull() ?: 30); message = "" },
@@ -199,11 +213,12 @@ fun CapsuleScreen(
                         busy = state.saving,
                     )
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     if (state.rows.isEmpty()) {
-                        Text(
-                            "No capsules yet.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.HourglassEmpty,
+                            title = "No capsules yet",
+                            body = "Write a note above and seal it for your future self.",
                         )
                     }
                     val now = System.currentTimeMillis()
@@ -223,7 +238,7 @@ fun CapsuleScreen(
                                 )
                                 .padding(14.dp),
                         ) {
-                            Row(modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     when {
                                         opened -> "OPENED"
@@ -235,12 +250,15 @@ fun CapsuleScreen(
                                     modifier = Modifier.weight(1f),
                                 )
                                 if (unlockable) {
-                                    Text(
-                                        "OPEN",
-                                        style = MonoLabelSmall,
-                                        color = colors.accent,
-                                        modifier = Modifier.clickable { onOpen(c.id) },
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .minimumInteractiveComponentSize()
+                                            .clickable(role = Role.Button) { onOpen(c.id) }
+                                            .padding(horizontal = 8.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text("OPEN", style = MonoLabelSmall, color = colors.accent)
+                                    }
                                 }
                             }
                             if (opened) {
@@ -256,8 +274,7 @@ fun CapsuleScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }

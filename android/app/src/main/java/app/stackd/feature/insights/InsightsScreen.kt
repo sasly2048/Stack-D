@@ -38,6 +38,8 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
 import app.stackd.data.room.FocusHistoryRow
 import app.stackd.feature.dashboard.ActivityHeatmap
 import kotlinx.coroutines.async
@@ -221,10 +223,18 @@ fun InsightsScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Crunching your history…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    // Same 2-up tile grid + chart cards the ledger renders into.
+                    repeat(4) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            repeat(2) { SkeletonBlock(Modifier.weight(1f).height(72.dp), Radius2Xl) }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    SkeletonCard(height = 200.dp)
+                    SkeletonCard(height = 96.dp)
+                }
                 state.error -> {
                     Text(
                         "Couldn't load your analytics.",
@@ -294,54 +304,59 @@ fun InsightsScreen(
                         Spacer(Modifier.height(8.dp))
                     }
 
+                    // Tile grid already ends with an 8dp gap; 16 more makes the 24dp section rhythm.
                     Spacer(Modifier.height(16.dp))
                     SectionLabel("FOCUS RADAR")
                     Spacer(Modifier.height(8.dp))
                     FocusRadar(state.dna.traits)
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
                     SectionLabel("BY HOUR OF DAY")
                     Spacer(Modifier.height(8.dp))
                     HourBars(state.hourBuckets)
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
                     SectionLabel("HEATMAP · 120 DAYS")
                     Spacer(Modifier.height(8.dp))
                     ActivityHeatmap(state.rows, weeks = 17)
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
                     SectionLabel("SIGNAL")
                     Spacer(Modifier.height(8.dp))
                     SignalCallout(state.bestHour, state.bestWeekday)
 
                     if (state.tagDistribution.isNotEmpty()) {
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(24.dp))
                         SectionLabel("BY TAG")
                         Spacer(Modifier.height(8.dp))
                         TagBars(state.tagDistribution)
                     }
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
                     SectionLabel("GOAL FORECAST")
                     Spacer(Modifier.height(8.dp))
                     ForecastCard(state.forecast)
 
                     // AI panels — render only when the backend answered.
                     state.proactive?.let { p ->
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(24.dp))
                         SectionLabel("PROACTIVE")
                         Spacer(Modifier.height(8.dp))
                         ProactiveCard(p)
                     }
                     val story = state.weeklyStory?.takeIf { it.isNotBlank() }
                     if (story != null || state.aiLoading) {
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(24.dp))
                         SectionLabel("THIS WEEK")
                         Spacer(Modifier.height(8.dp))
-                        WeeklyStoryCard(story ?: "Composing…", state.patterns)
+                        if (story != null) {
+                            WeeklyStoryCard(story, state.patterns)
+                        } else {
+                            SkeletonCard(height = 96.dp)
+                        }
                     }
                     state.aiUsage?.takeIf { it.unlimited || it.allowance > 0 }?.let { u ->
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(24.dp))
                         SectionLabel("AI ACTIONS")
                         Spacer(Modifier.height(6.dp))
                         Text(
@@ -353,8 +368,7 @@ fun InsightsScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }

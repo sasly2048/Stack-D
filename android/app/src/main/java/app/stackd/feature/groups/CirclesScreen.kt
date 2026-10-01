@@ -36,6 +36,15 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.pressFeedback
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.Role
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
@@ -164,10 +173,17 @@ fun CirclesScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Loading your circles…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    repeat(2) {
+                        SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(60.dp), Radius2Xl)
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth(0.5f).height(24.dp))
+                    Spacer(Modifier.height(16.dp))
+                    repeat(4) {
+                        SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(60.dp), Radius2Xl)
+                    }
+                }
                 state.error -> {
                     Text(
                         "Couldn't load your circles.",
@@ -176,21 +192,22 @@ fun CirclesScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                state.circles.isEmpty() -> {
-                    Text(
-                        "You haven't joined any circles yet.",
-                        style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    GhostButton(text = "Create or join", onClick = onManage)
-                }
+                state.circles.isEmpty() -> FeatureEmptyState(
+                    icon = Icons.Outlined.Groups,
+                    title = "No circles yet",
+                    body = "Study with a small crew and climb a shared weekly board.",
+                    actionText = "Create or join",
+                    onAction = onManage,
+                )
                 else -> {
                     state.circles.forEach { c ->
                         val selected = state.activeId == c.id
+                        val source = remember { MutableInteractionSource() }
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 3.dp)
+                                .padding(vertical = 4.dp)
+                                .pressFeedback(source)
                                 .background(
                                     if (selected) colors.accent.copy(alpha = 0.1f)
                                     else colors.textPrimary.copy(alpha = 0.02f),
@@ -201,7 +218,12 @@ fun CirclesScreen(
                                     if (selected) colors.accent.copy(alpha = 0.5f) else colors.border,
                                     Radius2Xl,
                                 )
-                                .clickable { onSelect(c.id) }
+                                .selectable(
+                                    selected = selected,
+                                    interactionSource = source,
+                                    indication = null,
+                                    role = Role.Tab,
+                                ) { onSelect(c.id) }
                                 .padding(horizontal = 14.dp, vertical = 12.dp),
                         ) {
                             Text(
@@ -215,12 +237,11 @@ fun CirclesScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     when {
-                        state.detailLoading -> Text(
-                            "Loading circle…",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                        )
+                        state.detailLoading -> repeat(4) {
+                            SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(60.dp), Radius2Xl)
+                        }
                         state.detail == null -> Text(
                             "This circle is gone.",
                             style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
@@ -230,8 +251,7 @@ fun CirclesScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }
@@ -251,19 +271,21 @@ private fun CircleBoard(detail: CircleDetail, onOpenProfile: (String) -> Unit) {
             fontWeight = FontWeight.ExtraBold,
         )
         Text(
-            "${detail.memberCount} members · ${detail.totalXp} XP",
+            "${detail.memberCount} ${if (detail.memberCount == 1) "member" else "members"} · ${detail.totalXp} XP",
             style = MonoLabelSmall, color = colors.textMuted,
         )
     }
     Spacer(Modifier.height(12.dp))
     detail.members.forEachIndexed { i, m ->
+        val source = remember { MutableInteractionSource() }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 3.dp)
+                .padding(vertical = 4.dp)
+                .pressFeedback(source)
                 .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
                 .border(1.dp, colors.border, Radius2Xl)
-                .clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenProfile(m.userId) }
+                .clickable(interactionSource = source, indication = null, role = Role.Button) { onOpenProfile(m.userId) }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),

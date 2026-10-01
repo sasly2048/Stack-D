@@ -41,6 +41,14 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.pressFeedback
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.ui.semantics.Role
 import app.stackd.data.social.BoardEntry
 import app.stackd.data.social.GroupSummary
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -265,16 +273,19 @@ fun GroupsScreen(
             )
 
             state.notice?.let {
-                Spacer(Modifier.height(12.dp))
-                Text(it, style = MonoLabelSmall, color = colors.accent)
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall, color = colors.accent)
             }
 
             Spacer(Modifier.height(24.dp))
             when {
-                state.loading -> Text(
-                    "Loading circles…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> {
+                    SkeletonBlock(Modifier.fillMaxWidth(0.3f).height(10.dp))
+                    Spacer(Modifier.height(8.dp))
+                    repeat(3) {
+                        SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(116.dp), Radius2Xl)
+                    }
+                }
                 state.error -> {
                     Text(
                         "Couldn't load circles.",
@@ -290,9 +301,11 @@ fun GroupsScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     if (state.groups.isEmpty()) {
-                        Text(
-                            "None yet. Forge the first circle above.",
-                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        // The create field sits right above, so no extra button here.
+                        FeatureEmptyState(
+                            icon = Icons.Outlined.Groups,
+                            title = "No circles yet",
+                            body = "Name one above to forge the first circle.",
                         )
                     }
                     state.groups.forEach { g ->
@@ -310,13 +323,12 @@ fun GroupsScreen(
 
                     Spacer(Modifier.height(24.dp))
                     Board("CIRCLE LEADERBOARD · AVG XP", state.circleBoard)
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     Board("PERSONAL LEADERBOARD · LIFETIME XP", state.personalBoard)
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }
@@ -333,6 +345,7 @@ private fun GroupCard(
     onSprint: () -> Unit,
 ) {
     val colors = Stackd.colors
+    val toggleSource = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -345,7 +358,15 @@ private fun GroupCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { onToggle() },
+                    .heightIn(min = 48.dp)
+                    .pressFeedback(toggleSource, pressedScale = 0.98f)
+                    .clickable(
+                        interactionSource = toggleSource,
+                        indication = null,
+                        role = Role.Button,
+                        onClickLabel = if (expanded) "Hide members" else "Show members",
+                    ) { onToggle() },
+                verticalArrangement = Arrangement.Center,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -364,10 +385,11 @@ private fun GroupCard(
                 )
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (g.isMember) {
-                EmberButton(
+                // Ghost: one filled button per card would put N primaries on screen.
+                GhostButton(
                     text = if (sprintBusy) "Dispatching…" else "Start Sprint",
                     onClick = onSprint,
                     enabled = !sprintBusy,
@@ -402,7 +424,7 @@ private fun GroupCard(
                 ) {
                     Text(
                         m.displayName?.takeIf { it.isNotBlank() } ?: "—",
-                        style = MonoLabelSmall, color = colors.textPrimary,
+                        style = MaterialTheme.typography.bodySmall, color = colors.textPrimary,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
@@ -429,11 +451,11 @@ private fun Tag(text: String, color: androidx.compose.ui.graphics.Color) {
 private fun Board(heading: String, rows: List<BoardEntry>) {
     val colors = Stackd.colors
     Text(heading, style = MonoLabelSmall, color = colors.textMuted)
-    Spacer(Modifier.height(6.dp))
+    Spacer(Modifier.height(8.dp))
     if (rows.isEmpty()) {
         Text(
-            "Nothing here yet.",
-            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+            "No rankings yet. They fill in as circles earn XP.",
+            style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
         )
         return
     }

@@ -47,6 +47,12 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveLazyColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonCard
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Webhook
+import androidx.compose.ui.graphics.Color
 import app.stackd.data.webhooks.WEBHOOK_EVENTS
 import app.stackd.data.webhooks.Webhook
 import app.stackd.data.webhooks.WebhookDelivery
@@ -213,18 +219,19 @@ fun WebhooksRoute(
                                 color = if (on) colors.accent else colors.textMuted,
                                 modifier = Modifier
                                     .padding(bottom = 8.dp)
-                                    .heightIn(min = 40.dp)
+                                    .heightIn(min = 48.dp)
                                     .clip(CircleShape)
+                                    .background(if (on) colors.accent.copy(alpha = 0.08f) else Color.Transparent, CircleShape)
                                     .border(1.dp, if (on) colors.accent else colors.border, CircleShape)
-                                    .clickable(role = Role.Checkbox) {
+                                    .toggleable(value = on, role = Role.Checkbox) {
                                         events = if (on) events - e else events + e
                                     }
-                                    .padding(horizontal = 14.dp, vertical = 11.dp),
+                                    .padding(horizontal = 14.dp, vertical = 15.dp),
                             )
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
                 EmberButton(
                     text = if (state.creating) "Creating…" else "Create webhook",
                     onClick = { vm.create(url, WEBHOOK_EVENTS.filter { it in events }) { url = "" } },
@@ -232,7 +239,7 @@ fun WebhooksRoute(
                     busy = state.creating,
                 )
                 state.notice?.let {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(it, style = MaterialTheme.typography.bodySmall, color = colors.accent)
                 }
                 Spacer(Modifier.height(24.dp))
@@ -242,8 +249,8 @@ fun WebhooksRoute(
         }
 
         when {
-            state.loading -> item(key = "loading") {
-                Text("Loading…", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+            state.loading -> items(2, key = { "sk:$it" }) {
+                SkeletonCard(height = 120.dp)
             }
             state.error != null && state.hooks.isEmpty() -> item(key = "error") {
                 Column {
@@ -253,9 +260,10 @@ fun WebhooksRoute(
                 }
             }
             state.hooks.isEmpty() -> item(key = "empty") {
-                Text(
-                    "No webhooks yet. Add an endpoint above.",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                FeatureEmptyState(
+                    icon = Icons.Outlined.Webhook,
+                    title = "No webhooks yet",
+                    body = "Add an endpoint above to get events as they happen.",
                 )
             }
             else -> items(state.hooks, key = { it.id }) { hook ->

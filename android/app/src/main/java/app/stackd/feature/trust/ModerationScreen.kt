@@ -38,6 +38,10 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonCard
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.VerifiedUser
 import app.stackd.data.trust.HostReport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -182,19 +186,16 @@ fun ModerationScreen(
             }
 
             state.notice?.let {
-                Spacer(Modifier.height(12.dp))
-                Text(it, style = MonoLabelSmall, color = colors.accent)
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall, color = colors.accent)
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
         }
       }
 
         when {
-            state.loading -> item(key = "loading") {
-                Text(
-                    "Loading reports…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+            state.loading -> items(3, key = { "sk:$it" }) {
+                SkeletonCard(height = 140.dp)
             }
             state.error -> item(key = "error") {
                 Column {
@@ -207,9 +208,10 @@ fun ModerationScreen(
                 }
             }
             state.visible.isEmpty() -> item(key = "empty") {
-                Text(
-                    "No reports here. Rooms you host are clean.",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                FeatureEmptyState(
+                    icon = Icons.Outlined.VerifiedUser,
+                    title = "All clear",
+                    body = "No reports here. Rooms you host are clean.",
                 )
             }
             else -> items(state.visible, key = { it.id }) { r ->

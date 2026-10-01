@@ -46,6 +46,10 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.History
 import app.stackd.data.timeline.REACTION_PICKER
 import app.stackd.data.timeline.Reaction
 import app.stackd.data.timeline.TimelineSession
@@ -205,14 +209,13 @@ fun TimelineScreen(
 
             state.insight?.let {
                 ProactiveCard(it)
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(24.dp))
             }
 
             when {
-                state.loading -> Text(
-                    "Loading your timeline…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> repeat(4) {
+                    SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(136.dp), Radius2Xl)
+                }
                 state.error -> {
                     Text(
                         "Couldn't load your timeline.",
@@ -221,14 +224,15 @@ fun TimelineScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                state.items.isEmpty() -> Text(
-                    "No sessions yet. Start one to write your first line.",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                state.items.isEmpty() -> FeatureEmptyState(
+                    icon = Icons.Outlined.History,
+                    title = "No sessions yet",
+                    body = "Start one to write the first line of your record.",
                 )
                 else -> {
                     state.items.forEach { s -> SessionCard(s, onReact) }
                     if (state.hasMore) {
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(16.dp))
                         GhostButton(
                             text = if (state.loadingMore) "Loading…" else "Load older",
                             onClick = onLoadMore,
@@ -238,8 +242,7 @@ fun TimelineScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }
@@ -264,7 +267,7 @@ private fun SessionCard(s: TimelineSession, onReact: (String, String) -> Unit) {
             Text(fmtDate(s.createdAt), style = MonoLabelSmall, color = colors.textMuted)
             Text(s.tier.uppercase(), style = MonoLabelSmall, color = tint)
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
                 "${s.score}/100",
@@ -288,7 +291,7 @@ private fun SessionCard(s: TimelineSession, onReact: (String, String) -> Unit) {
             }
         }
         s.notes?.takeIf { it.isNotBlank() }?.let {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 "“$it”",
                 style = MaterialTheme.typography.bodySmall,
@@ -297,7 +300,7 @@ private fun SessionCard(s: TimelineSession, onReact: (String, String) -> Unit) {
             )
         }
         if (s.tags.isNotEmpty()) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             TagRow(s.tags)
         }
         Spacer(Modifier.height(12.dp))
@@ -405,7 +408,7 @@ private fun ProactiveCard(ai: ProactiveInsight) {
             .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Column {
             Text("SMART SCHEDULE", style = MonoLabelSmall, color = colors.textMuted)
@@ -458,7 +461,7 @@ private fun ProactiveCard(ai: ProactiveInsight) {
                 style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
             )
             ai.burnout.signals.forEach {
-                Text("· $it", style = MonoLabelSmall, color = colors.textMuted)
+                Text("· $it", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
             }
         }
     }

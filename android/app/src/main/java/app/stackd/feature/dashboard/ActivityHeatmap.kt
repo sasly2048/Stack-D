@@ -12,7 +12,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.unit.dp
 import app.stackd.core.parseIsoMillis
-import app.stackd.core.theme.MonoLabelSmall
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.MaterialTheme
 import app.stackd.core.theme.Stackd
 import app.stackd.data.room.FocusHistoryRow
 import java.time.Instant
@@ -44,7 +45,8 @@ fun ActivityHeatmap(history: List<FocusHistoryRow>, weeks: Int = 26) {
     val accent = colors.accent
     val empty = colors.textPrimary.copy(alpha = 0.04f)
 
-    Text("LAST ${weeks} WEEKS", style = MonoLabelSmall, color = colors.textMuted)
+    Text("Last $weeks weeks", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+    Spacer(Modifier.height(10.dp))
     Canvas(
         modifier = Modifier
             .fillMaxWidth()

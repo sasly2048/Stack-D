@@ -1,6 +1,10 @@
 package app.stackd.feature.profile
 
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MilitaryTech
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
 import androidx.compose.ui.Alignment
 
 import androidx.compose.foundation.background
@@ -219,10 +223,7 @@ fun ProfileScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.loading -> Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+                state.loading -> ProfileSkeleton()
                 state.error || state.profile == null -> {
                     Text(
                         "Couldn't load your profile.",
@@ -254,7 +255,7 @@ fun ProfileScreen(
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
                     }
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
                             "XP" to "${p.lifetimeXp}",
@@ -302,7 +303,7 @@ fun ProfileScreen(
                         label = { Text("Bio") },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(16.dp))
                     EmberButton(
                         text = if (state.saving) "Saving…" else "Save",
                         onClick = { onSave(name, bio) },
@@ -310,7 +311,7 @@ fun ProfileScreen(
                         busy = state.saving,
                     )
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     SectionLabel("USERNAME")
                     Spacer(Modifier.height(8.dp))
                     var username by remember(p) { mutableStateOf(p.username.orEmpty()) }
@@ -336,32 +337,49 @@ fun ProfileScreen(
                             "3–20 characters, starts with a letter, letters/numbers/_/- only. " +
                                 "You can change it once every 24h." to colors.textMuted
                     }
-                    Text(hint, style = MonoLabelSmall, color = hintColor)
+                    Text(hint, style = MaterialTheme.typography.bodySmall, color = hintColor)
                     state.usernameNotice?.let {
                         Spacer(Modifier.height(4.dp))
-                        Text(it, style = MonoLabelSmall, color = colors.textMuted)
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                     }
-                    Spacer(Modifier.height(8.dp))
-                    EmberButton(
+                    Spacer(Modifier.height(16.dp))
+                    // Secondary: "Save" above is this screen's one primary action.
+                    GhostButton(
                         text = if (state.usernameSaving) "Setting…" else "Set username",
                         onClick = { onSaveUsername(username) },
                         enabled = username.isNotBlank() && username != p.username,
                         busy = state.usernameSaving,
                     )
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     SoundToggle()
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(16.dp))
                     GhostButton(text = "Manage plan", onClick = onOpenPremium)
                     Spacer(Modifier.height(8.dp))
                     GhostButton(text = "Sign out", onClick = onSignOut)
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
+}
+
+/** Skeleton in the shape of the loaded profile: name, meta line, stat tiles, edit fields. */
+@Composable
+private fun ProfileSkeleton() {
+    SkeletonBlock(Modifier.fillMaxWidth(0.55f).height(36.dp))
+    Spacer(Modifier.height(8.dp))
+    SkeletonBlock(Modifier.fillMaxWidth(0.35f).height(12.dp))
+    Spacer(Modifier.height(24.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        repeat(4) { SkeletonBlock(Modifier.weight(1f).height(56.dp), Radius2Xl) }
+    }
+    Spacer(Modifier.height(24.dp))
+    SkeletonCard(height = 120.dp)
+    SkeletonBlock(Modifier.fillMaxWidth().height(56.dp))
+    Spacer(Modifier.height(8.dp))
+    SkeletonBlock(Modifier.fillMaxWidth().height(56.dp))
 }
 
 /** UI sounds on/off — web SoundToggle on the profile page. */
@@ -408,10 +426,10 @@ private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf)
     Spacer(Modifier.height(12.dp))
 
     if (shelf.earned.isEmpty()) {
-        Text(
-            "No milestones yet. The first plate is engraved at 100 hours held.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textMuted,
+        FeatureEmptyState(
+            icon = Icons.Outlined.MilitaryTech,
+            title = "No milestones yet",
+            body = "Your first plate is engraved at 100 hours held.",
         )
     } else {
         shelf.earned.forEach { m ->
@@ -432,7 +450,7 @@ private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf)
                     fontWeight = FontWeight.ExtraBold,
                 )
                 if (m.description.isNotBlank()) {
-                    Text(m.description, style = MonoLabelSmall, color = colors.textMuted)
+                    Text(m.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                 }
                 m.unlockedAt?.let {
                     Text(it.take(10), style = MonoLabelSmall, color = colors.textMuted)

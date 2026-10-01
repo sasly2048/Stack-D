@@ -4,6 +4,10 @@ import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.Role
+import app.stackd.core.ui.pressFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -96,15 +100,18 @@ fun IntegrationsScreen(
 
             INTEGRATIONS.forEach { i ->
                 val live = i.status == "live"
+                val tappable = live && i.webPath != null
+                val source = remember { MutableInteractionSource() }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
+                        .then(if (tappable) Modifier.pressFeedback(source) else Modifier)
                         .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
                         .border(1.dp, colors.border, Radius2Xl)
                         .then(
-                            if (live && i.webPath != null) {
-                                Modifier.clickable {
+                            if (tappable) {
+                                Modifier.clickable(interactionSource = source, indication = null, role = Role.Button) {
                                     // Webhooks is native now; SDK/MCP stay approved
                                     // web hand-offs.
                                     if (i.webPath == "/webhooks") {
@@ -154,8 +161,7 @@ fun IntegrationsScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }

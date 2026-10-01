@@ -46,10 +46,31 @@ fun StackdNavHost(
     startDestination: String = Dest.Landing.route,
 ) {
     val openProfile: (String) -> Unit = { id -> navController.navigate(Dest.ProfileDetail.of(id)) }
+    // Directional motion: forward pushes in from the right, back reverses it.
+    // Spatial continuity tells you where you are in the stack; the default
+    // cross-fade made every move feel like a page reload.
+    val ease = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)
+    val dur = 320
     NavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier,
+        enterTransition = {
+            androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(dur, easing = ease)) { it / 4 } +
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(dur, easing = ease))
+        },
+        exitTransition = {
+            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(dur, easing = ease)) { -it / 10 } +
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(dur / 2))
+        },
+        popEnterTransition = {
+            androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(dur, easing = ease)) { -it / 10 } +
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(dur, easing = ease))
+        },
+        popExitTransition = {
+            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(dur, easing = ease)) { it / 4 } +
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(dur / 2))
+        },
     ) {
         // Signed out
         placeholder(Dest.Landing, "Landing")
@@ -143,7 +164,7 @@ fun StackdNavHost(
 
         // Identity & social
         composable(Dest.Profile.route) {
-            ProfileRoute(
+            CompositionLocalProvider(app.stackd.core.ui.LocalIsTabRoot provides true) { ProfileRoute(
                 onBack = { navController.popBackStack() },
                 onSignedOut = {
                     navController.navigate(Dest.Auth.route) {
@@ -151,7 +172,7 @@ fun StackdNavHost(
                     }
                 },
                 onOpenPremium = { navController.navigate(Dest.Premium.route) },
-            )
+            ) }
         }
         composable(
             route = Dest.ProfileDetail.route,
@@ -164,12 +185,12 @@ fun StackdNavHost(
             FriendsRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile)
         }
         composable(Dest.Feed.route) {
-            FeedRoute(
+            CompositionLocalProvider(app.stackd.core.ui.LocalIsTabRoot provides true) { FeedRoute(
                 onBack = { navController.popBackStack() },
                 onStart = { navController.navigate(Dest.Start.route) },
                 onOpenFriends = { navController.navigate(Dest.Friends.route) },
                 onOpenProfile = openProfile,
-            )
+            ) }
         }
         composable(Dest.Timeline.route) {
             TimelineRoute(onBack = { navController.popBackStack() })
@@ -216,10 +237,10 @@ fun StackdNavHost(
 
         // Analytics & recall
         composable(Dest.Insights.route) {
-            InsightsRoute(
+            CompositionLocalProvider(app.stackd.core.ui.LocalIsTabRoot provides true) { InsightsRoute(
                 onBack = { navController.popBackStack() },
                 onStart = { navController.navigate(Dest.Start.route) },
-            )
+            ) }
         }
         composable(Dest.Dna.route) {
             DnaRoute(

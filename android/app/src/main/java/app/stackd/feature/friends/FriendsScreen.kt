@@ -38,6 +38,14 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.pressFeedback
+import app.stackd.feature.profile.FeatureEmptyState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PersonAddAlt
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
@@ -195,14 +203,11 @@ fun FriendsScreen(
                 onA = if (p.id in state.requested) null else ({ onSendRequest(p.id) }),
             )
         }
-        item(key = "gap") { Spacer(Modifier.height(20.dp)) }
+        item(key = "gap") { Spacer(Modifier.height(24.dp)) }
 
         when {
-            state.loading -> item(key = "loading") {
-                Text(
-                    "Loading…",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
-                )
+            state.loading -> items(5, key = { "sk:$it" }) {
+                SkeletonBlock(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(72.dp), Radius2Xl)
             }
             state.error -> item(key = "error") {
                 Column {
@@ -219,7 +224,7 @@ fun FriendsScreen(
                     item(key = "in-h") {
                         Column {
                             Text("REQUESTS", style = MonoLabelSmall, color = colors.accent)
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(8.dp))
                         }
                     }
                     items(state.incoming, key = { "in:${it.id}" }) { f ->
@@ -231,13 +236,13 @@ fun FriendsScreen(
                             actionB = "DECLINE", onB = { onRespond(f.id, false) },
                         )
                     }
-                    item(key = "in-gap") { Spacer(Modifier.height(16.dp)) }
+                    item(key = "in-gap") { Spacer(Modifier.height(24.dp)) }
                 }
                 if (state.outgoing.isNotEmpty()) {
                     item(key = "out-h") {
                         Column {
                             Text("SENT", style = MonoLabelSmall, color = colors.textMuted)
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(8.dp))
                         }
                     }
                     items(state.outgoing, key = { "out:${it.id}" }) { f ->
@@ -248,16 +253,18 @@ fun FriendsScreen(
                             actionA = "CANCEL", onA = { onRemove(f.id) },
                         )
                     }
-                    item(key = "out-gap") { Spacer(Modifier.height(16.dp)) }
+                    item(key = "out-gap") { Spacer(Modifier.height(24.dp)) }
                 }
                 item(key = "fr-h") {
                     Column {
                         Text("FRIENDS · ${state.friends.size}", style = MonoLabelSmall, color = colors.textMuted)
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
                         if (state.friends.isEmpty()) {
-                            Text(
-                                "No friends yet — search above to send a request.",
-                                style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                            // Search sits right above, so no extra button.
+                            FeatureEmptyState(
+                                icon = Icons.Outlined.PersonAddAlt,
+                                title = "No friends yet",
+                                body = "Search above to send your first request.",
                             )
                         }
                     }
@@ -292,10 +299,12 @@ private fun PersonRow(
     onB: (() -> Unit)? = null,
 ) {
     val colors = Stackd.colors
+    val source = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp)
+            .padding(vertical = 4.dp)
+            .then(if (onOpen != null) Modifier.pressFeedback(source, pressedScale = 0.98f) else Modifier)
             .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -307,7 +316,11 @@ private fun PersonRow(
                 .heightIn(min = 48.dp)
                 .then(
                     if (onOpen != null) {
-                        Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpen() }
+                        Modifier.clickable(
+                            interactionSource = source,
+                            indication = null,
+                            role = Role.Button,
+                        ) { onOpen() }
                     } else Modifier,
                 ),
             verticalArrangement = Arrangement.Center,
@@ -319,25 +332,27 @@ private fun PersonRow(
                 fontWeight = FontWeight.Bold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            sub?.let { Text(it, style = MonoLabelSmall, color = colors.textMuted) }
+            sub?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted) }
         }
         actionA?.let { label ->
-            Text(
-                label,
-                style = MonoLabelSmall,
-                color = if (onA != null) colors.accent else colors.textMuted,
-                modifier = (if (onA != null) Modifier.clickable { onA() } else Modifier)
-                    .padding(start = 10.dp),
-            )
+            RowAction(label, if (onA != null) colors.accent else colors.textMuted, onA)
         }
         actionB?.let { label ->
-            Text(
-                label,
-                style = MonoLabelSmall,
-                color = colors.textMuted,
-                modifier = (if (onB != null) Modifier.clickable { onB() } else Modifier)
-                    .padding(start = 14.dp),
-            )
+            RowAction(label, colors.textMuted, onB)
         }
+    }
+}
+
+/** Compact text action with a full 48dp touch target. */
+@Composable
+private fun RowAction(label: String, color: androidx.compose.ui.graphics.Color, onClick: (() -> Unit)?) {
+    Box(
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button) { onClick() } else Modifier)
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = MonoLabelSmall, color = color)
     }
 }

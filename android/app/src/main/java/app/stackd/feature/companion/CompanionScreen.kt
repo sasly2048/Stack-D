@@ -3,6 +3,8 @@ package app.stackd.feature.companion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import app.stackd.core.ui.pressFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -179,13 +181,19 @@ fun CompanionScreen(
                             )
                             Spacer(Modifier.height(12.dp))
                             OPENERS.forEach { opener ->
+                                val source = remember { MutableInteractionSource() }
                                 Box(
                                     modifier = Modifier
                                         .padding(bottom = 8.dp)
                                         .heightIn(min = 48.dp)
+                                        .pressFeedback(source)
                                         .border(1.dp, colors.border, CircleShape)
                                         .clip(CircleShape)
-                                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                                        .clickable(
+                                            interactionSource = source,
+                                            indication = null,
+                                            role = androidx.compose.ui.semantics.Role.Button,
+                                        ) {
                                             onSend(opener)
                                         }
                                         .padding(horizontal = 16.dp),
