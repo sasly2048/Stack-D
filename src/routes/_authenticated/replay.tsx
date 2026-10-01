@@ -18,8 +18,19 @@ export const Route = createFileRoute("/_authenticated/replay")({
   component: ReplayPage,
 });
 
+/** Local calendar date (not UTC — toISOString shifted IST days at 05:30). */
 function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Local midnight → next local midnight for a YYYY-MM-DD (DST-safe). */
+function dayWindow(date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return {
+    start: new Date(y, m - 1, d).toISOString(),
+    end: new Date(y, m - 1, d + 1).toISOString(),
+  };
 }
 
 function ReplayPage() {
@@ -33,7 +44,7 @@ function ReplayPage() {
   useEffect(() => {
     setLoading(true);
     setCursor(0);
-    load({ data: { date } })
+    load({ data: { date, ...dayWindow(date) } })
       .then((rows) => setEvents(rows as ReplayEvent[]))
       .finally(() => setLoading(false));
   }, [date]);
@@ -54,9 +65,8 @@ function ReplayPage() {
   }, [playing, events.length]);
 
   const shift = (days: number) => {
-    const d = new Date(date + "T00:00:00Z");
-    d.setUTCDate(d.getUTCDate() + days);
-    setDate(toISODate(d));
+    const [y, m, d] = date.split("-").map(Number);
+    setDate(toISODate(new Date(y, m - 1, d + days)));
   };
 
   const swipeRef = useSwipe<HTMLDivElement>({

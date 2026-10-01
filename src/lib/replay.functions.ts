@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { humanizeKey } from "@/lib/utils";
 
 export interface ReplayEvent {
   t: string;
@@ -13,10 +14,29 @@ export interface ReplayEvent {
 
 export const getDayReplay = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        // The caller's local-midnight window. A UTC day ran 05:30-05:30 for
+        // an IST user, so late-night sessions landed on the wrong date.
+        start: z.string().datetime({ offset: true }).optional(),
+        end: z.string().datetime({ offset: true }).optional(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data, context }): Promise<ReplayEvent[]> => {
-    const start = new Date(`${data.date}T00:00:00Z`).toISOString();
-    const end = new Date(new Date(start).getTime() + 24 * 3600 * 1000).toISOString();
+    let start = new Date(`${data.date}T00:00:00Z`).toISOString();
+    let end = new Date(new Date(start).getTime() + 24 * 3600 * 1000).toISOString();
+    if (data.start && data.end) {
+      const span = new Date(data.end).getTime() - new Date(data.start).getTime();
+      // One calendar day: 23-25h across DST, capped at 26h so this can't be
+      // used as an unbounded history scan.
+      if (span > 0 && span <= 26 * 3600 * 1000) {
+        start = new Date(data.start).toISOString();
+        end = new Date(data.end).toISOString();
+      }
+    }
     const uid = context.userId;
 
     const [history, activity] = await Promise.all([
@@ -51,7 +71,7 @@ export const getDayReplay = createServerFn({ method: "POST" })
         events.push({
           t: a.created_at as string,
           kind: "achievement",
-          label: `Unlocked ${payload.id ?? "mark"}`,
+          label: `Unlocked ${payload.id ? humanizeKey(payload.id) : "mark"}`,
         });
       }
     }

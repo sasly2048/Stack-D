@@ -1,3 +1,4 @@
+import { humanizeKey } from "@/lib/utils";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +41,7 @@ export function GlobalRealtimeToasts() {
               case "achievement_unlock":
                 feedback("achievement");
                 toast.success("🏅 Achievement unlocked", {
-                  description: String(evt.payload.id ?? ""),
+                  description: evt.payload.id ? humanizeKey(String(evt.payload.id)) : "",
                   id: evt.id,
                 });
                 break;

@@ -1,3 +1,4 @@
+import { humanizeKey } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -223,7 +224,7 @@ function describe(r: FeedItem) {
       return `completed a ${mins}-minute session · ${t}`;
     }
     case "achievement_unlock":
-      return `unlocked ${r.payload.id ?? "an achievement"}`;
+      return `unlocked ${r.payload.id ? humanizeKey(String(r.payload.id)) : "an achievement"}`;
     case "challenge_complete":
       return `finished the ${r.payload.name ?? "challenge"} rite`;
     case "friend_add":

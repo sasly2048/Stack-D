@@ -28,6 +28,20 @@ const FALLBACK: ProactiveInsight = {
   generatedAt: new Date().toISOString(),
 };
 
+/**
+ * Hour-of-day (0-23) in an IANA zone; falls back to UTC for a missing or
+ * invalid zone so a bad profile value can never throw.
+ */
+export function hourInZone(timeZone: string | null | undefined): (iso: string) => number {
+  let fmt: Intl.DateTimeFormat;
+  try {
+    fmt = new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: timeZone || "UTC" });
+  } catch {
+    fmt = new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "UTC" });
+  }
+  return (iso) => Number(fmt.format(new Date(iso))) % 24;
+}
+
 export async function getProactiveInsightsCore(
   supabase: AiSupabase,
   userId: string,
@@ -45,10 +59,19 @@ export async function getProactiveInsightsCore(
     const sessions = rows ?? [];
     if (sessions.length < 3) return { ...FALLBACK, generatedAt: new Date().toISOString() };
 
+    // Bin by the user's own clock (profiles.timezone, reported by both
+    // clients). UTC hours put an IST user's 13:00 peak at "07:00 UTC window".
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("timezone")
+      .eq("id", userId)
+      .maybeSingle();
+    const localHour = hourInZone((prof as { timezone?: string } | null)?.timezone);
+
     // Best hour by avg score (min 2 sessions)
     const hourAgg = new Map<number, { sum: number; n: number }>();
     for (const s of sessions) {
-      const h = new Date(s.created_at).getUTCHours();
+      const h = localHour(s.created_at);
       const cur = hourAgg.get(h) ?? { sum: 0, n: 0 };
       cur.sum += s.score;
       cur.n += 1;
@@ -91,7 +114,7 @@ export async function getProactiveInsightsCore(
 
     // Optional AI polish for copy — falls back to deterministic text
     const scheduleLabel =
-      bestHour !== null ? `${String(bestHour).padStart(2, "0")}:00 UTC window` : "";
+      bestHour !== null ? `${String(bestHour).padStart(2, "0")}:00 window` : "";
     let scheduleRationale =
       bestHour !== null ? `Your average score in this hour is ${Math.round(bestAvg)}.` : "";
     let burnoutRec =
@@ -129,7 +152,7 @@ export async function getProactiveInsightsCore(
               {
                 role: "user",
                 content: `Return JSON with keys "schedule", "prediction", "burnout" — each 1 short sentence.
-              Data: bestHourUTC=${bestHour}, bestHourAvg=${Math.round(bestAvg)}, recentAvg=${Math.round(recentAvg)}, delta=${Math.round(delta)}, burnoutRisk=${risk}, signals=${JSON.stringify(signals)}.`,
+              Data: bestHourLocal=${bestHour}, bestHourAvg=${Math.round(bestAvg)}, recentAvg=${Math.round(recentAvg)}, delta=${Math.round(delta)}, burnoutRisk=${risk}, signals=${JSON.stringify(signals)}.`,
               },
             ],
           }),
