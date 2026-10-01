@@ -23,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -95,8 +97,10 @@ fun RoomHeaderPanel(
                             style = MonoLabelSmall,
                             color = if (selected) colors.accent else colors.textMuted,
                             modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .clip(RadiusMd)
                                 .border(1.dp, if (selected) colors.accent else colors.border, RadiusMd)
-                                .clickable { visibility = key }
+                                .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { visibility = key }
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                         )
                     }

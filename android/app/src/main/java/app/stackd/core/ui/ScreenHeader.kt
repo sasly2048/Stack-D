@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -41,7 +42,9 @@ fun ScreenHeader(
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = Stackd.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    // Fixed 48dp row: the room screen shows/hides back by phase, and a header
+    // that changed height made the content below jump.
+    Row(modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
         if (onBack != null) {
             Box(
                 Modifier

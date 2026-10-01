@@ -37,6 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -265,12 +268,11 @@ fun RoomScreen(
       app.stackd.core.ui.ResponsiveColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("ROOM / ${state.code}", style = MonoLabel, color = colors.textMuted)
+        // Back only where leaving is harmless. Mid-session a stray tap here
+        // would count as a breach, and system back already confirms first.
+        val canLeave = state.phase == RoomPhase.LOBBY || state.phase == RoomPhase.ENDED ||
+            state.phase == RoomPhase.ERROR
+        app.stackd.core.ui.ScreenHeader("ROOM / ${state.code}", if (canLeave) onExit else null) {
             ConnectionBadge(state.connection)
         }
         Spacer(Modifier.height(24.dp))
@@ -287,7 +289,7 @@ fun RoomScreen(
                 onSaveMeta, onAddSchedule,
             )
             RoomPhase.COUNTDOWN -> Countdown(state)
-            RoomPhase.PLACING -> Placing(onAbort)
+            RoomPhase.PLACING -> Placing(onAbort, state.startingSession)
             RoomPhase.ACTIVE -> Active(
                 state, onEnd, onAbort,
                 onToggleReady, onAddWorkspace, onToggleWorkspace, onDeleteWorkspace,
@@ -402,26 +404,28 @@ private fun Lobby(
         style = MonoLabelSmall,
         color = colors.textMuted,
     )
-    Spacer(Modifier.height(12.dp))
+    // Rhythm: 8dp inside a group, 16dp between cards, 24dp between groups.
+    Spacer(Modifier.height(24.dp))
     CopyInviteButton(state.code)
     Spacer(Modifier.height(8.dp))
     QrInvite(state.code)
     Spacer(Modifier.height(24.dp))
     RoomHeaderPanel(state, onSaveMeta)
     Spacer(Modifier.height(16.dp))
-    if (state.isModerator) {
+    // Only when there's something to show — the empty panel still added its
+    // spacer, leaving a doubled gap above the roster.
+    if (state.isModerator && state.joinRequests.isNotEmpty()) {
         JoinRequestsPanel(state.joinRequests, onRespondJoin)
         Spacer(Modifier.height(16.dp))
     }
     PresenceRoster(state, onToggleReady)
     Spacer(Modifier.height(16.dp))
     SchedulePanel(state, onAddSchedule)
-    Spacer(Modifier.height(16.dp))
     if (state.milestones.isNotEmpty()) {
-        MilestoneTimeline(state.milestones)
         Spacer(Modifier.height(16.dp))
+        MilestoneTimeline(state.milestones)
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(24.dp))
 
     if (state.isHost) {
         EmberButton(text = "Start Session", onClick = onStart)
@@ -474,19 +478,40 @@ private fun QrInvite(code: String) {
     }
 }
 
+/** Full-height centered stage for the countdown/placement beats (web: fixed inset, centered). */
+@Composable
+private fun Stage(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val h = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
+    Column(
+        Modifier.fillMaxWidth().heightIn(min = (h * 0.68f).dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        content = content,
+    )
+}
+
 @Composable
 private fun Countdown(state: RoomUiState) {
     val colors = Stackd.colors
-    SectionLabel("STARTING")
-    Spacer(Modifier.height(24.dp))
-    Text(
-        state.countdown?.toString() ?: "…",
-        style = MaterialTheme.typography.displayLarge,
-        color = colors.accent,
-        fontWeight = FontWeight.ExtraBold,
-    )
-    Spacer(Modifier.height(12.dp))
-    Text("Stack your phones face-down.", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+    // Each tick pops in from 1.3x and settles — the beat you feel, not just read.
+    val pop = remember { androidx.compose.animation.core.Animatable(1f) }
+    androidx.compose.runtime.LaunchedEffect(state.countdown) {
+        pop.snapTo(1.3f)
+        pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f))
+    }
+    Stage {
+        SectionLabel("STARTING")
+        Spacer(Modifier.height(16.dp))
+        Text(
+            state.countdown?.toString() ?: "…",
+            style = MaterialTheme.typography.displayLarge.copy(fontSize = 128.sp, lineHeight = 136.sp),
+            color = colors.accent,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+        )
+        Spacer(Modifier.height(16.dp))
+        Text("Stack your phones face-down.", style = MaterialTheme.typography.bodyLarge, color = colors.textMuted)
+    }
 }
 
 /**
@@ -496,25 +521,53 @@ private fun Countdown(state: RoomUiState) {
  * left in hand simply holds here. An abort escape keeps the host from being
  * trapped if they can't get the phone flat (or change their mind).
  */
+/**
+ * The placement gate: after the countdown, the session waits here until the
+ * accelerometer confirms the phone is flat, face-down and still. The clock has
+ * NOT started yet — the start RPC only fires once placement lands — so a phone
+ * left in hand simply holds here. A breathing ring says "waiting for you".
+ */
 @Composable
-private fun Placing(onAbort: () -> Unit) {
+private fun Placing(onAbort: () -> Unit, starting: Boolean = false) {
     val colors = Stackd.colors
-    SectionLabel("PLACE TO BEGIN")
-    Spacer(Modifier.height(24.dp))
-    Text(
-        "Phone face-down to start.",
-        style = MaterialTheme.typography.displaySmall,
-        color = colors.textPrimary,
-        fontWeight = FontWeight.ExtraBold,
+    val breathe = androidx.compose.animation.core.rememberInfiniteTransition(label = "breathe")
+    val b by breathe.animateFloat(
+        0f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(1800, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+        label = "b",
     )
-    Spacer(Modifier.height(12.dp))
-    Text(
-        "The clock starts the moment your phone is flat and still. Lift it and the session breaks.",
-        style = MaterialTheme.typography.bodyMedium,
-        color = colors.textMuted,
-    )
-    Spacer(Modifier.height(24.dp))
-    GhostButton(text = "Cancel", onClick = onAbort)
+    Stage {
+        SectionLabel(if (starting) "STARTING THE CLOCK" else "PLACE TO BEGIN")
+        Spacer(Modifier.height(28.dp))
+        androidx.compose.foundation.Canvas(Modifier.size(120.dp)) {
+            val r = size.minDimension / 2
+            drawCircle(colors.accent.copy(alpha = 0.10f + 0.10f * b), radius = r * (0.70f + 0.30f * b))
+            drawCircle(colors.accent.copy(alpha = 0.55f), radius = r * 0.62f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+            drawCircle(colors.accent, radius = r * 0.10f)
+        }
+        Spacer(Modifier.height(28.dp))
+        Text(
+            "Phone face-down to start.",
+            style = MaterialTheme.typography.headlineMedium,
+            color = colors.textPrimary,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "The clock starts the moment your phone is flat and still. Lift it and the session breaks.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textMuted,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(28.dp))
+        // Once placement confirms, the start request is in flight: no Cancel,
+        // so a tap can't abort a session the server has already begun.
+        if (!starting) GhostButton(text = "Cancel", onClick = onAbort)
+    }
 }
 
 @Composable
@@ -651,7 +704,13 @@ private fun Ended(
 ) {
     val colors = Stackd.colors
     val result = state.result
-    SectionLabel(if (state.room?.statusEnum?.wire == "aborted") "ABORTED" else "SESSION COMPLETE")
+    SectionLabel(
+        when {
+            state.room?.statusEnum?.wire != "aborted" -> "SESSION COMPLETE"
+            state.room.startedAt == null -> "CANCELLED"
+            else -> "ABORTED"
+        },
+    )
     Spacer(Modifier.height(24.dp))
 
     if (result != null) {
@@ -764,7 +823,27 @@ private fun Ended(
             )
         }
     } else {
-        Text("Tallying your session…", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        if (state.room?.statusEnum?.wire == "aborted") {
+            // No result is coming for an aborted room — say what happened
+            // instead of "Tallying…" forever.
+            val neverStarted = state.room.startedAt == null
+            Text(
+                if (neverStarted) "Session cancelled." else "Session aborted.",
+                style = MaterialTheme.typography.headlineSmall,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                if (neverStarted) "The clock never started, so nothing was recorded."
+                else "Aborted sessions don't count toward your score or streak.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+                textAlign = TextAlign.Center,
+            )
+        } else {
+            Text("Tallying your session…", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        }
     }
 
     Spacer(Modifier.height(28.dp))

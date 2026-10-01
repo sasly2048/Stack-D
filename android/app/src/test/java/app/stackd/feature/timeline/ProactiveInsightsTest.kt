@@ -47,7 +47,9 @@ class ProactiveInsightsTest {
             row(80, hourUtc = 9, day = 2),
             row(70, hourUtc = 9, day = 3),
         )
-        assertEquals(9, proactiveInsights(rows).smartSchedule?.hour)
+        assertEquals(9, proactiveInsights(rows, java.time.ZoneOffset.UTC).smartSchedule?.hour)
+        // Same sessions on an IST clock: 09:00 UTC is 14:30 local, so hour 14.
+        assertEquals(14, proactiveInsights(rows, java.time.ZoneId.of("Asia/Kolkata")).smartSchedule?.hour)
     }
 
     @Test

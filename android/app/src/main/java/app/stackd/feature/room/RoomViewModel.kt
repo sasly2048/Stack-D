@@ -45,6 +45,8 @@ data class RoomUiState(
      * "denied" | "failed". Null when the error isn't a join-approval block.
      */
     val joinGate: String? = null,
+    /** Placement confirmed; start RPC in flight (Cancel hidden). */
+    val startingSession: Boolean = false,
     val room: RoomRow? = null,
     val participants: List<ParticipantRow> = emptyList(),
     val breaks: List<BreakRow> = emptyList(),
@@ -625,7 +627,7 @@ class RoomViewModel(
     fun startRitual() {
         if (!_state.value.isHost || _state.value.room?.statusEnum != RoomStatus.LOBBY) return
         viewModelScope.launch {
-            _state.value = _state.value.copy(phase = RoomPhase.COUNTDOWN)
+            _state.value = _state.value.copy(phase = RoomPhase.COUNTDOWN, startingSession = false)
             for (c in 3 downTo 1) {
                 _state.value = _state.value.copy(countdown = c)
                 kotlinx.coroutines.delay(1000)
@@ -661,6 +663,9 @@ class RoomViewModel(
         placementWatcher = null
         // Guard against a late callback after the user already left PLACING.
         if (_state.value.phase != RoomPhase.PLACING) return
+        // From here the server clock may start — hide Cancel so it can't abort
+        // a session the user believes never began.
+        _state.value = _state.value.copy(startingSession = true)
         viewModelScope.launch {
             // The server sets started_at from its own clock — every score derives
             // from it, so it must never be a device timestamp.
@@ -673,6 +678,7 @@ class RoomViewModel(
                     android.util.Log.e("StackdRoom", "start_focus_session failed", err)
                     _state.value = _state.value.copy(
                         phase = RoomPhase.LOBBY,
+                        startingSession = false,
                         error = "Couldn't start the session. Check your connection and retry.",
                     )
                     return@launch
@@ -712,11 +718,17 @@ class RoomViewModel(
                     android.util.Log.e("StackdRoom", "abort failed; exiting anyway", it)
                 }
             // Force the exit regardless — a focus app you can't leave is broken.
+            // Mark the room aborted locally too: waiting on the realtime echo
+            // left the screen on "SESSION COMPLETE · Tallying…" indefinitely.
             _state.value = _state.value.copy(
                 phase = RoomPhase.ENDED,
                 armed = false,
                 error = null,
+                room = _state.value.room?.copy(status = "aborted"),
             )
+            // Re-read the authoritative row: a session that had started is
+            // scored now (as on web), not only if someone reopens the room.
+            runCatching { rooms.getRoom(room.id) }.getOrNull()?.let { applyRoom(it) }
         }
     }
 
@@ -847,6 +859,9 @@ class RoomViewModel(
         val me = s.me ?: return
         val userId = s.meId ?: return
         if (room.statusEnum != RoomStatus.COMPLETE && room.statusEnum != RoomStatus.ABORTED) return
+        // Aborted before the clock started: nothing to score or record (the
+        // server now refuses too — it used to count lobby time as focus).
+        if (room.startedAt == null) return
         if (finalizeLock) return
         finalizeLock = true
 

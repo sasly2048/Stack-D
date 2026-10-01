@@ -118,7 +118,7 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
             Text("HELD", style = MonoLabel, color = colors.accent)
             Spacer(Modifier.height(12.dp))
             Text(
-                "$mins minutes held.",
+                "$mins ${if (mins == 1) "minute" else "minutes"} held.",
                 style = MaterialTheme.typography.headlineSmall,
                 color = colors.textPrimary,
                 textAlign = TextAlign.Center,

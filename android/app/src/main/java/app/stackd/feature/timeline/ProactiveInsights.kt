@@ -2,7 +2,6 @@ package app.stackd.feature.timeline
 
 import app.stackd.data.room.FocusHistoryRow
 import java.time.Instant
-import java.time.ZoneOffset
 
 /**
  * Pure port of the web's `proactive-ai.functions.ts`.
@@ -52,14 +51,14 @@ private val FALLBACK = ProactiveInsight(
 )
 
 /** [rows] must be the caller's last ~21 days of history, newest first. */
-fun proactiveInsights(rows: List<FocusHistoryRow>): ProactiveInsight {
+fun proactiveInsights(rows: List<FocusHistoryRow>, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): ProactiveInsight {
     if (rows.size < 3) return FALLBACK
 
     // Best hour by average score, ignoring hours with a single sample — one
     // lucky 98 at 4am is not a schedule.
     val byHour = rows.groupBy { row ->
         row.createdAt?.let {
-            runCatching { Instant.parse(it).atZone(ZoneOffset.UTC).hour }.getOrNull()
+            app.stackd.core.parseIsoMillis(it)?.let { ms -> Instant.ofEpochMilli(ms).atZone(zone).hour }
         }
     }.filterKeys { it != null }
     var bestHour: Int? = null
@@ -101,7 +100,7 @@ fun proactiveInsights(rows: List<FocusHistoryRow>): ProactiveInsight {
         smartSchedule = bestHour?.let { h ->
             SmartSchedule(
                 hour = h,
-                label = "${h.toString().padStart(2, '0')}:00 UTC window",
+                label = "${h.toString().padStart(2, '0')}:00 window",
                 rationale = "Your average score in this hour is ${Math.round(bestAvg)}.",
             )
         },
