@@ -223,6 +223,9 @@ fun StackdField(
 ) {
     val colors = Stackd.colors
     var hadFocus by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(isError) {
+        if (isError) app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.ERROR)
+    }
     Column(modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label.uppercase(), style = MonoLabel, color = colors.textMuted)
@@ -275,7 +278,8 @@ fun StackdField(
             // refuses to submit.
             Text(
                 hint,
-                style = MonoLabelSmall,
+                // Sentence, not a label: the spaced mono face made errors hard to read.
+                style = MaterialTheme.typography.bodySmall,
                 color = colors.breach,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
             )
