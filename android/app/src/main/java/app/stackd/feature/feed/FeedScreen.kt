@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -178,22 +181,21 @@ fun FeedScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / SIGNAL", onBack, title = "Feed")
+            app.stackd.core.ui.ScreenHeader("STACK'D / CIRCLE", onBack, title = "Social")
             Spacer(Modifier.height(16.dp))
 
             when {
                 state.loading -> {
-                    // Circle panel, then feed rows (avatar + two lines).
-                    SkeletonBlock(Modifier.fillMaxWidth(0.25f).height(10.dp))
-                    Spacer(Modifier.height(8.dp))
-                    SkeletonCard(height = 112.dp)
-                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        repeat(4) { SkeletonBlock(Modifier.size(60.dp), CircleShape) }
+                    }
+                    Spacer(Modifier.height(32.dp))
                     repeat(4) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            SkeletonBlock(Modifier.size(36.dp), CircleShape)
+                            SkeletonBlock(Modifier.size(40.dp), CircleShape)
                             Column(Modifier.weight(1f)) {
                                 SkeletonBlock(Modifier.fillMaxWidth(0.4f).height(14.dp))
                                 Spacer(Modifier.height(6.dp))
@@ -204,32 +206,28 @@ fun FeedScreen(
                 }
                 state.error -> {
                     Text(
-                        "Couldn't load your feed.",
+                        "Couldn't load your circle.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                     )
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
                 else -> {
-                    CirclePanel(state.circle, onOpenFriends, onOpenProfile)
-                    Spacer(Modifier.height(24.dp))
+                    CircleStrip(state.circle, onOpenFriends, onOpenProfile)
+                    Spacer(Modifier.height(32.dp))
 
                     if (state.rows.isEmpty()) {
                         // An empty state that only names the problem is a dead
                         // end — both ways out of it are one tap away.
                         FeatureEmptyState(
                             icon = app.stackd.core.ui.StackdIcons.Sensors,
-                            title = "No signal yet",
-                            body = "Finished sessions from you and your ties show up here.",
+                            title = "Quiet so far",
+                            body = "Finished sessions from you and your circle show up here.",
                         )
                         EmberButton(text = "Start a session", onClick = onStart)
-                        // The empty circle panel above already offers "Find someone".
-                        if (state.circle.isNotEmpty()) {
-                            Spacer(Modifier.height(8.dp))
-                            GhostButton(text = "Find friends", onClick = onOpenFriends)
-                        }
+                    } else {
+                        Activity(state.rows, state.nowMillis, onOpenProfile)
                     }
-                    state.rows.forEach { FeedRow(it, state.nowMillis, onOpenProfile) }
                 }
             }
 
@@ -238,74 +236,137 @@ fun FeedScreen(
     }
 }
 
+/**
+ * Who's around, as a stories-style strip: faces first, focusing friends lead
+ * with a breathing ember ring, and adding someone is always the last bubble.
+ * Presence is the social proof that makes starting a session feel shared.
+ */
 @Composable
-private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit, onOpenProfile: (String) -> Unit) {
+private fun CircleStrip(circle: List<FriendPresence>, onOpenFriends: () -> Unit, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
+    val focusing = circle.count { it.status == PresenceStatus.FOCUSING }
     Text(
-        if (circle.isEmpty()) "CIRCLE" else "CIRCLE · ${circle.size}",
-        style = MonoLabelSmall, color = colors.textMuted,
+        when {
+            circle.isEmpty() -> "Your circle"
+            focusing == 1 -> "1 friend focusing now"
+            focusing > 1 -> "$focusing friends focusing now"
+            else -> "Your circle · ${circle.size}"
+        },
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = if (focusing > 0) colors.accent else colors.textPrimary,
     )
-    Spacer(Modifier.height(8.dp))
     if (circle.isEmpty()) {
-        FeatureEmptyState(
-            icon = app.stackd.core.ui.StackdIcons.Group,
-            title = "No ties yet",
-            body = "Add a friend to see when they're focusing.",
-            actionText = "Find someone",
-            onAction = onOpenFriends,
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Add a friend to see when they're focusing — and stack together.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
         )
-        return
     }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
-            .padding(vertical = 4.dp),
+    Spacer(Modifier.height(14.dp))
+    val sorted = remember(circle) { circle.sortedBy { it.status.ordinal } }
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        circle.forEach { f ->
-            val source = remember { MutableInteractionSource() }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .pressFeedback(source)
-                    .clickable(
-                        interactionSource = source,
-                        indication = null,
-                        role = androidx.compose.ui.semantics.Role.Button,
-                    ) { onOpenProfile(f.id) }
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+        sorted.forEach { f ->
+            Bubble(
+                label = f.displayName?.takeIf { it.isNotBlank() }?.substringBefore(' ') ?: "Anon",
+                status = f.status,
+                onClick = { onOpenProfile(f.id) },
+            ) { app.stackd.core.ui.Avatar(url = f.avatarUrl, name = f.displayName, size = 56.dp) }
+        }
+        Bubble(label = "Add", status = null, onClick = onOpenFriends) {
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .border(1.dp, colors.textPrimary.copy(alpha = 0.25f), CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    Modifier
-                        .size(8.dp)
-                        .background(
-                            when (f.status) {
-                                PresenceStatus.FOCUSING -> colors.accent
-                                PresenceStatus.IDLE -> colors.textMuted
-                                PresenceStatus.OFFLINE -> colors.textPrimary.copy(alpha = 0.15f)
-                            },
-                            CircleShape,
-                        ),
-                )
-                app.stackd.core.ui.Avatar(url = f.avatarUrl, name = f.displayName, size = 28.dp)
-                Text(
-                    f.displayName?.takeIf { it.isNotBlank() } ?: "Anonymous",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textPrimary,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    f.status.name.lowercase(),
-                    style = MonoLabelSmall,
-                    color = if (f.status == PresenceStatus.FOCUSING) colors.accent else colors.textMuted,
+                androidx.compose.material3.Icon(
+                    app.stackd.core.ui.StackdIcons.Add,
+                    contentDescription = "Add friends",
+                    tint = colors.textPrimary,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun Bubble(
+    label: String,
+    status: PresenceStatus?,
+    onClick: () -> Unit,
+    face: @Composable () -> Unit,
+) {
+    val colors = Stackd.colors
+    val source = remember { MutableInteractionSource() }
+    val pulse = if (status == PresenceStatus.FOCUSING) {
+        val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "ring")
+        t.animateFloat(
+            0.45f, 1f,
+            androidx.compose.animation.core.infiniteRepeatable(
+                androidx.compose.animation.core.tween(1400),
+                androidx.compose.animation.core.RepeatMode.Reverse,
+            ),
+            label = "ringAlpha",
+        ).value
+    } else {
+        1f
+    }
+    val ring = when (status) {
+        PresenceStatus.FOCUSING -> colors.accent.copy(alpha = pulse)
+        PresenceStatus.IDLE -> colors.textPrimary.copy(alpha = 0.25f)
+        else -> androidx.compose.ui.graphics.Color.Transparent
+    }
+    Column(
+        Modifier
+            .width(64.dp)
+            .pressFeedback(source)
+            .clickable(source, indication = null, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.border(2.dp, ring, CircleShape).padding(4.dp),
+            contentAlignment = Alignment.Center,
+        ) { face() }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (status == PresenceStatus.FOCUSING) colors.textPrimary else colors.textMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Activity as a calm list grouped by day — dividers, not a stack of boxes. */
+@Composable
+private fun Activity(rows: List<FeedItem>, now: Long, onOpenProfile: (String) -> Unit) {
+    val colors = Stackd.colors
+    val zone = remember { java.time.ZoneId.systemDefault() }
+    val groups = remember(rows, now) {
+        val today = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        rows.groupBy { item ->
+            val d = parseIsoMillis(item.createdAt)?.let { java.time.Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+            when (d) {
+                today -> "Today"
+                today.minusDays(1) -> "Yesterday"
+                else -> "Earlier"
+            }
+        }
+    }
+    groups.forEach { (day, items) ->
+        Text(day.uppercase(), style = MonoLabelSmall, color = colors.textMuted)
+        Spacer(Modifier.height(4.dp))
+        items.forEachIndexed { i, item ->
+            FeedRow(item, now, onOpenProfile)
+            if (i < items.lastIndex) app.stackd.core.ui.HairlineDivider()
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -317,30 +378,30 @@ private fun FeedRow(item: FeedItem, now: Long, onOpenProfile: (String) -> Unit) 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .pressFeedback(source)
-            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
             .clickable(
                 interactionSource = source,
                 indication = null,
                 role = androidx.compose.ui.semantics.Role.Button,
             ) { onOpenProfile(item.userId) }
-            .padding(14.dp),
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        app.stackd.core.ui.Avatar(url = item.avatarUrl, name = name, size = 36.dp)
-        Column(Modifier.weight(1f)) {
-            Text(
-                name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(item.line, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
-            Spacer(Modifier.height(2.dp))
-            Text(feedTimeAgo(item.createdAt, now), style = MonoLabelSmall, color = colors.textMuted)
-        }
+        app.stackd.core.ui.Avatar(url = item.avatarUrl, name = name, size = 40.dp)
+        Text(
+            androidx.compose.ui.text.buildAnnotatedString {
+                pushStyle(androidx.compose.ui.text.SpanStyle(color = colors.textPrimary, fontWeight = FontWeight.SemiBold))
+                append(name)
+                pop()
+                append(" ")
+                append(item.line)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textMuted,
+            modifier = Modifier.weight(1f),
+        )
+        Text(feedTimeAgo(item.createdAt, now), style = MonoLabelSmall, color = colors.textMuted)
     }
 }
 
