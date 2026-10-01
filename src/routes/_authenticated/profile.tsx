@@ -18,6 +18,7 @@ import { LifetimeBadge, LifetimeCoupon } from "@/components/premium/lifetime-cou
 import { ManageSubscription } from "@/components/premium/manage-subscription";
 import { formatHandle } from "@/lib/handle";
 import { useXpSync } from "@/lib/xp-sync";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
@@ -94,6 +95,29 @@ function MyProfile() {
     onError: () => toast.error("Could not save"),
   });
   const saving = saveMutation.isPending;
+
+  // Uploads to avatars/{uid}/…, then points profiles.avatar_url at it; the
+  // sync trigger mirrors the URL into public_profiles for everyone else.
+  const avatarMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error("Not signed in");
+      if (file.size > 2 * 1024 * 1024) throw new Error("Photo must be under 2 MB");
+      const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const up = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { contentType: file.type, upsert: true });
+      if (up.error) throw up.error;
+      const url = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      const { error } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Photo updated");
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not upload photo"),
+  });
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,6 +220,24 @@ function MyProfile() {
 
         <form onSubmit={submit} className="space-y-4">
           <h2 className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">Edit</h2>
+
+          <label
+            className={`inline-flex font-mono text-[10px] tracking-[0.3em] uppercase px-5 py-2.5 border border-white/10 text-silver hover:border-ember/40 rounded-full ${INTERACTIVE}`}
+            aria-busy={avatarMutation.isPending}
+          >
+            {avatarMutation.isPending ? "Uploading…" : "Change photo"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              disabled={avatarMutation.isPending}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) avatarMutation.mutate(file);
+              }}
+            />
+          </label>
 
           <Field label="Display name" required>
             <input
