@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,6 +39,7 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.ui.Avatar
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.core.ui.pressFeedback
 import app.stackd.feature.profile.FeatureEmptyState
@@ -195,6 +197,7 @@ fun FriendsScreen(
         items(state.searchResults, key = { "s:${it.id}" }) { p ->
             PersonRow(
                 name = p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
+                avatarUrl = p.avatarUrl,
                 sub = null,
                 onOpen = { onOpenProfile(p.id) },
                 actionA = if (p.id in state.requested) "SENT" else "ADD",
@@ -228,6 +231,7 @@ fun FriendsScreen(
                     items(state.incoming, key = { "in:${it.id}" }) { f ->
                         PersonRow(
                             name = f.displayName ?: "Anon",
+                            avatarUrl = f.avatarUrl,
                             sub = "wants to connect",
                             onOpen = { onOpenProfile(f.userId) },
                             actionA = "ACCEPT", onA = { onRespond(f.id, true) },
@@ -246,6 +250,7 @@ fun FriendsScreen(
                     items(state.outgoing, key = { "out:${it.id}" }) { f ->
                         PersonRow(
                             name = f.displayName ?: "Anon",
+                            avatarUrl = f.avatarUrl,
                             sub = "pending",
                             onOpen = { onOpenProfile(f.userId) },
                             actionA = "CANCEL", onA = { onRemove(f.id) },
@@ -270,6 +275,7 @@ fun FriendsScreen(
                 items(state.friends, key = { "fr:${it.id}" }) { f ->
                     PersonRow(
                         name = f.displayName ?: "Anon",
+                        avatarUrl = f.avatarUrl,
                         sub = "since ${f.since.take(10)}",
                         onOpen = { onOpenProfile(f.userId) },
                         actionA = "REMOVE", onA = { onRemove(f.id) },
@@ -289,6 +295,7 @@ fun FriendsScreen(
 @Composable
 private fun PersonRow(
     name: String,
+    avatarUrl: String?,
     sub: String?,
     onOpen: (() -> Unit)? = null,
     actionA: String? = null,
@@ -308,6 +315,8 @@ private fun PersonRow(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Avatar(url = avatarUrl, name = name, size = 36.dp)
+        Spacer(Modifier.width(12.dp))
         Column(
             Modifier
                 .weight(1f)

@@ -43,6 +43,7 @@ import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.RadiusMd
 import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.Avatar
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
@@ -223,6 +224,9 @@ fun LeaderboardScreen(
                     xp = p.lifetimeXp,
                     isMe = p.id == state.meId,
                     onClick = { onOpenProfile(p.id) },
+                    person = true,
+                    avatarUrl = p.avatarUrl,
+                    sharedKey = "avatar-${p.id}",
                 )
             }
             else -> itemsIndexed(state.groups, key = { _, g -> "g:${g.id}" }) { i, g ->
@@ -245,7 +249,17 @@ fun LeaderboardScreen(
 }
 
 @Composable
-private fun BoardRow(rank: Int, title: String, subtitle: String, xp: Long, isMe: Boolean, onClick: (() -> Unit)? = null) {
+private fun BoardRow(
+    rank: Int,
+    title: String,
+    subtitle: String,
+    xp: Long,
+    isMe: Boolean,
+    onClick: (() -> Unit)? = null,
+    person: Boolean = false,
+    avatarUrl: String? = null,
+    sharedKey: String? = null,
+) {
     val colors = Stackd.colors
     val source = remember { MutableInteractionSource() }
     Row(
@@ -283,6 +297,10 @@ private fun BoardRow(rank: Int, title: String, subtitle: String, xp: Long, isMe:
             color = if (rank <= 3) colors.accent else colors.textMuted,
             modifier = Modifier.width(44.dp),
         )
+        if (person) {
+            Avatar(url = avatarUrl, name = title, size = 32.dp, sharedKey = sharedKey)
+            Spacer(Modifier.width(10.dp))
+        }
         Column(Modifier.weight(1f)) {
             Text(
                 title,

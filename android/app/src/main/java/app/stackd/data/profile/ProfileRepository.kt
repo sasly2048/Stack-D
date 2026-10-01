@@ -5,6 +5,8 @@ import app.stackd.data.room.ProfileRow
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.storage.storage
+import io.ktor.http.ContentType
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -237,6 +239,26 @@ class ProfileRepository(private val client: SupabaseClient) {
         ) {
             filter { eq("id", userId) }
         }
+    }
+
+    /**
+     * Uploads a profile photo to the public `avatars` bucket under the caller's
+     * own folder (the storage policy only allows `<uid>/...`), points
+     * profiles.avatar_url at its public URL and returns that URL. A fresh
+     * timestamped name per upload sidesteps CDN/Coil caching of the old photo.
+     */
+    suspend fun uploadAvatar(userId: String, bytes: ByteArray): String {
+        val path = "$userId/avatar-${System.currentTimeMillis()}.jpg"
+        val bucket = client.storage.from("avatars")
+        bucket.upload(path, bytes) {
+            upsert = true
+            contentType = ContentType.Image.JPEG
+        }
+        val url = bucket.publicUrl(path)
+        client.postgrest.from("profiles").update({ set("avatar_url", url) }) {
+            filter { eq("id", userId) }
+        }
+        return url
     }
 
     /**

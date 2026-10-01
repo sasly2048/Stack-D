@@ -35,6 +35,7 @@ data class Partner(
     /** True when the other party sent the invite and it awaits this user. */
     val incoming: Boolean,
     val createdAt: String,
+    val avatarUrl: String? = null,
 )
 
 class PartnersRepository(private val client: SupabaseClient) {
@@ -71,6 +72,7 @@ class PartnersRepository(private val client: SupabaseClient) {
                 status = r.status,
                 incoming = r.status == "pending" && r.initiatorId != userId,
                 createdAt = r.createdAt,
+                avatarUrl = names[pid]?.avatarUrl,
             )
         }
     }

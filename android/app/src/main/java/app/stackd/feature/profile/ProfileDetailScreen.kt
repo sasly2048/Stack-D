@@ -187,6 +187,7 @@ fun ProfileDetailScreen(
                             url = p.avatarUrl,
                             name = p.displayName,
                             size = 72.dp,
+                            sharedKey = "avatar-${p.id}",
                         )
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {

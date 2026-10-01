@@ -39,11 +39,14 @@ internal fun FeatureEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(36.dp))
-        Spacer(Modifier.height(12.dp))
+        // Brand illustration instead of a lone grey glyph: empty is a moment,
+        // not an error.
+        app.stackd.core.ui.EmptyIllustration(icon)
+        Spacer(Modifier.height(16.dp))
         Text(
             title,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
+            fontFamily = app.stackd.core.theme.SerifFamily,
             color = colors.textPrimary,
             textAlign = TextAlign.Center,
         )

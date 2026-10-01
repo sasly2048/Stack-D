@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.stackd.core.ui.reveal
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -230,7 +231,7 @@ fun TimelineScreen(
                     body = "Start one to write the first line of your record.",
                 )
                 else -> {
-                    state.items.forEach { s -> SessionCard(s, onReact) }
+                    state.items.forEachIndexed { i, s -> Box(Modifier.reveal(i)) { SessionCard(s, onReact) } }
                     if (state.hasMore) {
                         Spacer(Modifier.height(16.dp))
                         GhostButton(

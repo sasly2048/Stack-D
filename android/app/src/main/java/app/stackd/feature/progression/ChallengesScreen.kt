@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.stackd.core.ui.reveal
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -146,10 +147,11 @@ fun ChallengesScreen(
                         Spacer(Modifier.height(8.dp))
                         return@forEach
                     }
-                    rows.forEach { c ->
+                    rows.forEachIndexed { i, c ->
                         val done = c.completedAt != null
                         Column(
                             modifier = Modifier
+                                .reveal(i)
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                                 .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)

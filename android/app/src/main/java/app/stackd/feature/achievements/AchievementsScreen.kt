@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.stackd.core.ui.reveal
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -225,11 +226,12 @@ fun AchievementsScreen(
                     title = "No achievements yet",
                     body = "Marks appear here as the catalog fills. Keep holding sessions.",
                 )
-                else -> state.rows.forEach { a ->
+                else -> state.rows.forEachIndexed { i, a ->
                     val unlocked = a.unlockedAt != null
                     val accent = tierColor(a.tier, colors.accent)
                     Row(
                         modifier = Modifier
+                            .reveal(i)
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
                             .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)

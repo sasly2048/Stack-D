@@ -1,5 +1,6 @@
 package app.stackd.feature.room
 
+import app.stackd.core.ui.Avatar
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -233,6 +234,12 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
             Beat(shown("friends") && summary.friendsFinished.isNotEmpty()) {
                 Spacer(Modifier.height(28.dp))
                 Text("ALSO FINISHED TODAY", style = MonoLabelSmall, color = colors.textMuted)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    summary.friendsFinished.take(4).forEach {
+                        Avatar(url = it.avatarUrl, name = it.displayName, size = 28.dp)
+                    }
+                }
                 Spacer(Modifier.height(6.dp))
                 Text(
                     summary.friendsFinished.take(4)

@@ -1,6 +1,22 @@
 package app.stackd.feature.profile
 
+import android.content.ContentResolver
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.platform.LocalContext
+import app.stackd.core.ui.Avatar
+import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.core.ui.SkeletonCard
 import androidx.compose.ui.Alignment
@@ -63,6 +79,9 @@ data class ProfileUiState(
     val usernameStatus: UsernameStatus = UsernameStatus.Idle,
     /** Lifetime milestones shelf — null until loaded. */
     val shelf: app.stackd.data.profile.MilestoneShelf? = null,
+    /** Profile photo upload in flight. */
+    val avatarBusy: Boolean = false,
+    val avatarError: String? = null,
 )
 
 /** Live username-availability hint states. */
@@ -118,6 +137,41 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
             runCatching { container.profiles.updateProfile(userId, displayName, bio) }
             _state.value = _state.value.copy(saving = false)
             load()
+        }
+    }
+
+    /**
+     * Downscales the picked photo, uploads it and swaps the header avatar in
+     * place. Until the avatars bucket migration ships, the upload fails and the
+     * user gets a plain-language error instead of a stack trace.
+     */
+    fun changeAvatar(resolver: ContentResolver, uri: Uri) {
+        val userId = container.auth.currentUserId ?: return
+        if (_state.value.avatarBusy) return
+        _state.update { it.copy(avatarBusy = true, avatarError = null) }
+        viewModelScope.launch {
+            val result = runCatching {
+                val bytes = withContext(Dispatchers.IO) { downscaleToJpeg(resolver, uri) }
+                container.profiles.uploadAvatar(userId, bytes)
+            }
+            result.fold(
+                onSuccess = { url ->
+                    _state.update {
+                        it.copy(avatarBusy = false, profile = it.profile?.copy(avatarUrl = url))
+                    }
+                    container.cache.put(cacheKey(userId), _state.value)
+                },
+                onFailure = { e ->
+                    val msg = e.message.orEmpty()
+                    val error = when {
+                        msg.contains("bucket", ignoreCase = true) ->
+                            "Photo uploads aren't available yet. Try again later."
+                        e is ImageReadException -> e.message
+                        else -> "Couldn't upload your photo. Check your connection and try again."
+                    }
+                    _state.update { it.copy(avatarBusy = false, avatarError = error) }
+                },
+            )
         }
     }
 
@@ -186,8 +240,10 @@ fun ProfileRoute(
     vm: ProfileViewModel = viewModel(factory = stackdViewModel { ProfileViewModel(it) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val resolver = LocalContext.current.contentResolver
     ProfileScreen(
         state = state,
+        onPickAvatar = { uri -> vm.changeAvatar(resolver, uri) },
         onSave = vm::save,
         onSaveUsername = vm::saveUsername,
         onUsernameInput = vm::onUsernameInput,
@@ -202,6 +258,7 @@ fun ProfileRoute(
 @Composable
 fun ProfileScreen(
     state: ProfileUiState,
+    onPickAvatar: (Uri) -> Unit = {},
     onSave: (String, String) -> Unit,
     onSaveUsername: (String) -> Unit,
     onUsernameInput: (String) -> Unit = {},
@@ -234,6 +291,28 @@ fun ProfileScreen(
                 }
                 else -> {
                     val p = state.profile
+                    // The system photo picker needs no storage permission.
+                    val picker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+                        uri?.let(onPickAvatar)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(url = p.avatarUrl, name = p.displayName, size = 72.dp)
+                        Spacer(Modifier.width(16.dp))
+                        GhostButton(
+                            text = if (state.avatarBusy) "Uploading…" else "Change photo",
+                            onClick = {
+                                picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                            },
+                            enabled = !state.avatarBusy,
+                            busy = state.avatarBusy,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    state.avatarError?.let {
+                        Spacer(Modifier.height(6.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = colors.breach)
+                    }
+                    Spacer(Modifier.height(16.dp))
                     Text(
                         p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
                         style = MaterialTheme.typography.displaySmall,
@@ -506,5 +585,50 @@ private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf)
                     .background(colors.accent.copy(alpha = 0.7f), Radius2Xl),
             )
         }
+    }
+}
+
+/** A picked file that couldn't be decoded as an image; its message is user-facing. */
+private class ImageReadException : Exception("Couldn't read that image. Try another photo.")
+
+/**
+ * Decodes [uri] to at most [maxPx] on the long edge and re-encodes it as JPEG
+ * (quality 85), so uploads stay well under the bucket's 2 MB cap. Blocking;
+ * call off the main thread.
+ */
+internal fun downscaleToJpeg(resolver: ContentResolver, uri: Uri, maxPx: Int = 512): ByteArray {
+    fun scaleFor(w: Int, h: Int) = minOf(1f, maxPx.toFloat() / maxOf(w, h, 1))
+    val bitmap: Bitmap = runCatching {
+        if (Build.VERSION.SDK_INT >= 28) {
+            // ImageDecoder also applies the EXIF rotation.
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, info, _ ->
+                val scale = scaleFor(info.size.width, info.size.height)
+                decoder.setTargetSize(
+                    (info.size.width * scale).toInt().coerceAtLeast(1),
+                    (info.size.height * scale).toInt().coerceAtLeast(1),
+                )
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            }
+        } else {
+            // ponytail: API 26-27 ignores EXIF rotation; add ExifInterface if those devices matter.
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxPx) sample *= 2
+            val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+            val decoded = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
+                ?: throw ImageReadException()
+            val scale = scaleFor(decoded.width, decoded.height)
+            if (scale >= 1f) decoded else Bitmap.createScaledBitmap(
+                decoded,
+                (decoded.width * scale).toInt().coerceAtLeast(1),
+                (decoded.height * scale).toInt().coerceAtLeast(1),
+                true,
+            )
+        }
+    }.getOrElse { throw ImageReadException() }
+    return ByteArrayOutputStream().use { out ->
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+        out.toByteArray()
     }
 }

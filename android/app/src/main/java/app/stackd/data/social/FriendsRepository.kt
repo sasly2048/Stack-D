@@ -41,6 +41,7 @@ data class Friend(
     /** incoming | outgoing | friend */
     val direction: String,
     val since: String,
+    val avatarUrl: String? = null,
 )
 
 class FriendsRepository(private val client: SupabaseClient) {
@@ -82,6 +83,7 @@ class FriendsRepository(private val client: SupabaseClient) {
                     else -> "incoming"
                 },
                 since = r.createdAt,
+                avatarUrl = profiles[other]?.avatarUrl,
             )
         }
     }

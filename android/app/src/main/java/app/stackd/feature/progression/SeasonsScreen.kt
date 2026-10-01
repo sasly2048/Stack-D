@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.stackd.core.ui.reveal
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +41,7 @@ import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.AccentButton
+import app.stackd.core.ui.Avatar
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
@@ -253,10 +255,11 @@ fun SeasonsScreen(
                             body = "Join and hold a session to take the first spot.",
                         )
                     }
-                    state.standings.forEach { row ->
+                    state.standings.forEachIndexed { i, row ->
                         val isMe = row.userId == state.meId
                         Row(
                             modifier = Modifier
+                                .reveal(i)
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                                 .background(
@@ -278,8 +281,11 @@ fun SeasonsScreen(
                                 color = if (row.rank <= 3) colors.accent else colors.textMuted,
                                 modifier = Modifier.width(44.dp),
                             )
+                            val name = row.displayName?.takeIf { it.isNotBlank() } ?: "Anon"
+                            Avatar(url = row.avatarUrl, name = name, size = 32.dp)
+                            Spacer(Modifier.width(10.dp))
                             Text(
-                                row.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
+                                name,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = colors.textPrimary,
                                 fontWeight = if (isMe) FontWeight.Bold else FontWeight.Normal,

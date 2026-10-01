@@ -7,6 +7,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.storage.Storage
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -38,6 +39,7 @@ object SupabaseModule {
             install(Postgrest)
             install(Realtime)
             install(Functions)
+            install(Storage)
 
             // Without a ceiling, a stalled request hangs the calling screen's
             // spinner forever with no error. A hard timeout turns that into a

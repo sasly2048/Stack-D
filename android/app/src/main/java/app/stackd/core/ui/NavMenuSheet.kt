@@ -109,6 +109,7 @@ fun NavMenuSheet(
                 bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp,
             ),
         ) {
+            var n = 0
             sections.forEach { (title, labels) ->
                 item(span = { GridItemSpan(maxLineSpan) }, key = "h-$title") {
                     Text(
@@ -119,8 +120,9 @@ fun NavMenuSheet(
                     )
                 }
                 labels.forEach { label ->
+                    val order = n++
                     item(key = label) {
-                        Tile(label, iconFor(label)) {
+                        Tile(label, iconFor(label), Modifier.reveal(order)) {
                             onDismiss()
                             byLabel[label]?.invoke()
                         }
@@ -132,11 +134,11 @@ fun NavMenuSheet(
 }
 
 @Composable
-private fun Tile(label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun Tile(label: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = Stackd.colors
     val source = remember { MutableInteractionSource() }
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .heightIn(min = 92.dp)
             .pressFeedback(source, pressedScale = 0.95f)

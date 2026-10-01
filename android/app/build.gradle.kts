@@ -125,6 +125,7 @@ dependencies {
     implementation(libs.supabase.realtime)
     implementation(libs.supabase.auth)
     implementation(libs.supabase.functions)
+    implementation(libs.supabase.storage)
     implementation(libs.ktor.client.okhttp)
 
     implementation(libs.kotlinx.serialization.json)

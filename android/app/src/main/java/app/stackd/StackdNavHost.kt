@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+
 package app.stackd
 
 import androidx.compose.runtime.Composable
@@ -51,6 +53,11 @@ fun StackdNavHost(
     // cross-fade made every move feel like a page reload.
     val ease = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)
     val dur = 320
+    // Shared elements (avatar list -> profile header) need a common transition
+    // scope around the nav host; destinations that take part provide their
+    // animated scope via LocalNavAnimatedScope.
+    androidx.compose.animation.SharedTransitionLayout {
+    androidx.compose.runtime.CompositionLocalProvider(app.stackd.core.ui.LocalSharedTransitionScope provides this) {
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -179,7 +186,9 @@ fun StackdNavHost(
             arguments = listOf(navArgument(Dest.ProfileDetail.ARG_ID) { type = NavType.StringType }),
         ) { entry ->
             val id = entry.arguments?.getString(Dest.ProfileDetail.ARG_ID).orEmpty()
-            ProfileDetailRoute(userId = id, onBack = { navController.popBackStack() })
+            CompositionLocalProvider(app.stackd.core.ui.LocalNavAnimatedScope provides this) {
+                ProfileDetailRoute(userId = id, onBack = { navController.popBackStack() })
+            }
         }
         composable(Dest.Friends.route) {
             FriendsRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile)
@@ -201,7 +210,7 @@ fun StackdNavHost(
 
         // Progression
         composable(Dest.Leaderboard.route) {
-            LeaderboardRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile)
+            CompositionLocalProvider(app.stackd.core.ui.LocalNavAnimatedScope provides this) { LeaderboardRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile) }
         }
         composable(Dest.Achievements.route) {
             AchievementsRoute(onBack = { navController.popBackStack() })
@@ -298,6 +307,8 @@ fun StackdNavHost(
         // Developer surfaces — reachable only while the Settings toggle is on
         placeholder(Dest.Sdk, "SDK")
         placeholder(Dest.Mcp, "MCP")
+    }
+    }
     }
 }
 

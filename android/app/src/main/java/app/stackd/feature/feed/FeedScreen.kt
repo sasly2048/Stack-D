@@ -291,6 +291,7 @@ private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit,
                             CircleShape,
                         ),
                 )
+                app.stackd.core.ui.Avatar(url = f.avatarUrl, name = f.displayName, size = 28.dp)
                 Text(
                     f.displayName?.takeIf { it.isNotBlank() } ?: "Anonymous",
                     style = MaterialTheme.typography.bodyMedium,

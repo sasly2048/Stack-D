@@ -37,6 +37,7 @@ import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.Avatar
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
@@ -198,12 +199,17 @@ fun PartnersScreen(
                         .border(1.dp, colors.border, Radius2Xl)
                         .padding(14.dp),
                 ) {
-                    Text(
-                        p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textPrimary,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val name = p.displayName?.takeIf { it.isNotBlank() } ?: "Anon"
+                        Avatar(url = p.avatarUrl, name = name, size = 32.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textPrimary,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         GhostButton(
@@ -270,9 +276,12 @@ private fun PartnerRow(
             .padding(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            val name = p.displayName?.takeIf { it.isNotBlank() } ?: "Anon"
+            Avatar(url = p.avatarUrl, name = name, size = 36.dp)
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
+                    name,
                     style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
