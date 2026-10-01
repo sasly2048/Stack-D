@@ -159,13 +159,17 @@ export async function recommendNextSessionCore(
 
     try {
       const { callAIJson, BRAND_TONE } = await import("./ai.server");
-      const raw = await callAIJson<z.infer<typeof RecommendationSchema>>({
-        temperature: 0.7,
-        messages: [
-          { role: "system", content: BRAND_TONE },
-          {
-            role: "user",
-            content: `Recommend the next focus session for a Stack'd user, in JSON.
+      const { passiveAi } = await import("./ai-passive");
+      // Tier-gated + cached per latest session: free users fall to the catch
+      // below (deterministic copy); paid users pay once per new session.
+      const raw = await passiveAi(supabase, userId, "recommend", rows[0]?.created_at ?? "", () =>
+        callAIJson<z.infer<typeof RecommendationSchema>>({
+          temperature: 0.7,
+          messages: [
+            { role: "system", content: BRAND_TONE },
+            {
+              role: "user",
+              content: `Recommend the next focus session for a Stack'd user, in JSON.
 
 Stats over ${rows.length} recent sessions:
 - avg score: ${avgScore}/100
@@ -180,9 +184,10 @@ Rules:
 - "confidence": "low" if < 5 sessions, "medium" if 5–14, "high" if 15+.
 
 Return only the JSON.`,
-          },
-        ],
-      });
+            },
+          ],
+        }),
+      );
 
       const parsed = RecommendationSchema.parse(raw);
       const tiers = [15, 20, 25, 30, 45, 60, 90];
@@ -309,13 +314,21 @@ export async function generateDashboardInsightsCore(
 
     try {
       const { callAIJson, BRAND_TONE } = await import("./ai.server");
-      const raw = await callAIJson<z.infer<typeof InsightsSchema>>({
-        temperature: 0.85,
-        messages: [
-          { role: "system", content: BRAND_TONE },
-          {
-            role: "user",
-            content: `Write personalized dashboard insights for a Stack'd practitioner. Return JSON.
+      const { passiveAi } = await import("./ai-passive");
+      // Tier-gated + cached per latest session (see ai-passive.ts).
+      const raw = await passiveAi(
+        supabase,
+        userId,
+        "dashboard_insights",
+        rows[0]?.created_at ?? "",
+        () =>
+          callAIJson<z.infer<typeof InsightsSchema>>({
+            temperature: 0.85,
+            messages: [
+              { role: "system", content: BRAND_TONE },
+              {
+                role: "user",
+                content: `Write personalized dashboard insights for a Stack'd practitioner. Return JSON.
 
 Practitioner: ${displayName}
 Lifetime XP: ${profile?.lifetime_xp ?? 0}
@@ -333,9 +346,10 @@ Return:
 - "paragraphs": exactly 2 short paragraphs (60–110 words total combined). Each paragraph is 2–3 sentences. Reference specific numbers from the data. The first paragraph names what the data shows. The second paragraph names what to do next.
 
 Do not use the practitioner's name unless it flows naturally. Avoid "great job", "keep it up", emoji, and exclamation marks. This is a ledger, not a coach.`,
-          },
-        ],
-      });
+              },
+            ],
+          }),
+      );
 
       const parsed = InsightsSchema.parse(raw);
       return {
@@ -454,13 +468,16 @@ export async function generateSessionRecapCore(
 
     try {
       const { callAIJson, BRAND_TONE } = await import("./ai.server");
-      const raw = await callAIJson<z.infer<typeof RecapSchema>>({
-        temperature: 0.8,
-        messages: [
-          { role: "system", content: BRAND_TONE },
-          {
-            role: "user",
-            content: `Write a session recap for a Stack'd focus block. Return JSON.
+      const { passiveAi } = await import("./ai-passive");
+      // Tier-gated; cached per room so a session's recap is generated once.
+      const raw = await passiveAi(supabase, userId, "session_recap", data.roomId, () =>
+        callAIJson<z.infer<typeof RecapSchema>>({
+          temperature: 0.8,
+          messages: [
+            { role: "system", content: BRAND_TONE },
+            {
+              role: "user",
+              content: `Write a session recap for a Stack'd focus block. Return JSON.
 
 Session:
 - Room: ${data.roomCode}
@@ -479,9 +496,10 @@ Return:
 - "nextStep": one line (≤ 30 words) suggesting the shape of the next session. Concrete, not motivational.
 
 Voice is obsidian, ceremonial, restrained. No emoji. No exclamation marks.`,
-          },
-        ],
-      });
+            },
+          ],
+        }),
+      );
 
       const parsed = RecapSchema.parse(raw);
       return {

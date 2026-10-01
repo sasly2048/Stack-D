@@ -62,23 +62,30 @@ export async function askCompanionCore(
       .join("\n");
 
     const { callAIJson, BRAND_TONE } = await import("./ai.server");
-    const out = await callAIJson<{ reply: string }>({
-      messages: [
-        {
-          role: "system",
-          content:
-            BRAND_TONE +
-            "\nYou are the Stack'd Study Companion — a private, one-on-one focus coach. " +
-            "Answer conversationally, but stay short (2-4 sentences). " +
-            "Reference the operator's own data when useful. Never invent statistics. " +
-            'Return strict JSON: {"reply": string}.\n\nOPERATOR:\n' +
-            factSheet,
-        },
-        ...data.history.slice(-20).map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: data.message },
-      ],
-      temperature: 0.7,
-    });
+    const { withAiBudget } = await import("./require-ai-budget");
+    // Explicit, user-triggered action: one message = one AI action from the
+    // caller's monthly allowance (free 0, pro 20, elite 200; admin/lifetime
+    // unlimited). Refunded if the gateway call fails. Free users get the
+    // "available on Pro and Elite" error, surfaced as 402 on the public route.
+    const out = await withAiBudget(supabase, userId, () =>
+      callAIJson<{ reply: string }>({
+        messages: [
+          {
+            role: "system",
+            content:
+              BRAND_TONE +
+              "\nYou are the Stack'd Study Companion — a private, one-on-one focus coach. " +
+              "Answer conversationally, but stay short (2-4 sentences). " +
+              "Reference the operator's own data when useful. Never invent statistics. " +
+              'Return strict JSON: {"reply": string}.\n\nOPERATOR:\n' +
+              factSheet,
+          },
+          ...data.history.slice(-20).map((m) => ({ role: m.role, content: m.content })),
+          { role: "user", content: data.message },
+        ],
+        temperature: 0.7,
+      }),
+    );
 
     return { reply: out.reply?.slice(0, 2000) ?? "" };
   }

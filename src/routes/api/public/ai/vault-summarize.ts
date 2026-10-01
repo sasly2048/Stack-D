@@ -1,19 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { aiRoute } from "@/lib/ai-public-auth";
 import { z } from "zod";
-import { authenticate, unauthorized } from "@/lib/ai-public-auth";
 import { summarizeVaultItemCore } from "@/lib/memory-vault.functions";
 
-/** Public AI route — vault item summary (Elite-gated) for Android. */
+/** Public AI route for Android: vault item summary (Elite-gated). Errors map to typed JSON via aiRoute. */
 export const Route = createFileRoute("/api/public/ai/vault-summarize")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const ctx = await authenticate(request);
-        if (!ctx) return unauthorized("Invalid or missing token.");
-        const { id } = z.object({ id: z.string().uuid() }).parse(await request.json());
-        const result = await summarizeVaultItemCore(ctx.supabase, ctx.userId, { id });
-        return Response.json(result);
-      },
+      POST: async ({ request }) =>
+        aiRoute(request, async ({ supabase, userId }) =>
+          summarizeVaultItemCore(
+            supabase,
+            userId,
+            z.object({ id: z.string().uuid() }).parse(await request.json()),
+          ),
+        ),
     },
   },
 });

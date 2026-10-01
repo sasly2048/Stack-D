@@ -60,6 +60,12 @@ import { Route as ApiPublicAiSessionRecapRouteImport } from './routes/api/public
 import { Route as ApiPublicAiVaultSummarizeRouteImport } from './routes/api/public/ai/vault-summarize'
 import { Route as ApiPublicAiWeeklyStoryRouteImport } from './routes/api/public/ai/weekly-story'
 import { Route as ApiPublicAuthGuardSigninRouteImport } from './routes/api/public/auth-guard.signin'
+import { Route as ApiPublicWebhooksCreateRouteImport } from './routes/api/public/webhooks/create'
+import { Route as ApiPublicWebhooksDeleteRouteImport } from './routes/api/public/webhooks/delete'
+import { Route as ApiPublicWebhooksDeliveriesRouteImport } from './routes/api/public/webhooks/deliveries'
+import { Route as ApiPublicWebhooksListRouteImport } from './routes/api/public/webhooks/list'
+import { Route as ApiPublicWebhooksTestRouteImport } from './routes/api/public/webhooks/test'
+import { Route as ApiPublicWebhooksToggleRouteImport } from './routes/api/public/webhooks/toggle'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const IndexRoute = IndexRouteImport.update({
@@ -328,6 +334,37 @@ const ApiPublicAuthGuardSigninRoute =
     path: '/signin',
     getParentRoute: () => ApiPublicAuthGuardRoute,
   } as any)
+const ApiPublicWebhooksCreateRoute = ApiPublicWebhooksCreateRouteImport.update({
+  id: '/api/public/webhooks/create',
+  path: '/api/public/webhooks/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebhooksDeleteRoute = ApiPublicWebhooksDeleteRouteImport.update({
+  id: '/api/public/webhooks/delete',
+  path: '/api/public/webhooks/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebhooksDeliveriesRoute =
+  ApiPublicWebhooksDeliveriesRouteImport.update({
+    id: '/api/public/webhooks/deliveries',
+    path: '/api/public/webhooks/deliveries',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWebhooksListRoute = ApiPublicWebhooksListRouteImport.update({
+  id: '/api/public/webhooks/list',
+  path: '/api/public/webhooks/list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebhooksTestRoute = ApiPublicWebhooksTestRouteImport.update({
+  id: '/api/public/webhooks/test',
+  path: '/api/public/webhooks/test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebhooksToggleRoute = ApiPublicWebhooksToggleRouteImport.update({
+  id: '/api/public/webhooks/toggle',
+  path: '/api/public/webhooks/toggle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -386,6 +423,12 @@ export interface FileRoutesByFullPath {
   '/api/public/ai/vault-summarize': typeof ApiPublicAiVaultSummarizeRoute
   '/api/public/ai/weekly-story': typeof ApiPublicAiWeeklyStoryRoute
   '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
+  '/api/public/webhooks/create': typeof ApiPublicWebhooksCreateRoute
+  '/api/public/webhooks/delete': typeof ApiPublicWebhooksDeleteRoute
+  '/api/public/webhooks/deliveries': typeof ApiPublicWebhooksDeliveriesRoute
+  '/api/public/webhooks/list': typeof ApiPublicWebhooksListRoute
+  '/api/public/webhooks/test': typeof ApiPublicWebhooksTestRoute
+  '/api/public/webhooks/toggle': typeof ApiPublicWebhooksToggleRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
@@ -439,6 +482,12 @@ export interface FileRoutesByTo {
   '/api/public/ai/vault-summarize': typeof ApiPublicAiVaultSummarizeRoute
   '/api/public/ai/weekly-story': typeof ApiPublicAiWeeklyStoryRoute
   '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
+  '/api/public/webhooks/create': typeof ApiPublicWebhooksCreateRoute
+  '/api/public/webhooks/delete': typeof ApiPublicWebhooksDeleteRoute
+  '/api/public/webhooks/deliveries': typeof ApiPublicWebhooksDeliveriesRoute
+  '/api/public/webhooks/list': typeof ApiPublicWebhooksListRoute
+  '/api/public/webhooks/test': typeof ApiPublicWebhooksTestRoute
+  '/api/public/webhooks/toggle': typeof ApiPublicWebhooksToggleRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
@@ -494,6 +543,12 @@ export interface FileRoutesById {
   '/api/public/ai/vault-summarize': typeof ApiPublicAiVaultSummarizeRoute
   '/api/public/ai/weekly-story': typeof ApiPublicAiWeeklyStoryRoute
   '/api/public/auth-guard/signin': typeof ApiPublicAuthGuardSigninRoute
+  '/api/public/webhooks/create': typeof ApiPublicWebhooksCreateRoute
+  '/api/public/webhooks/delete': typeof ApiPublicWebhooksDeleteRoute
+  '/api/public/webhooks/deliveries': typeof ApiPublicWebhooksDeliveriesRoute
+  '/api/public/webhooks/list': typeof ApiPublicWebhooksListRoute
+  '/api/public/webhooks/test': typeof ApiPublicWebhooksTestRoute
+  '/api/public/webhooks/toggle': typeof ApiPublicWebhooksToggleRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
@@ -549,6 +604,12 @@ export interface FileRouteTypes {
     | '/api/public/ai/vault-summarize'
     | '/api/public/ai/weekly-story'
     | '/api/public/auth-guard/signin'
+    | '/api/public/webhooks/create'
+    | '/api/public/webhooks/delete'
+    | '/api/public/webhooks/deliveries'
+    | '/api/public/webhooks/list'
+    | '/api/public/webhooks/test'
+    | '/api/public/webhooks/toggle'
     | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -602,6 +663,12 @@ export interface FileRouteTypes {
     | '/api/public/ai/vault-summarize'
     | '/api/public/ai/weekly-story'
     | '/api/public/auth-guard/signin'
+    | '/api/public/webhooks/create'
+    | '/api/public/webhooks/delete'
+    | '/api/public/webhooks/deliveries'
+    | '/api/public/webhooks/list'
+    | '/api/public/webhooks/test'
+    | '/api/public/webhooks/toggle'
     | '/lovable/email/queue/process'
   id:
     | '__root__'
@@ -656,6 +723,12 @@ export interface FileRouteTypes {
     | '/api/public/ai/vault-summarize'
     | '/api/public/ai/weekly-story'
     | '/api/public/auth-guard/signin'
+    | '/api/public/webhooks/create'
+    | '/api/public/webhooks/delete'
+    | '/api/public/webhooks/deliveries'
+    | '/api/public/webhooks/list'
+    | '/api/public/webhooks/test'
+    | '/api/public/webhooks/toggle'
     | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
@@ -684,6 +757,12 @@ export interface RootRouteChildren {
   ApiPublicAiSessionRecapRoute: typeof ApiPublicAiSessionRecapRoute
   ApiPublicAiVaultSummarizeRoute: typeof ApiPublicAiVaultSummarizeRoute
   ApiPublicAiWeeklyStoryRoute: typeof ApiPublicAiWeeklyStoryRoute
+  ApiPublicWebhooksCreateRoute: typeof ApiPublicWebhooksCreateRoute
+  ApiPublicWebhooksDeleteRoute: typeof ApiPublicWebhooksDeleteRoute
+  ApiPublicWebhooksDeliveriesRoute: typeof ApiPublicWebhooksDeliveriesRoute
+  ApiPublicWebhooksListRoute: typeof ApiPublicWebhooksListRoute
+  ApiPublicWebhooksTestRoute: typeof ApiPublicWebhooksTestRoute
+  ApiPublicWebhooksToggleRoute: typeof ApiPublicWebhooksToggleRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
@@ -1046,6 +1125,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAuthGuardSigninRouteImport
       parentRoute: typeof ApiPublicAuthGuardRoute
     }
+    '/api/public/webhooks/create': {
+      id: '/api/public/webhooks/create'
+      path: '/api/public/webhooks/create'
+      fullPath: '/api/public/webhooks/create'
+      preLoaderRoute: typeof ApiPublicWebhooksCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/delete': {
+      id: '/api/public/webhooks/delete'
+      path: '/api/public/webhooks/delete'
+      fullPath: '/api/public/webhooks/delete'
+      preLoaderRoute: typeof ApiPublicWebhooksDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/deliveries': {
+      id: '/api/public/webhooks/deliveries'
+      path: '/api/public/webhooks/deliveries'
+      fullPath: '/api/public/webhooks/deliveries'
+      preLoaderRoute: typeof ApiPublicWebhooksDeliveriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/list': {
+      id: '/api/public/webhooks/list'
+      path: '/api/public/webhooks/list'
+      fullPath: '/api/public/webhooks/list'
+      preLoaderRoute: typeof ApiPublicWebhooksListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/test': {
+      id: '/api/public/webhooks/test'
+      path: '/api/public/webhooks/test'
+      fullPath: '/api/public/webhooks/test'
+      preLoaderRoute: typeof ApiPublicWebhooksTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/toggle': {
+      id: '/api/public/webhooks/toggle'
+      path: '/api/public/webhooks/toggle'
+      fullPath: '/api/public/webhooks/toggle'
+      preLoaderRoute: typeof ApiPublicWebhooksToggleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -1172,6 +1293,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAiSessionRecapRoute: ApiPublicAiSessionRecapRoute,
   ApiPublicAiVaultSummarizeRoute: ApiPublicAiVaultSummarizeRoute,
   ApiPublicAiWeeklyStoryRoute: ApiPublicAiWeeklyStoryRoute,
+  ApiPublicWebhooksCreateRoute: ApiPublicWebhooksCreateRoute,
+  ApiPublicWebhooksDeleteRoute: ApiPublicWebhooksDeleteRoute,
+  ApiPublicWebhooksDeliveriesRoute: ApiPublicWebhooksDeliveriesRoute,
+  ApiPublicWebhooksListRoute: ApiPublicWebhooksListRoute,
+  ApiPublicWebhooksTestRoute: ApiPublicWebhooksTestRoute,
+  ApiPublicWebhooksToggleRoute: ApiPublicWebhooksToggleRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport

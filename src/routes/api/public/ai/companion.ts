@@ -1,18 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { authenticate, unauthorized } from "@/lib/ai-public-auth";
+import { aiRoute } from "@/lib/ai-public-auth";
 import { askCompanionCore, validateCompanionInput } from "@/lib/companion.functions";
 
-/** Public AI route — the Study Companion chat for Android. */
+/** Public AI route for Android: Study Companion chat. Errors map to typed JSON via aiRoute. */
 export const Route = createFileRoute("/api/public/ai/companion")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const ctx = await authenticate(request);
-        if (!ctx) return unauthorized("Invalid or missing token.");
-        const input = validateCompanionInput(await request.json());
-        const result = await askCompanionCore(ctx.supabase, ctx.userId, input);
-        return Response.json(result);
-      },
+      POST: async ({ request }) =>
+        aiRoute(request, async ({ supabase, userId }) =>
+          askCompanionCore(supabase, userId, validateCompanionInput(await request.json())),
+        ),
     },
   },
 });

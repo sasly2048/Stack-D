@@ -1,23 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { authenticate, unauthorized } from "@/lib/ai-public-auth";
-import {
-  generateSessionRecapCore,
-  validateSessionRecapInput,
-  type SessionRecapInput,
-} from "@/lib/ai.functions";
+import { aiRoute } from "@/lib/ai-public-auth";
+import { generateSessionRecapCore, validateSessionRecapInput } from "@/lib/ai.functions";
 
-/** Public AI route — post-session recap for the Android Ended screen. */
+/** Public AI route for Android: post-session recap for the Ended screen. Errors map to typed JSON via aiRoute. */
 export const Route = createFileRoute("/api/public/ai/session-recap")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const ctx = await authenticate(request);
-        if (!ctx) return unauthorized("Invalid or missing token.");
-        const body = (await request.json()) as SessionRecapInput;
-        const input = validateSessionRecapInput(body);
-        const result = await generateSessionRecapCore(ctx.supabase, ctx.userId, input);
-        return Response.json(result);
-      },
+      POST: async ({ request }) =>
+        aiRoute(request, async ({ supabase, userId }) =>
+          generateSessionRecapCore(
+            supabase,
+            userId,
+            validateSessionRecapInput(await request.json()),
+          ),
+        ),
     },
   },
 });

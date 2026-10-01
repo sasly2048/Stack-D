@@ -1,9 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { assertPublicUrl } from "@/lib/safe-url.server";
 import { publicDbError } from "@/lib/db-error";
 
+type Db = SupabaseClient<Database>;
 
 export interface Delivery {
   id: string;
@@ -16,104 +19,125 @@ export interface Delivery {
   created_at: string;
 }
 
-export const listDeliveries = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ webhookId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }): Promise<Delivery[]> => {
-    const { data: rows, error } = await context.supabase
-      .from("webhook_deliveries")
-      .select("id, webhook_id, event, status_code, ok, response_snippet, attempt, created_at")
-      .eq("webhook_id", data.webhookId)
-      .eq("user_id", context.userId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    if (error) throw new Error(error.message);
-    return rows as Delivery[];
-  });
+const WebhookIdSchema = z.object({ webhookId: z.string().uuid() });
+export const validateWebhookRef = (d: unknown) => WebhookIdSchema.parse(d);
+
+/** Shared body — web server function + Android public route. */
+export async function listDeliveriesCore(
+  supabase: Db,
+  userId: string,
+  data: z.infer<typeof WebhookIdSchema>,
+): Promise<Delivery[]> {
+  const { data: rows, error } = await supabase
+    .from("webhook_deliveries")
+    .select("id, webhook_id, event, status_code, ok, response_snippet, attempt, created_at")
+    .eq("webhook_id", data.webhookId)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw new Error(error.message);
+  return rows as Delivery[];
+}
 
 /**
  * Fire a signed sample payload at the endpoint and log the response.
  * Uses supabaseAdmin only for the insert (RLS is user-select-only on deliveries).
  */
-export const testWebhook = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ webhookId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }): Promise<Delivery> => {
-    const { data: wh, error } = await context.supabase
-      .from("webhooks")
-      .select("id, url, secret, active")
-      .eq("id", data.webhookId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (error || !wh) throw new Error("not_found");
+export async function testWebhookCore(
+  supabase: Db,
+  userId: string,
+  data: z.infer<typeof WebhookIdSchema>,
+): Promise<Delivery> {
+  const { data: wh, error } = await supabase
+    .from("webhooks")
+    .select("id, url, secret, active")
+    .eq("id", data.webhookId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !wh) throw new Error("not_found");
 
-    // SSRF guard: re-validate at send time (rows may predate validation) AND
-    // resolve DNS so a public hostname pointing at an internal IP is rejected
-    // before fetch connects. Throws an error code string on any failure.
-    await assertPublicUrl(wh.url);
+  // SSRF guard: re-validate at send time (rows may predate validation) AND
+  // resolve DNS so a public hostname pointing at an internal IP is rejected
+  // before fetch connects. Throws an error code string on any failure.
+  await assertPublicUrl(wh.url);
 
+  const payload = JSON.stringify({
+    event: "session.complete",
+    test: true,
+    timestamp: new Date().toISOString(),
+    data: { room: "TEST-000", score: 92, tier: "obsidian", duration_seconds: 1500 },
+  });
 
-    const payload = JSON.stringify({
-      event: "session.complete",
-      test: true,
-      timestamp: new Date().toISOString(),
-      data: { room: "TEST-000", score: 92, tier: "obsidian", duration_seconds: 1500 },
+  // HMAC-SHA256 signature over the raw body
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(wh.secret ?? ""),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
+  const signature = Array.from(new Uint8Array(sigBuf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  let status: number | null = null;
+  let ok = false;
+  let snippet = "";
+  try {
+    const res = await fetch(wh.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Stackd-Signature": `sha256=${signature}`,
+        "X-Stackd-Event": "session.complete",
+        "User-Agent": "Stackd-Webhooks/1.0 (test)",
+      },
+      body: payload,
+      // Don't follow redirects: a public URL could bounce to an internal host.
+      redirect: "manual",
+      signal: AbortSignal.timeout(10_000),
     });
 
-    // HMAC-SHA256 signature over the raw body
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      "raw",
-      enc.encode(wh.secret ?? ""),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-    const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
-    const signature = Array.from(new Uint8Array(sigBuf))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    status = res.status;
+    ok = res.ok;
+    const txt = await res.text().catch(() => "");
+    snippet = txt.slice(0, 500);
+  } catch (err) {
+    snippet = `network_error: ${(err as Error).message}`.slice(0, 500);
+  }
 
-    let status: number | null = null;
-    let ok = false;
-    let snippet = "";
-    try {
-      const res = await fetch(wh.url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Stackd-Signature": `sha256=${signature}`,
-          "X-Stackd-Event": "session.complete",
-          "User-Agent": "Stackd-Webhooks/1.0 (test)",
-        },
-        body: payload,
-        // Don't follow redirects: a public URL could bounce to an internal host.
-        redirect: "manual",
-        signal: AbortSignal.timeout(10_000),
-      });
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: row, error: insErr } = await supabaseAdmin
+    .from("webhook_deliveries")
+    .insert({
+      webhook_id: wh.id,
+      user_id: userId,
+      event: "session.complete",
+      status_code: status,
+      ok,
+      response_snippet: snippet,
+      attempt: 1,
+    })
+    .select("id, webhook_id, event, status_code, ok, response_snippet, attempt, created_at")
+    .single();
+  if (insErr) throw publicDbError(insErr, "db_write_failed");
+  return row as Delivery;
+}
 
-      status = res.status;
-      ok = res.ok;
-      const txt = await res.text().catch(() => "");
-      snippet = txt.slice(0, 500);
-    } catch (err) {
-      snippet = `network_error: ${(err as Error).message}`.slice(0, 500);
-    }
+export const listDeliveries = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(validateWebhookRef)
+  .handler(
+    ({ data, context }): Promise<Delivery[]> =>
+      listDeliveriesCore(context.supabase, context.userId, data),
+  );
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error: insErr } = await supabaseAdmin
-      .from("webhook_deliveries")
-      .insert({
-        webhook_id: wh.id,
-        user_id: context.userId,
-        event: "session.complete",
-        status_code: status,
-        ok,
-        response_snippet: snippet,
-        attempt: 1,
-      })
-      .select("id, webhook_id, event, status_code, ok, response_snippet, attempt, created_at")
-      .single();
-    if (insErr) throw publicDbError(insErr, "db_write_failed");
-    return row as Delivery;
-  });
+export const testWebhook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(validateWebhookRef)
+  .handler(
+    ({ data, context }): Promise<Delivery> =>
+      testWebhookCore(context.supabase, context.userId, data),
+  );

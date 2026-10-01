@@ -290,38 +290,18 @@ export const requestToJoinRoom = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { data: room, error: rErr } = await supabase
-      .from("rooms")
-      .select("id, visibility")
-      .eq("code", data.code.toUpperCase())
-      .maybeSingle();
-    if (rErr) throw new Error(rErr.message);
-    if (!room) throw new Error("not_found");
-
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", userId)
-      .maybeSingle();
-    const displayName = prof?.display_name ?? "Anon";
-
-    const { error } = await supabase.from("room_join_requests").upsert(
-      {
-        room_id: room.id,
-        user_id: userId,
-        display_name: displayName,
-        message: data.message ?? null,
-        status: "pending",
-      },
-      { onConflict: "room_id,user_id" },
+    // rooms RLS hides a 'request' room from non-members, so the lookup + insert
+    // must happen in the definer RPC (20260930120000_request_room_join).
+    const { data: status, error } = await context.supabase.rpc(
+      "request_room_join" as never,
+      { _code: data.code.toUpperCase(), _message: data.message ?? null } as never,
     );
-    if (error) throw publicDbError(error, "db_write_failed");
-
-    // record via RPC (definer) — requester may not be a room member yet, so
-    // the direct insert into room_events is bypassed by the definer check.
-    // For public/open rooms, join happens directly; requests only for 'request'.
-    return { ok: true };
+    if (error) {
+      if (error.message?.includes("not_found")) throw new Error("not_found");
+      if (error.message?.includes("blocked")) throw new Error("blocked");
+      throw publicDbError(error, "db_write_failed");
+    }
+    return { status: status as unknown as "open" | "pending" | "approved" | "denied" };
   });
 
 export const listJoinRequests = createServerFn({ method: "POST" })
