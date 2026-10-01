@@ -14,10 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
-private val EaseOut = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 /**
- * Fades an element in and lifts it 16dp the first time it composes. In a lazy
+ * Fades an element in and lifts it 10dp (web animate-entrance) the first time it composes. In a lazy
  * list, rows compose as they scroll into view, so this doubles as scroll-in
  * choreography; [index] staggers siblings (40ms each, capped) so a screen
  * cascades instead of popping in as one block. Runs once per element (state
@@ -31,10 +30,10 @@ fun Modifier.reveal(index: Int = 0): Modifier {
     }
     val shown = rememberSaveable { androidx.compose.runtime.mutableStateOf(off) }
     val p = remember { Animatable(if (shown.value) 1f else 0f) }
-    val lift = with(LocalDensity.current) { 16.dp.toPx() }
+    val lift = with(LocalDensity.current) { 10.dp.toPx() }
     LaunchedEffect(Unit) {
         if (!shown.value) {
-            p.animateTo(1f, tween(420, delayMillis = (index.coerceAtMost(8)) * 40, easing = EaseOut))
+            p.animateTo(1f, tween(560, delayMillis = (index.coerceAtMost(8)) * 40, easing = EaseRitual))
             shown.value = true
         }
     }

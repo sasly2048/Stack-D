@@ -2,6 +2,7 @@
 
 package app.stackd
 
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -48,11 +49,21 @@ fun StackdNavHost(
     startDestination: String = Dest.Landing.route,
 ) {
     val openProfile: (String) -> Unit = { id -> navController.navigate(Dest.ProfileDetail.of(id)) }
-    // Directional motion: forward pushes in from the right, back reverses it.
-    // Spatial continuity tells you where you are in the stack; the default
-    // cross-fade made every move feel like a page reload.
-    val ease = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)
-    val dur = 320
+    // Two motions, both on the web's curves. Tab <-> tab is the web's
+    // view-transition (fade + 6dp rise, 260ms): peers, no direction. Pushing
+    // deeper slides in from the right and back reverses it, so position in
+    // the stack stays legible.
+    val ease = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+    val dur = 260
+    val tabRoutes = app.stackd.core.ui.StackdTabs.map { it.route }.toSet()
+    fun isTabSwap(from: androidx.navigation.NavBackStackEntry, to: androidx.navigation.NavBackStackEntry) =
+        from.destination.route in tabRoutes && to.destination.route in tabRoutes
+    val rise = with(androidx.compose.ui.platform.LocalDensity.current) { 6.dp.roundToPx() }
+    val lift = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.roundToPx() }
+    val vtIn = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(dur, easing = ease)) +
+        androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(dur, easing = ease)) { rise }
+    val vtOut = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(dur, easing = ease)) +
+        androidx.compose.animation.slideOutVertically(androidx.compose.animation.core.tween(dur, easing = ease)) { -lift }
     // Shared elements (avatar list -> profile header) need a common transition
     // scope around the nav host; destinations that take part provide their
     // animated scope via LocalNavAnimatedScope.
@@ -63,20 +74,24 @@ fun StackdNavHost(
         startDestination = startDestination,
         modifier = modifier,
         enterTransition = {
-            androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(dur, easing = ease)) { it / 4 } +
-                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(dur, easing = ease))
+            if (isTabSwap(initialState, targetState)) vtIn else
+            androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 4 } +
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(320, easing = ease))
         },
         exitTransition = {
-            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(dur, easing = ease)) { -it / 10 } +
-                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(dur / 2))
+            if (isTabSwap(initialState, targetState)) vtOut else
+            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { -it / 10 } +
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160))
         },
         popEnterTransition = {
-            androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(dur, easing = ease)) { -it / 10 } +
-                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(dur, easing = ease))
+            if (isTabSwap(initialState, targetState)) vtIn else
+            androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { -it / 10 } +
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(320, easing = ease))
         },
         popExitTransition = {
-            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(dur, easing = ease)) { it / 4 } +
-                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(dur / 2))
+            if (isTabSwap(initialState, targetState)) vtOut else
+            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 4 } +
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160))
         },
     ) {
         // Signed out

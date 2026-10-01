@@ -62,6 +62,7 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.ErrorBanner
 import app.stackd.core.ui.GhostButton
+import app.stackd.core.ui.breathing
 import app.stackd.core.ui.NoticeBanner
 import app.stackd.core.ui.SectionLabel
 import app.stackd.feature.room.session.FocusScore
@@ -485,11 +486,12 @@ private fun Countdown(state: RoomUiState) {
     // Each tick pops in from 1.3x and settles — the beat you feel, not just read.
     val pop = remember { androidx.compose.animation.core.Animatable(1f) }
     androidx.compose.runtime.LaunchedEffect(state.countdown) {
+        if (state.countdown != null) app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.SELECT)
         pop.snapTo(1.3f)
         pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f))
     }
     Stage {
-        SectionLabel("STARTING")
+        SectionLabel("STARTING", modifier = Modifier.breathing())
         Spacer(Modifier.height(16.dp))
         Text(
             state.countdown?.toString() ?: "…",
@@ -571,6 +573,9 @@ private fun Active(
     onInteraction: () -> Unit = {},
 ) {
     val colors = Stackd.colors
+    androidx.compose.runtime.LaunchedEffect(state.iBreached) {
+        if (state.iBreached) app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.ERROR)
+    }
 
     // Progress ring + remaining time.
     val progress = if ((state.room?.targetDurationSeconds ?: 0) > 0) {
@@ -623,7 +628,10 @@ private fun Active(
                 size = arc, style = Stroke(stroke),
             )
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.breathing(enabled = !state.iBreached && !state.calibrating),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Text(
                 formatDuration(state.remainingSeconds.toInt()),
                 style = MaterialTheme.typography.displayMedium,

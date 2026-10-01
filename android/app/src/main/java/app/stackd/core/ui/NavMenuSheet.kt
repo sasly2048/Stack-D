@@ -98,6 +98,10 @@ fun NavMenuSheet(
 
     // Open fully: 18 tiles never fit the half-height peek, which cut the grid
     // mid-row and made Back collapse instead of close.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.OPEN)
+        onDispose { app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.CLOSE) }
+    }
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = colors.surface) {
         LazyVerticalGrid(

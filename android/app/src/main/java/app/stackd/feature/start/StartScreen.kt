@@ -301,7 +301,7 @@ private fun Pill(label: String, badge: String?, selected: Boolean, enabled: Bool
     Row(
         Modifier
             .minimumInteractiveComponentSize()
-            .pressFeedback(source)
+            .pressFeedback(source, sound = app.stackd.core.feedback.Sfx.Kind.SELECT)
             .selectable(selected, enabled = enabled, interactionSource = source, indication = null, role = Role.RadioButton, onClick = onClick)
             .background(bg.copy(alpha = if (enabled) bg.alpha else bg.alpha * 0.5f), RoundedCornerShape(50))
             .padding(horizontal = 16.dp, vertical = 9.dp),
@@ -343,7 +343,7 @@ private fun TemplateCard(title: String, desc: String, meta: String?, selected: B
         Modifier
             .width(168.dp)
             .heightIn(min = 120.dp)
-            .pressFeedback(source)
+            .pressFeedback(source, sound = app.stackd.core.feedback.Sfx.Kind.SELECT)
             .selectable(selected, interactionSource = source, indication = null, role = Role.RadioButton, onClick = onClick)
             .background(
                 if (selected) colors.accent.copy(alpha = 0.08f) else colors.textPrimary.copy(alpha = 0.03f),
@@ -397,7 +397,10 @@ private fun ModeSegment(mode: String, onSetMode: (String) -> Unit) {
                     .weight(1f)
                     .heightIn(min = 44.dp)
                     .background(bg, RoundedCornerShape(50))
-                    .selectable(selected, role = Role.RadioButton) { onSetMode(key) },
+                    .selectable(selected, role = Role.RadioButton) {
+                        if (!selected) app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.SELECT)
+                        onSetMode(key)
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -431,7 +434,10 @@ private fun Details(state: StartUiState, onTitleChange: (String) -> Unit, onGoal
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(role = Role.Button) { open = !open }
+            .clickable(role = Role.Button) {
+                app.stackd.core.feedback.Sfx.play(if (open) app.stackd.core.feedback.Sfx.Kind.CLOSE else app.stackd.core.feedback.Sfx.Kind.OPEN)
+                open = !open
+            }
             .heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

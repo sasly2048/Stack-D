@@ -142,7 +142,7 @@ private fun TabCell(item: TabItem, selected: Boolean, onSelect: (String) -> Unit
             // Soft capsule behind the active tab — position at a glance.
             .background(Color.White.copy(alpha = 0.05f * glow))
             .clickable(interactionSource = source, indication = null, role = Role.Tab) { onSelect(item.route) }
-            .pressFeedback(source, pressedScale = 0.92f)
+            .pressFeedback(source, pressedScale = 0.92f, sound = app.stackd.core.feedback.Sfx.Kind.SELECT)
             .semantics { this.selected = selected },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -170,7 +170,7 @@ private fun StartButton(onStart: () -> Unit) {
     Box(
         Modifier
             .size(50.dp)
-            .pressFeedback(source, pressedScale = 0.9f)
+            .pressFeedback(source, pressedScale = 0.9f, sound = app.stackd.core.feedback.Sfx.Kind.OPEN)
             .clip(CircleShape)
             .background(Silver)
             .clickable(interactionSource = source, indication = null, role = Role.Button, onClick = onStart)

@@ -54,6 +54,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.ui.graphics.Brush
 import app.stackd.core.theme.Obsidian
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -88,6 +89,34 @@ private fun SessionInterrupted(detail: String, onContinue: () -> Unit) {
 }
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        /** Process-lifetime, so rotation (stop -> start in ms) doesn't replay it. 0 = cold start. */
+        private var lastStoppedAt = 0L
+        private const val REOPEN_AFTER_MS = 30_000L
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // App-open signature: cold start, or coming back after a real absence —
+        // not a share sheet or photo picker round-trip.
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (lastStoppedAt == 0L || now - lastStoppedAt >= REOPEN_AFTER_MS) {
+            val container = (application as StackdApplication).container
+            // Read the pref directly: on cold start the Sfx.enabled mirror may
+            // not have loaded yet, and a muted app must stay silent.
+            lifecycleScope.launch {
+                if (container.settings.soundEnabled.first()) {
+                    app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.STARTUP)
+                }
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        lastStoppedAt = android.os.SystemClock.elapsedRealtime()
+    }
+
     override fun onResume() {
         super.onResume()
         // Checkout runs in the browser; coming back is when an upgrade lands.

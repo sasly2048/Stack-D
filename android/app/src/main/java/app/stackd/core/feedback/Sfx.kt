@@ -17,7 +17,7 @@ import kotlin.math.sin
  * SettingsStore by StackdApplication).
  */
 object Sfx {
-    enum class Kind { TAP, SELECT, OPEN, CLOSE, SUCCESS, ERROR, AUTH, XP, ACHIEVEMENT, NOTIFY, PURCHASE, CELEBRATE_PRO, CELEBRATE_ELITE }
+    enum class Kind { TAP, SELECT, OPEN, CLOSE, SUCCESS, ERROR, AUTH, XP, ACHIEVEMENT, NOTIFY, PURCHASE, CELEBRATE_PRO, CELEBRATE_ELITE, STARTUP }
 
     @Volatile var enabled: Boolean = true
 
@@ -56,6 +56,17 @@ object Sfx {
             }
             listOf(880.0, 1108.73, 1318.51).forEach { add(Note(it, 1.05, 0.9, Wave.SINE, 0.09)) }
             add(Note(2637.0, 1.1, 0.6, Wave.SINE, 0.04))
+        },
+        // App-open signature: a felt thump, three phones landing on the stack
+        // (rising A-major plinks), a warm chord bloom, an airy shimmer tail.
+        Kind.STARTUP to buildList {
+            add(Note(110.0, 0.0, 0.26, Wave.SINE, 0.12, 70.0))
+            listOf(659.25, 880.0, 1108.73).forEachIndexed { i, f ->
+                add(Note(f, 0.10 + i * 0.12, 0.30, Wave.TRIANGLE, 0.065))
+            }
+            listOf(440.0, 659.25, 880.0).forEach { add(Note(it, 0.46, 0.95, Wave.SINE, 0.05)) }
+            add(Note(1760.0, 0.50, 0.65, Wave.SINE, 0.02))
+            add(Note(2637.0, 0.58, 0.55, Wave.SINE, 0.012))
         },
     )
 

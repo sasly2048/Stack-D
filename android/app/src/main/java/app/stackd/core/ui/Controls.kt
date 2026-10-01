@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -85,7 +86,8 @@ fun EmberButton(
         enabled = enabled && !busy,
         shape = app.stackd.core.theme.RadiusLg,
         interactionSource = source,
-        modifier = modifier.fillMaxWidth().height(54.dp).pressFeedback(source),
+        modifier = modifier.fillMaxWidth().height(54.dp).pressFeedback(source)
+            .clip(app.stackd.core.theme.RadiusLg).emberSweep(source, app.stackd.core.theme.Ember, 0.28f),
         colors = ButtonDefaults.buttonColors(
             containerColor = app.stackd.core.theme.Silver,
             contentColor = ink,
@@ -98,7 +100,7 @@ fun EmberButton(
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = ink)
             Spacer(Modifier.width(12.dp))
         }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold)
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold, letterSpacing = pressedTracking(source))
     }
 }
 
@@ -122,7 +124,8 @@ fun AccentButton(
         enabled = enabled && !busy,
         shape = app.stackd.core.theme.RadiusLg,
         interactionSource = source,
-        modifier = modifier.height(48.dp).pressFeedback(source),
+        modifier = modifier.height(48.dp).pressFeedback(source)
+            .clip(app.stackd.core.theme.RadiusLg).emberSweep(source, colors.accent, 0.35f),
         border = BorderStroke(1.dp, colors.accent.copy(alpha = if (enabled) 0.7f else 0.3f)),
         colors = ButtonDefaults.buttonColors(
             containerColor = colors.accent.copy(alpha = 0.08f),
@@ -136,7 +139,7 @@ fun AccentButton(
             CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = colors.accent)
             Spacer(Modifier.width(10.dp))
         }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, letterSpacing = pressedTracking(source))
     }
 }
 
@@ -156,7 +159,8 @@ fun GhostButton(
         enabled = enabled && !busy,
         shape = app.stackd.core.theme.RadiusLg,
         interactionSource = source,
-        modifier = modifier.fillMaxWidth().height(52.dp).pressFeedback(source),
+        modifier = modifier.fillMaxWidth().height(52.dp).pressFeedback(source)
+            .clip(app.stackd.core.theme.RadiusLg).emberSweep(source, colors.accent, 0.22f),
         border = BorderStroke(1.dp, colors.textPrimary.copy(alpha = 0.15f)),
         colors = ButtonDefaults.buttonColors(
             containerColor = colors.textPrimary.copy(alpha = 0.05f),
@@ -173,7 +177,7 @@ fun GhostButton(
             )
             Spacer(Modifier.width(12.dp))
         }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, letterSpacing = pressedTracking(source))
     }
 }
 
@@ -185,7 +189,11 @@ fun LinkButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     color: Color = Stackd.colors.textMuted,
-) = TextButton(onClick = onClick, enabled = enabled, modifier = modifier) {
+) = TextButton(
+    onClick = { app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.TAP); onClick() },
+    enabled = enabled,
+    modifier = modifier,
+) {
     Text(text.uppercase(), style = MonoLabel, color = color, textAlign = TextAlign.Center)
 }
 
@@ -251,6 +259,7 @@ fun StackdField(
                 unfocusedTextColor = colors.textPrimary,
             ),
             modifier = Modifier
+                .shake(isError)
                 .fillMaxWidth()
                 .onFocusChanged { focusState ->
                     // Validate on blur, not on keystroke: flagging "invalid
@@ -286,8 +295,20 @@ fun ErrorBanner(
     onRetry: (() -> Unit)? = null,
 ) {
     val colors = Stackd.colors
+    // Web feedback("error"): sound + reject haptic + shake, once per new message.
+    val view = androidx.compose.ui.platform.LocalView.current
+    var shook by remember(message) { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(message) {
+        app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.ERROR)
+        view.performHapticFeedback(
+            if (android.os.Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.REJECT
+            else android.view.HapticFeedbackConstants.LONG_PRESS,
+        )
+        shook = true
+    }
     Row(
         modifier = modifier
+            .shake(shook)
             .fillMaxWidth()
             .background(colors.breach.copy(alpha = 0.05f), RadiusMd)
             .border(1.dp, colors.breach.copy(alpha = 0.4f), RadiusMd)
