@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -33,6 +36,7 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
@@ -269,36 +273,46 @@ fun InsightsScreen(
                 }
                 else -> {
                     val t = state.totals
-                    // Stat tiles, two per row like the web's grid.
-                    val tiles = listOf(
-                        "SESSIONS" to "${t.sessions}",
-                        "HOURS" to "%.1f".format(t.hours),
-                        "TOTAL XP" to "${t.xp}",
+                    // Bento ledger: one hero stat (hours, display scale like the
+                    // web's "0.1 HOURS") beside three compact tiles, then pairs.
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1.15f)
+                                .fillMaxHeight()
+                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
+                                .border(1.dp, colors.border, Radius2Xl)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("120-DAY FOCUS", style = MonoLabelSmall, color = colors.accent)
+                            Column {
+                                Text(
+                                    "%.1f".format(t.hours),
+                                    // Long values step down a size so they never clip.
+                                    style = if (t.hours >= 1000) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.displayMedium,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                )
+                                Text("HOURS", style = MonoLabelSmall, color = colors.textMuted)
+                            }
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LedgerTile("SESSIONS", "${t.sessions}", Modifier.fillMaxWidth())
+                            LedgerTile("TOTAL XP", "${t.xp}", Modifier.fillMaxWidth())
+                            LedgerTile("STREAK", "${state.streak}d", Modifier.fillMaxWidth())
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    listOf(
                         "AVG SCORE" to "${t.avgScore}",
                         "CLEAN RATE" to "${t.cleanRate}%",
                         "BREACHES/SESSION" to "%.1f".format(t.breachesPerSession),
-                        "STREAK" to "${state.streak}d",
                         "BREACHES" to "${t.breaches}",
-                    )
-                    tiles.chunked(2).forEach { pair ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ).chunked(2).forEach { pair ->
+                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             pair.forEach { (label, value) ->
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-                                        .border(1.dp, colors.border, Radius2Xl)
-                                        .padding(14.dp),
-                                ) {
-                                    Text(label, style = MonoLabelSmall, color = colors.textMuted)
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        value,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = colors.textPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
+                                LedgerTile(label, value, Modifier.weight(1f).fillMaxHeight())
                             }
                         }
                         Spacer(Modifier.height(8.dp))
@@ -552,6 +566,22 @@ private fun ProactiveCard(p: app.stackd.data.ai.ProactiveInsight) {
     }
 }
 
+/** Compact ledger tile: tracked mono label over a bold value. */
+@Composable
+private fun LedgerTile(label: String, value: String, modifier: Modifier = Modifier) {
+    val colors = Stackd.colors
+    Column(
+        modifier = modifier
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(14.dp),
+    ) {
+        Text(label, style = MonoLabelSmall, color = colors.textMuted, maxLines = 1)
+        Spacer(Modifier.height(4.dp))
+        Text(value, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary, fontWeight = FontWeight.Bold)
+    }
+}
+
 /** LLM-written weekly narrative — web's weekly-story card. */
 @Composable
 private fun WeeklyStoryCard(story: String, patterns: List<String> = emptyList()) {
@@ -559,11 +589,18 @@ private fun WeeklyStoryCard(story: String, patterns: List<String> = emptyList())
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.accent.copy(alpha = 0.06f), Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.25f), Radius2Xl)
+            .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(20.dp),
     ) {
-        Text(story, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+        // Editorial serif, as the web sets its featured AI copy.
+        Text(
+            story,
+            style = MaterialTheme.typography.bodyLarge,
+            fontFamily = SerifFamily,
+            fontWeight = FontWeight.Normal,
+            color = colors.textPrimary,
+        )
         // Patterns belong to the story card (web narrative card), not below it.
         if (patterns.isNotEmpty()) {
             Spacer(Modifier.height(14.dp))

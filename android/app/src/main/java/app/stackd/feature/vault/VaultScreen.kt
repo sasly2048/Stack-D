@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,7 +39,9 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.AccentButton
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
@@ -356,7 +359,7 @@ private fun VaultItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 8.dp),
     ) {
@@ -422,14 +425,23 @@ internal fun EliteGate(description: String, onUpgrade: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.accent.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.3f), Radius2Xl)
+            .background(
+                Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)),
+                Radius2Xl,
+            )
+            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(20.dp),
     ) {
         Text("ELITE FEATURE", style = MonoLabelSmall, color = colors.accent)
-        Spacer(Modifier.height(8.dp))
-        Text(description, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
-        Spacer(Modifier.height(16.dp))
-        EmberButton(text = "See plans", onClick = onUpgrade)
+        Spacer(Modifier.height(10.dp))
+        Text(
+            description,
+            style = MaterialTheme.typography.titleLarge,
+            fontFamily = SerifFamily,
+            fontWeight = FontWeight.Normal,
+            color = colors.textPrimary,
+        )
+        Spacer(Modifier.height(18.dp))
+        AccentButton(text = "See plans", onClick = onUpgrade)
     }
 }

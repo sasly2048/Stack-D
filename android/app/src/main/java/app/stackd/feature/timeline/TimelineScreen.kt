@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.text.font.FontStyle
@@ -42,6 +43,7 @@ import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.RadiusMd
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
@@ -255,7 +257,7 @@ private fun SessionCard(s: TimelineSession, onReact: (String, String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, tint.copy(alpha = 0.35f), Radius2Xl)
             .padding(16.dp),
     ) {
@@ -405,20 +407,24 @@ private fun ProactiveCard(ai: ProactiveInsight) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .background(
+                Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)),
+                Radius2Xl,
+            )
+            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Column {
-            Text("SMART SCHEDULE", style = MonoLabelSmall, color = colors.textMuted)
-            Spacer(Modifier.height(4.dp))
+            Text("SMART SCHEDULE", style = MonoLabelSmall, color = colors.accent)
+            Spacer(Modifier.height(6.dp))
             if (ai.smartSchedule != null) {
                 Text(
                     ai.smartSchedule.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.accent,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.textPrimary,
+                    fontFamily = SerifFamily,
+                    fontWeight = FontWeight.Normal,
                 )
                 Text(
                     ai.smartSchedule.rationale,

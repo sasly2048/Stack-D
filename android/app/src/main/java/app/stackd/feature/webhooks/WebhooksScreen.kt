@@ -306,7 +306,7 @@ private fun WebhookCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
     ) {

@@ -37,7 +37,7 @@ import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.Stackd
-import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.AccentButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
@@ -265,7 +265,7 @@ fun GroupsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(8.dp))
-            EmberButton(
+            AccentButton(
                 text = if (state.creating) "Forging…" else "Forge circle",
                 onClick = { onCreate(name); name = "" },
                 enabled = name.isNotBlank() && !state.creating,
@@ -350,7 +350,7 @@ private fun GroupCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(14.dp),
     ) {

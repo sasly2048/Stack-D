@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,7 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
@@ -232,7 +234,7 @@ fun AchievementsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+                            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
                             .border(
                                 1.dp,
                                 if (unlocked) accent.copy(alpha = 0.5f) else colors.border,
@@ -314,17 +316,18 @@ private fun ChapterCard(lifetimeXp: Long) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.3f), Radius2Xl)
-            .padding(16.dp),
+            .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
+            .padding(20.dp),
     ) {
         Text("CHAPTER ${index + 1}", style = MonoLabelSmall, color = colors.accent)
         Spacer(Modifier.height(4.dp))
         Text(
             chapter.title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineMedium,
+            fontFamily = SerifFamily,
             color = colors.textPrimary,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.Normal,
         )
         Text(chapter.subtitle, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
         if (next != null) {

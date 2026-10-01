@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,6 +33,7 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
@@ -147,14 +150,16 @@ fun WrappedScreen(
                     Text(
                         "${s.totalHours} hours",
                         style = MaterialTheme.typography.displayMedium,
+                        fontFamily = SerifFamily,
                         color = colors.textPrimary,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.Normal,
                     )
                     Text(
                         "held.",
                         style = MaterialTheme.typography.displaySmall,
+                        fontFamily = SerifFamily,
                         color = colors.accent,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.Normal,
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
@@ -165,30 +170,60 @@ fun WrappedScreen(
                     )
 
                     Spacer(Modifier.height(24.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        listOf(
-                            "SESSIONS" to s.totalSessions.toString(),
-                            "XP EARNED" to s.totalXp.toString(),
-                            "LONGEST SESSION" to "${s.longestSessionMinutes} min",
-                            "BEST STREAK" to "${s.bestStreak} ${if (s.bestStreak == 1) "day" else "days"}",
-                            "UNBROKEN" to s.perfectSessions.toString(),
-                            "FLOW STATES" to s.flowSessions.toString(),
-                            "PEAK DAY" to s.topWeekday,
-                            "TOP ALLY" to (s.topCollaborator?.name ?: "—"),
-                            "PERCENTILE" to "Top ${maxOf(1, 100 - s.percentile)}%",
-                        ).forEach { (label, value) -> StatTile(label, value) }
+                    // Bento: XP at display scale beside three compact tiles, then pairs.
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1.15f)
+                                .fillMaxHeight()
+                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
+                                .border(1.dp, colors.border, Radius2Xl)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("EARNED", style = MonoLabelSmall, color = colors.accent)
+                            Column {
+                                Text(
+                                    s.totalXp.toString(),
+                                    // Long values step down a size so they never clip.
+                                    style = if (s.totalXp >= 100_000) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.displayMedium,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                )
+                                Text("XP", style = MonoLabelSmall, color = colors.textMuted)
+                            }
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatTile("SESSIONS", s.totalSessions.toString(), Modifier.fillMaxWidth())
+                            StatTile("LONGEST SESSION", "${s.longestSessionMinutes} min", Modifier.fillMaxWidth())
+                            StatTile(
+                                "BEST STREAK",
+                                "${s.bestStreak} ${if (s.bestStreak == 1) "day" else "days"}",
+                                Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                    listOf(
+                        "UNBROKEN" to s.perfectSessions.toString(),
+                        "FLOW STATES" to s.flowSessions.toString(),
+                        "PEAK DAY" to s.topWeekday,
+                        "TOP ALLY" to (s.topCollaborator?.name ?: "—"),
+                        "PERCENTILE" to "Top ${maxOf(1, 100 - s.percentile)}%",
+                    ).chunked(2).forEach { pair ->
+                        Spacer(Modifier.height(8.dp))
+                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            pair.forEach { (label, value) -> StatTile(label, value, Modifier.weight(1f).fillMaxHeight()) }
+                        }
                     }
 
                     s.personality?.takeIf { it.isNotBlank() }?.let {
                         Spacer(Modifier.height(24.dp))
                         Text(
                             it,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = colors.accent,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontFamily = SerifFamily,
+                            color = colors.textPrimary,
+                            fontWeight = FontWeight.Normal,
                         )
                     }
 
@@ -213,17 +248,16 @@ fun WrappedScreen(
 }
 
 @Composable
-private fun StatTile(label: String, value: String) {
+private fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
     val colors = Stackd.colors
     Column(
-        modifier = Modifier
-            .fillMaxWidth(0.48f)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+        modifier = modifier
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
-            .padding(16.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Text(label, style = MonoLabelSmall, color = colors.textMuted)
-        Spacer(Modifier.height(6.dp))
+        Text(label, style = MonoLabelSmall, color = colors.textMuted, maxLines = 1)
+        Spacer(Modifier.height(4.dp))
         Text(
             value,
             style = MaterialTheme.typography.titleLarge,

@@ -264,7 +264,7 @@ private fun CirclePanel(circle: List<FriendPresence>, onOpenFriends: () -> Unit,
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(vertical = 4.dp),
     ) {
@@ -323,7 +323,7 @@ private fun FeedRow(item: FeedItem, now: Long, onOpenProfile: (String) -> Unit) 
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .pressFeedback(source)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .clickable(
                 interactionSource = source,

@@ -30,6 +30,7 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
@@ -153,24 +154,26 @@ fun ChallengesScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                                .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
                                 .border(
                                     1.dp,
                                     if (done) colors.accent.copy(alpha = 0.5f) else colors.border,
                                     Radius2Xl,
                                 )
-                                .padding(14.dp),
+                                .padding(16.dp),
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(Modifier.weight(1f)) {
+                                    // Editorial serif title, as the web sets its challenge cards.
                                     Text(
                                         c.name,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontFamily = SerifFamily,
                                         color = colors.textPrimary,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.Normal,
                                     )
                                     Spacer(Modifier.height(2.dp))
                                     Text(c.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)

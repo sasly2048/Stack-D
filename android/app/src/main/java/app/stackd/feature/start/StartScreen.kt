@@ -26,6 +26,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,9 +36,9 @@ import app.stackd.core.settings.SettingsStore
 import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
-import app.stackd.core.theme.RadiusLg
 import app.stackd.core.theme.RadiusMd
 import app.stackd.core.theme.RadiusXl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.ErrorBanner
@@ -118,7 +120,8 @@ fun StartScreen(
             "Set the protocol.",
             style = MaterialTheme.typography.displaySmall,
             color = colors.textPrimary,
-            fontWeight = FontWeight.ExtraBold,
+            fontFamily = SerifFamily,
+            fontWeight = FontWeight.Normal,
         )
         Spacer(Modifier.height(24.dp))
 
@@ -357,13 +360,17 @@ private fun TemplateCard(
             .pressFeedback(source)
             .selectable(selected = selected, interactionSource = source, indication = null, role = Role.RadioButton, onClick = onClick)
             .background(
-                if (selected) colors.accent.copy(alpha = 0.05f) else colors.textPrimary.copy(alpha = 0.03f),
-                RadiusLg,
+                if (selected) {
+                    Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface))
+                } else {
+                    SolidColor(colors.textPrimary.copy(alpha = 0.04f))
+                },
+                RadiusXl,
             )
             .border(
                 1.dp,
-                if (selected) colors.accent else colors.border,
-                RadiusLg,
+                if (selected) colors.accent.copy(alpha = 0.18f) else colors.border,
+                RadiusXl,
             )
             .padding(14.dp),
     ) {

@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -30,8 +31,9 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
-import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.AccentButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
@@ -154,19 +156,21 @@ fun DnaScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(colors.accent.copy(alpha = 0.04f), Radius2Xl)
-                            .border(1.dp, colors.accent.copy(alpha = 0.3f), Radius2Xl)
+                            .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
+                            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
                             .padding(20.dp),
                     ) {
                         Text("PRO FEATURE", style = MonoLabelSmall, color = colors.accent)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(10.dp))
                         Text(
                             "Your focus signature, mapped from every session into traits you can act on.",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontFamily = SerifFamily,
+                            fontWeight = FontWeight.Normal,
                             color = colors.textPrimary,
                         )
                         Spacer(Modifier.height(16.dp))
-                        EmberButton(text = "See plans", onClick = onUpgrade)
+                        AccentButton(text = "See plans", onClick = onUpgrade, modifier = Modifier.fillMaxWidth())
                     }
                 }
                 state.dna != null -> {
@@ -174,8 +178,9 @@ fun DnaScreen(
                     Text(
                         dna.archetype,
                         style = MaterialTheme.typography.displaySmall,
+                        fontFamily = SerifFamily,
                         color = colors.textPrimary,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.Normal,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(

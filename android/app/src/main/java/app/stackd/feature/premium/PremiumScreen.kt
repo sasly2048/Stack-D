@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.clickable
@@ -38,6 +39,7 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
@@ -318,8 +320,8 @@ private fun PlanPicker(plans: List<Plan>, alreadyPro: Boolean, onOpenWeb: (Strin
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.accent.copy(alpha = 0.05f), Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.35f), Radius2Xl)
+            .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
+            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(20.dp),
     ) {
         Text(
@@ -331,9 +333,10 @@ private fun PlanPicker(plans: List<Plan>, alreadyPro: Boolean, onOpenWeb: (Strin
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 "₹${selected.priceInr}",
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.displayMedium,
+                fontFamily = SerifFamily,
                 color = colors.textPrimary,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.Normal,
             )
             Text(
                 if (selected.interval == "annual") "/ year" else "/ month",
@@ -413,7 +416,7 @@ private fun Card(content: @Composable androidx.compose.foundation.layout.ColumnS
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(16.dp),
         content = content,

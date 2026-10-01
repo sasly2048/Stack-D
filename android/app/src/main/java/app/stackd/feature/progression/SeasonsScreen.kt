@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,8 +37,9 @@ import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
-import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.AccentButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
 import app.stackd.core.ui.SectionLabel
@@ -184,52 +186,63 @@ fun SeasonsScreen(
                 )
                 else -> {
                     val s = state.season
-                    Text(
-                        s.name,
-                        style = MaterialTheme.typography.displaySmall,
-                        color = colors.textPrimary,
-                        fontWeight = FontWeight.ExtraBold,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "${seasonCountdown(s.endsAt)} · ×${s.xpMultiplier} XP",
-                        style = MonoLabelSmall, color = colors.accent,
-                    )
-                    s.description?.let {
-                        Spacer(Modifier.height(8.dp))
-                        Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
-                    }
+                    // Current season header: the screen's one featured warm surface.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
+                            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
+                            .padding(20.dp),
+                    ) {
+                        Text(
+                            s.name,
+                            style = MaterialTheme.typography.displaySmall,
+                            fontFamily = SerifFamily,
+                            color = colors.textPrimary,
+                            fontWeight = FontWeight.Normal,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "${seasonCountdown(s.endsAt)} · ×${s.xpMultiplier} XP",
+                            style = MonoLabelSmall, color = colors.accent,
+                        )
+                        s.description?.let {
+                            Spacer(Modifier.height(8.dp))
+                            Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                        }
 
-                    // Your standing at a glance — web shows Your XP + Your Rank
-                    // as headline stats, not buried in the list.
-                    state.mine?.let { me ->
-                        Spacer(Modifier.height(16.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                            Column {
-                                Text("YOUR XP", style = MonoLabelSmall, color = colors.textMuted)
-                                Text(
-                                    "${me.xp}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = colors.textPrimary, fontWeight = FontWeight.Bold,
-                                )
-                            }
-                            Column {
-                                Text("YOUR RANK", style = MonoLabelSmall, color = colors.textMuted)
-                                Text(
-                                    "#${me.rank}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = colors.textPrimary, fontWeight = FontWeight.Bold,
-                                )
+                        // Your standing at a glance — web shows Your XP + Your Rank
+                        // as headline stats, not buried in the list.
+                        state.mine?.let { me ->
+                            Spacer(Modifier.height(16.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                                Column {
+                                    Text("YOUR XP", style = MonoLabelSmall, color = colors.textMuted)
+                                    Text(
+                                        "${me.xp}",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        color = colors.textPrimary, fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                                Column {
+                                    Text("YOUR RANK", style = MonoLabelSmall, color = colors.textMuted)
+                                    Text(
+                                        "#${me.rank}",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        color = colors.textPrimary, fontWeight = FontWeight.Bold,
+                                    )
+                                }
                             }
                         }
                     }
                     Spacer(Modifier.height(24.dp))
 
                     if (state.mine == null) {
-                        EmberButton(
+                        AccentButton(
                             text = if (state.joining) "Joining…" else "Join the season",
                             onClick = onJoin,
                             busy = state.joining,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(24.dp))
                     }
@@ -251,7 +264,7 @@ fun SeasonsScreen(
                                 .padding(vertical = 4.dp)
                                 .background(
                                     if (isMe) colors.accent.copy(alpha = 0.08f)
-                                    else colors.textPrimary.copy(alpha = 0.02f),
+                                    else colors.textPrimary.copy(alpha = 0.04f),
                                     Radius2Xl,
                                 )
                                 .border(

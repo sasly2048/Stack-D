@@ -261,8 +261,8 @@ private fun MessageBubble(m: CompanionMessage) {
                 .then(
                     if (isUser) {
                         Modifier
-                            .background(colors.accent.copy(alpha = 0.15f), Radius2Xl)
-                            .border(1.dp, colors.accent.copy(alpha = 0.3f), Radius2Xl)
+                            .background(colors.textPrimary.copy(alpha = 0.06f), Radius2Xl)
+                            .border(1.dp, colors.border, Radius2Xl)
                     } else {
                         Modifier
                     },

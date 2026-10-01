@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,6 +41,7 @@ import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.RadiusMd
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
@@ -163,6 +166,26 @@ fun LeaderboardScreen(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+                val myRank = state.individuals.indexOfFirst { it.id == state.meId }
+                if (tab == "individual" && !state.loading && myRank >= 0) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "#${myRank + 1}",
+                            style = MaterialTheme.typography.displayMedium,
+                            fontFamily = SerifFamily,
+                            fontWeight = FontWeight.Normal,
+                            color = colors.textPrimary,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "YOUR RANK · OF ${state.individuals.size}",
+                            style = MonoLabelSmall,
+                            color = colors.textMuted,
+                            modifier = Modifier.padding(bottom = 10.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
             }
         }
 
@@ -234,10 +257,14 @@ private fun BoardRow(rank: Int, title: String, subtitle: String, xp: Long, isMe:
             .padding(vertical = 4.dp)
             .then(if (onClick != null) Modifier.pressFeedback(source) else Modifier)
             .background(
-                if (isMe) colors.accent.copy(alpha = 0.08f) else colors.textPrimary.copy(alpha = 0.02f),
+                if (isMe) {
+                    Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface))
+                } else {
+                    SolidColor(colors.textPrimary.copy(alpha = 0.04f))
+                },
                 Radius2Xl,
             )
-            .border(1.dp, if (isMe) colors.accent.copy(alpha = 0.5f) else colors.border, Radius2Xl)
+            .border(1.dp, if (isMe) colors.accent.copy(alpha = 0.18f) else colors.border, Radius2Xl)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -270,10 +297,23 @@ private fun BoardRow(rank: Int, title: String, subtitle: String, xp: Long, isMe:
             )
             Text(subtitle, style = MonoLabelSmall, color = colors.textMuted)
         }
-        Text(
-            "$xp XP",
-            style = MonoLabelSmall,
-            color = colors.textPrimary,
-        )
+        if (rank == 1) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    "$xp",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = SerifFamily,
+                    fontWeight = FontWeight.Normal,
+                    color = colors.textPrimary,
+                )
+                Text(" XP", style = MonoLabelSmall, color = colors.textMuted, modifier = Modifier.padding(bottom = 4.dp))
+            }
+        } else {
+            Text(
+                "$xp XP",
+                style = MonoLabelSmall,
+                color = colors.textPrimary,
+            )
+        }
     }
 }

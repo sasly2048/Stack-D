@@ -239,7 +239,7 @@ fun TrustScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                                .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
                                 .border(1.dp, colors.border, Radius2Xl)
                                 .padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -292,7 +292,7 @@ private fun ReportCard(r: MyReport) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(14.dp),
     ) {

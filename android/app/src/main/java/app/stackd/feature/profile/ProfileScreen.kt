@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -256,28 +258,51 @@ fun ProfileScreen(
                     }
 
                     Spacer(Modifier.height(24.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
-                            "XP" to "${p.lifetimeXp}",
-                            "STREAK" to "${p.currentFocusStreak}d",
-                            "BEST" to "${p.bestStreak}d",
-                            "FOCUSED" to formatHours(p.totalFocusSeconds.toInt()),
-                        ).forEach { (label, value) ->
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-                                    .border(1.dp, colors.border, Radius2Xl)
-                                    .padding(10.dp),
-                            ) {
-                                Text(label, style = MonoLabelSmall, color = colors.textMuted)
-                                Spacer(Modifier.height(2.dp))
+                    // Bento: lifetime XP at display scale beside three compact tiles.
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1.15f)
+                                .fillMaxHeight()
+                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
+                                .border(1.dp, colors.border, Radius2Xl)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("LIFETIME", style = MonoLabelSmall, color = colors.accent)
+                            Column {
                                 Text(
-                                    value,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    "${p.lifetimeXp}",
+                                    // Long values step down a size so they never clip.
+                                    style = if (p.lifetimeXp >= 100_000) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.displayMedium,
                                     color = colors.textPrimary,
-                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
                                 )
+                                Text("XP", style = MonoLabelSmall, color = colors.textMuted)
+                            }
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(
+                                "STREAK" to "${p.currentFocusStreak}d",
+                                "BEST" to "${p.bestStreak}d",
+                                "FOCUSED" to formatHours(p.totalFocusSeconds.toInt()),
+                            ).forEach { (label, value) ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
+                                        .border(1.dp, colors.border, Radius2Xl)
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                ) {
+                                    Text(label, style = MonoLabelSmall, color = colors.textMuted)
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        value,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = colors.textPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
                             }
                         }
                     }
@@ -437,8 +462,8 @@ private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf)
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
-                    .background(colors.accent.copy(alpha = 0.06f), Radius2Xl)
-                    .border(1.dp, colors.accent.copy(alpha = 0.3f), Radius2Xl)
+                    .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
+                    .border(1.dp, colors.border, Radius2Xl)
                     .padding(16.dp),
             ) {
                 Text(m.metric.uppercase(), style = MonoLabelSmall, color = colors.accent)

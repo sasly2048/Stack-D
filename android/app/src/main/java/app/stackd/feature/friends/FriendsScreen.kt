@@ -305,7 +305,7 @@ private fun PersonRow(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .then(if (onOpen != null) Modifier.pressFeedback(source, pressedScale = 0.98f) else Modifier)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

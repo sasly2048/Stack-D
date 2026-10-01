@@ -234,7 +234,7 @@ private fun HostReportCard(r: HostReport, acting: Boolean, onAct: (String, Strin
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(16.dp),
     ) {

@@ -45,6 +45,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.runtime.remember
 import androidx.compose.ui.semantics.Role
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
@@ -259,20 +260,23 @@ fun CirclesScreen(
 @Composable
 private fun CircleBoard(detail: CircleDetail, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
-    ) {
+    Text(
+        detail.name,
+        style = MaterialTheme.typography.headlineMedium,
+        color = colors.textPrimary,
+        fontFamily = SerifFamily,
+        fontWeight = FontWeight.Normal,
+    )
+    Row(verticalAlignment = Alignment.Bottom) {
         Text(
-            detail.name,
-            style = MaterialTheme.typography.titleLarge,
+            "${detail.memberCount}",
+            style = MaterialTheme.typography.displayMedium,
             color = colors.textPrimary,
-            fontWeight = FontWeight.ExtraBold,
         )
         Text(
-            "${detail.memberCount} ${if (detail.memberCount == 1) "member" else "members"} · ${detail.totalXp} XP",
+            " ${if (detail.memberCount == 1) "MEMBER" else "MEMBERS"} · ${detail.totalXp} XP",
             style = MonoLabelSmall, color = colors.textMuted,
+            modifier = Modifier.padding(bottom = 10.dp),
         )
     }
     Spacer(Modifier.height(12.dp))
@@ -283,7 +287,7 @@ private fun CircleBoard(detail: CircleDetail, onOpenProfile: (String) -> Unit) {
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
                 .pressFeedback(source)
-                .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
                 .border(1.dp, colors.border, Radius2Xl)
                 .clickable(interactionSource = source, indication = null, role = Role.Button) { onOpenProfile(m.userId) }
                 .padding(horizontal = 12.dp, vertical = 10.dp),

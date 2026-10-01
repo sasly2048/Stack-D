@@ -196,7 +196,7 @@ fun PartnersScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
-                        .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+                        .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
                         .border(1.dp, colors.border, Radius2Xl)
                         .padding(14.dp),
                 ) {
@@ -267,7 +267,7 @@ private fun PartnerRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(14.dp),
     ) {

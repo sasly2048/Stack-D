@@ -107,7 +107,7 @@ fun IntegrationsScreen(
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .then(if (tappable) Modifier.pressFeedback(source) else Modifier)
-                        .background(colors.textPrimary.copy(alpha = 0.02f), Radius2Xl)
+                        .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
                         .border(1.dp, colors.border, Radius2Xl)
                         .then(
                             if (tappable) {
