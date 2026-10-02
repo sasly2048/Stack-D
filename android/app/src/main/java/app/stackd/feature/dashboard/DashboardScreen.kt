@@ -310,7 +310,14 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
     val yesterdaySec = remember(state.history, today) {
         focusSecondsOn(state.history, today.minusDays(1), zone)
     }
-    val hour = LocalTime.now().hour
+    // Ticks so the greeting clock never goes stale while Home stays open.
+    val now by androidx.compose.runtime.produceState(LocalTime.now()) {
+        while (true) {
+            kotlinx.coroutines.delay(15_000)
+            value = LocalTime.now()
+        }
+    }
+    val hour = now.hour
     val dayPart = when {
         hour < 5 -> "Late night"
         hour < 12 -> "Good morning"
@@ -323,7 +330,11 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
         if (g.friendsOnline > 0) {
             add("${g.friendsOnline} ${if (g.friendsOnline == 1) "friend" else "friends"} focusing now")
         }
-        if (yesterdaySec > 0) add("${Math.round(yesterdaySec / 360.0) / 10.0}h yesterday")
+        // Only a meaningful amount; seconds of focus read as "0.0h" (a failure).
+        if (yesterdaySec >= 300) {
+            val m = (yesterdaySec / 60).toInt()
+            add(if (m >= 60) "${m / 60}h ${m % 60}m yesterday" else "${m}m yesterday")
+        }
     }
 
     Column(
@@ -338,9 +349,7 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
     ) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).padding(top = 8.dp)) {
-                val clock = remember(hour) {
-                    LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
-                }
+                val clock = now.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
                 Text("${dayPart.uppercase()} · $clock", style = MonoLabelSmall, color = colors.textMuted)
                 Spacer(Modifier.height(6.dp))
                 // Web's greeting: "Afternoon, Raghavendra Sujith." — large, tight, bold.

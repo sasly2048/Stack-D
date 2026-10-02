@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -121,8 +122,10 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background.copy(alpha = 0.97f))
-            .verticalScroll(rememberScrollState()),
+            .background(colors.background)
+            .then(with(app.stackd.core.ui.CeremonyGlow) { Modifier.glow() })
+            .verticalScroll(rememberScrollState())
+            .statusBarsPadding(),
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(

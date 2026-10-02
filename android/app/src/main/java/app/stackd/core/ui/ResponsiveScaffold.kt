@@ -162,3 +162,6 @@ internal fun Modifier.ambientGlow(): Modifier = drawBehind {
         center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, -r * 0.35f),
     )
 }
+
+/** Lets full-screen overlays (outside the scaffold) share the ambient glow. */
+object CeremonyGlow { fun Modifier.glow(): Modifier = ambientGlow() }
