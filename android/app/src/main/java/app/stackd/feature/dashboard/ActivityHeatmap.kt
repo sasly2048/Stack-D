@@ -7,6 +7,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
 import app.stackd.core.theme.MonoLabelSmall
@@ -105,37 +111,85 @@ fun WeekBars(history: List<FocusHistoryRow>) {
     val max = maxOf(30, minutes.max())
     val grow = remember { Animatable(0f) }
     LaunchedEffect(Unit) { grow.animateTo(1f, tween(700)) }
+    // Scrub (Revolut-style): touch/drag across the bars to read a day.
+    var picked by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
+    val view = androidx.compose.ui.platform.LocalView.current
+    fun fmt(m: Int) = if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m"
+    val dayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
     Row(verticalAlignment = Alignment.Bottom) {
-        Text(
-            if (total >= 60) "${total / 60}h ${total % 60}m" else "${total}m",
-            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = SerifFamily),
-            color = colors.textPrimary,
-        )
+        androidx.compose.animation.AnimatedContent(
+            if (picked >= 0) minutes[picked] else total,
+            transitionSpec = {
+                androidx.compose.animation.fadeIn(tween(140)) togetherWith androidx.compose.animation.fadeOut(tween(90))
+            },
+            label = "weekValue",
+        ) { v ->
+            Text(
+                fmt(v),
+                style = MaterialTheme.typography.headlineMedium.copy(fontFamily = SerifFamily),
+                color = colors.textPrimary,
+            )
+        }
         Spacer(Modifier.width(8.dp))
         Text(
-            if (total == 0) "A fresh week. Make today count." else "focused this week",
+            when {
+                picked >= 0 -> if (picked == todayIdx) "today" else dayNames[picked].lowercase().let { "on $it" }
+                total == 0 -> "A fresh week. Make today count."
+                else -> "focused this week"
+            },
             style = MaterialTheme.typography.bodySmall,
-            color = colors.textMuted,
+            color = if (picked >= 0) colors.accent else colors.textMuted,
             modifier = Modifier.padding(bottom = 6.dp),
         )
     }
     Spacer(Modifier.height(14.dp))
     val accent = colors.accent
     val track = colors.textPrimary.copy(alpha = 0.05f)
-    Canvas(Modifier.fillMaxWidth().height(72.dp)) {
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .pointerInput(minutes) {
+                fun indexAt(x: Float) = ((x / size.width) * 7).toInt().coerceIn(0, 6)
+                fun pick(i: Int) {
+                    if (i != picked) {
+                        picked = i
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                        app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.TAP)
+                    }
+                }
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    pick(indexAt(down.position.x))
+                    do {
+                        val event = awaitPointerEvent()
+                        val c = event.changes.first()
+                        if (c.pressed) {
+                            pick(indexAt(c.position.x))
+                            // Horizontal scrub owns the gesture; vertical still scrolls the page.
+                            if (kotlin.math.abs(c.position.x - c.previousPosition.x) > kotlin.math.abs(c.position.y - c.previousPosition.y)) c.consume()
+                        }
+                    } while (event.changes.any { it.pressed })
+                    picked = -1
+                }
+            },
+    ) {
         val gap = 10.dp.toPx()
         val w = (size.width - gap * 6) / 7
         val r = CornerRadius(6.dp.toPx())
         minutes.forEachIndexed { i, m ->
             val x = i * (w + gap)
-            drawRoundRect(track, Offset(x, 0f), Size(w, size.height), r)
+            val on = picked == i
+            drawRoundRect(if (on) accent.copy(alpha = 0.12f) else track, Offset(x, 0f), Size(w, size.height), r)
             if (m > 0) {
                 val h = size.height * (m.toFloat() / max).coerceIn(0.08f, 1f) * grow.value
-                drawRoundRect(
-                    accent.copy(alpha = if (i == todayIdx) 1f else 0.55f),
-                    Offset(x, size.height - h), Size(w, h), r,
-                )
+                val a = when {
+                    picked >= 0 -> if (on) 1f else 0.3f
+                    i == todayIdx -> 1f
+                    else -> 0.55f
+                }
+                drawRoundRect(accent.copy(alpha = a), Offset(x, size.height - h), Size(w, h), r)
             }
         }
     }

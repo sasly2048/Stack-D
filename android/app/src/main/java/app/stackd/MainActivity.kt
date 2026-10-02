@@ -93,6 +93,8 @@ class MainActivity : ComponentActivity() {
         /** Process-lifetime, so rotation (stop -> start in ms) doesn't replay it. 0 = cold start. */
         private var lastStoppedAt = 0L
         private const val REOPEN_AFTER_MS = 30_000L
+        /** Debug builds only: ceremony preview toggle. */
+        private val debugCeremony = androidx.compose.runtime.mutableStateOf(false)
     }
 
     override fun onStart() {
@@ -135,6 +137,8 @@ class MainActivity : ComponentActivity() {
         intent?.getStringExtra("celebrate")?.takeIf { it == "pro" || it == "elite" }?.let {
             app.stackd.core.premium.Celebration.pending.value = it
         }
+        // `--ez ceremony true` previews the post-session ceremony with sample data.
+        if (intent?.getBooleanExtra("ceremony", false) == true) debugCeremony.value = true
         // `--ez recap_pdf true` renders the recap PDF from sample data.
         if (intent?.getBooleanExtra("recap_pdf", false) == true) {
             app.stackd.feature.room.RecapPdf.share(
@@ -338,6 +342,11 @@ class MainActivity : ComponentActivity() {
                                 app.stackd.core.premium.CelebrationHost(
                                     suppressed = entry?.destination?.route == Dest.Room.route,
                                 )
+                                if (BuildConfig.DEBUG && debugCeremony.value) {
+                                    app.stackd.feature.room.SessionCeremony(app.stackd.feature.room.sampleSessionSummary()) {
+                                        debugCeremony.value = false
+                                    }
+                                }
                             }
                         }
                     }

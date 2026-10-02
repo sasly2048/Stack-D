@@ -1,11 +1,18 @@
 package app.stackd.feature.room
 
-import app.stackd.core.ui.Avatar
+import android.view.HapticFeedbackConstants
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,47 +22,59 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.LaunchedEffect
-import app.stackd.core.theme.MonoLabel
+import androidx.compose.ui.unit.sp
+import app.stackd.core.feedback.Sfx
 import app.stackd.core.theme.MonoLabelSmall
-import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.Avatar
+import app.stackd.core.ui.EaseRitual
+import app.stackd.core.ui.EmberButton
 import app.stackd.data.recap.SessionSummary
+import com.composables.icons.lucide.Award
+import com.composables.icons.lucide.Lucide
+import kotlinx.coroutines.delay
 
 /**
- * Cinematic post-session ceremony — the Android counterpart to the web's
- * SessionCeremony. Reveals beats in order — Focus Score → XP → Level/Prestige →
- * Achievements → Lifetime Milestones → Rank change → Friends finished →
- * Continue — each fading in on a short timer, with the XP counting up. Beats
- * whose data is absent (no new achievements, no rank change) are skipped, so a
- * quiet session still gets Score → XP → Continue.
+ * Post-session ceremony — the payoff moment, staged like a short film rather
+ * than a results table (web SessionCeremony, Duolingo lesson-complete).
  *
- * Full-screen scrim over the room; dismissed by [onContinue].
+ * Score → XP → Level → Achievements → Milestones → Rank → Friends → Continue.
+ * Each beat rises in on a spring with its own sound and haptic; beats whose
+ * data is absent are skipped, so a quiet session still gets
+ * Score → XP → Continue. The action only appears once the story has played.
  */
 @Composable
 fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
     val colors = Stackd.colors
+    val view = LocalView.current
 
-    // Which optional beats exist, in reveal order after score+xp.
     val beats = remember(summary) {
         buildList {
             add("score"); add("xp"); add("level")
@@ -66,38 +85,35 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
             add("continue")
         }
     }
-
     var beat by remember(summary) { mutableIntStateOf(0) }
+    fun shown(key: String) = beats.indexOf(key).let { it >= 0 && beat >= it }
+
+    // Score ring + count-up drive the opening beat.
+    val scoreP = remember(summary) { Animatable(0f) }
     LaunchedEffect(summary) {
-        // Web session-ceremony: feedback("success") as the ceremony opens.
-        app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.SUCCESS)
+        Sfx.play(Sfx.Kind.SUCCESS)
+        view.performHapticFeedback(if (android.os.Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.LONG_PRESS)
+        scoreP.animateTo(1f, tween(1400, easing = EaseRitual))
         while (beat < beats.size - 1) {
-            kotlinx.coroutines.delay(if (beats[beat] == "xp") 2200 else 1400)
+            delay(if (beats[beat] == "xp") 1900 else 1100)
             beat++
+            when (beats[beat]) {
+                "xp" -> Sfx.play(Sfx.Kind.XP)
+                "level" -> Sfx.play(Sfx.Kind.SELECT)
+                "achievements", "milestones" -> Sfx.play(Sfx.Kind.ACHIEVEMENT)
+                "rank" -> if (summary.rankNow < summary.rankBefore) Sfx.play(Sfx.Kind.SUCCESS)
+                "friends" -> Sfx.play(Sfx.Kind.NOTIFY)
+            }
+            if (beats[beat] != "continue") view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         }
-    }
-    fun shown(key: String): Boolean {
-        val i = beats.indexOf(key)
-        return i >= 0 && beat >= i
     }
 
-    // XP count-up, eased, once the xp beat is reached. Keyed on a boolean, not
-    // `beat`: keying on `beat` restarted this effect on every later beat tick,
-    // cancelling a still-running count-up (it takes ~1.8s, beats advance every
-    // 1.4s) and freezing the number at a partial value. Gate on "have we passed
-    // the xp beat" so it starts once and always runs to completion.
+    // XP counts up once its beat lands (keyed on reaching it, so later beats
+    // never cancel a running count).
     val xpReached = beat >= beats.indexOf("xp")
-    var xp by remember(summary) { mutableFloatStateOf(0f) }
+    val xp = remember(summary) { Animatable(0f) }
     LaunchedEffect(summary, xpReached) {
-        if (xpReached && summary.xpEarned > 0) {
-            val steps = 40
-            repeat(steps + 1) { s ->
-                val p = s.toFloat() / steps
-                xp = summary.xpEarned * (1 - (1 - p) * (1 - p) * (1 - p) * (1 - p))
-                kotlinx.coroutines.delay(45)
-            }
-            xp = summary.xpEarned.toFloat()
-        }
+        if (xpReached && summary.xpEarned > 0) xp.animateTo(summary.xpEarned.toFloat(), tween(1500, easing = EaseRitual))
     }
 
     val mins = maxOf(1, Math.round(summary.durationSeconds / 60.0).toInt())
@@ -105,7 +121,7 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background.copy(alpha = 0.96f))
+            .background(colors.background.copy(alpha = 0.97f))
             .verticalScroll(rememberScrollState()),
         contentAlignment = Alignment.TopCenter,
     ) {
@@ -113,165 +129,207 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
             modifier = Modifier
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
-                .padding(horizontal = 28.dp, vertical = 64.dp),
+                .padding(horizontal = 28.dp, vertical = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("HELD", style = MonoLabel, color = colors.accent)
-            Spacer(Modifier.height(12.dp))
             Text(
                 "$mins ${if (mins == 1) "minute" else "minutes"} held.",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineMedium.copy(fontFamily = SerifFamily),
                 color = colors.textPrimary,
                 textAlign = TextAlign.Center,
             )
-
-            // 1. Focus Score
-            Spacer(Modifier.height(40.dp))
-            Text("FOCUS SCORE", style = MonoLabelSmall, color = colors.textMuted)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
-                "${summary.score}",
-                style = MaterialTheme.typography.displayLarge,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.ExtraBold,
+                when {
+                    summary.breaches == 0 -> "Not a single break. That's the stack."
+                    summary.breaches == 1 -> "One break. Still a strong hold."
+                    else -> "${summary.breaches} breaks. Every hold builds the habit."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+                textAlign = TextAlign.Center,
             )
-            Text(summary.tier.uppercase(), style = MonoLabelSmall, color = colors.accent)
+
+            // 1. Score ring
+            Spacer(Modifier.height(32.dp))
+            ScoreRing(summary.score, scoreP.value)
+            Spacer(Modifier.height(10.dp))
+            Text(
+                tierLabel(summary.tier),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.accent,
+            )
 
             // 2. XP
             Beat(shown("xp")) {
                 Spacer(Modifier.height(28.dp))
                 Text(
-                    "+${xp.toInt()} XP",
+                    "+${xp.value.toInt()} XP",
                     style = MaterialTheme.typography.displaySmall,
                     color = colors.accent,
                     fontWeight = FontWeight.Bold,
                 )
             }
 
-            // 3. Level / Prestige
+            // 3. Level bar
             Beat(shown("level")) {
-                Spacer(Modifier.height(28.dp))
-                val prestige = if (summary.prestige > 0) "P${summary.prestige} · " else ""
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text("${prestige}LEVEL ${summary.level}", style = MonoLabelSmall, color = colors.textMuted)
+                Spacer(Modifier.height(24.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    val prestige = if (summary.prestige > 0) "P${summary.prestige} · " else ""
+                    Text("${prestige}Level ${summary.level}", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
                     Text(
-                        "${summary.levelXpInto} / ${summary.levelXpSpan}",
-                        style = MonoLabelSmall, color = colors.textMuted,
+                        "${summary.levelXpInto} / ${summary.levelXpSpan} XP",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
                     )
                 }
-                Spacer(Modifier.height(6.dp))
-                val pct = if (summary.levelXpSpan > 0) {
-                    (summary.levelXpInto.toFloat() / summary.levelXpSpan).coerceIn(0f, 1f)
-                } else 0f
-                val animated by animateFloatAsState(
-                    targetValue = if (shown("level")) pct else 0f,
-                    animationSpec = tween(1000),
-                    label = "levelBar",
-                )
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(colors.textPrimary.copy(alpha = 0.05f)),
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(animated)
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(colors.accent),
-                    )
+                Spacer(Modifier.height(8.dp))
+                val pct = if (summary.levelXpSpan > 0) (summary.levelXpInto.toFloat() / summary.levelXpSpan).coerceIn(0f, 1f) else 0f
+                val fill by animateFloatAsState(if (shown("level")) pct else 0f, tween(1100, easing = EaseRitual), label = "level")
+                Box(Modifier.fillMaxWidth().height(10.dp).clip(CircleShape).background(colors.textPrimary.copy(alpha = 0.07f))) {
+                    Box(Modifier.fillMaxWidth(fill).height(10.dp).clip(CircleShape).background(colors.accent))
                 }
             }
 
-            // 4. Achievements
-            Beat(shown("achievements") && summary.achievements.isNotEmpty()) {
+            // 4. Achievements — badges pop with overshoot
+            Beat(shown("achievements") && summary.achievements.isNotEmpty(), pop = true) {
                 Spacer(Modifier.height(28.dp))
-                summary.achievements.forEach { a ->
-                    Text("◆ ${a.name.uppercase()}", style = MonoLabelSmall, color = colors.accent)
-                }
+                Text("Unlocked", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                Spacer(Modifier.height(12.dp))
+                summary.achievements.forEach { a -> AwardRow(a.name, a.description) }
             }
 
             // 4b. Lifetime milestones
-            Beat(shown("milestones") && summary.milestones.isNotEmpty()) {
+            Beat(shown("milestones") && summary.milestones.isNotEmpty(), pop = true) {
                 Spacer(Modifier.height(20.dp))
-                summary.milestones.forEach { m ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .background(colors.accent.copy(alpha = 0.06f), Radius2Xl)
-                            .border(1.dp, colors.accent.copy(alpha = 0.4f), Radius2Xl)
-                            .padding(14.dp),
-                    ) {
-                        Text("LIFETIME MILESTONE", style = MonoLabelSmall, color = colors.accent)
-                        Spacer(Modifier.height(4.dp))
-                        Text(m.name, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                        if (m.description.isNotBlank()) {
-                            Text(m.description, style = MonoLabelSmall, color = colors.textMuted)
-                        }
-                    }
-                }
+                Text("Lifetime milestone", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                Spacer(Modifier.height(12.dp))
+                summary.milestones.forEach { m -> AwardRow(m.name, m.description) }
             }
 
             // 5. Rank change
             Beat(shown("rank") && summary.rankNow != summary.rankBefore) {
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(24.dp))
                 val delta = summary.rankBefore - summary.rankNow
-                val up = delta > 0
                 Text(
-                    "${if (up) "▲" else "▼"} ${Math.abs(delta)} · RANK #${summary.rankNow}",
-                    style = MonoLabelSmall,
-                    color = if (up) colors.accent else colors.textMuted,
+                    if (delta > 0) "Up ${delta} ${if (delta == 1) "place" else "places"} · now #${summary.rankNow}"
+                    else "Now #${summary.rankNow} on the board",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (delta > 0) colors.accent else colors.textMuted,
                 )
             }
 
             // 6. Friends finished
             Beat(shown("friends") && summary.friendsFinished.isNotEmpty()) {
-                Spacer(Modifier.height(28.dp))
-                Text("ALSO FINISHED TODAY", style = MonoLabelSmall, color = colors.textMuted)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Spacer(Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
                     summary.friendsFinished.take(4).forEach {
-                        Avatar(url = it.avatarUrl, name = it.displayName, size = 28.dp)
+                        Avatar(
+                            url = it.avatarUrl,
+                            name = it.displayName,
+                            size = 32.dp,
+                            modifier = Modifier.border(2.dp, colors.background, CircleShape),
+                        )
                     }
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    summary.friendsFinished.take(4)
-                        .joinToString(" · ") { it.displayName?.takeIf { n -> n.isNotBlank() } ?: "Anon" },
+                    summary.friendsFinished.take(3).joinToString(", ") {
+                        it.displayName?.substringBefore(' ')?.takeIf { n -> n.isNotBlank() } ?: "A friend"
+                    } + " also focused today",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textPrimary,
+                    color = colors.textMuted,
                     textAlign = TextAlign.Center,
                 )
             }
 
-            // 7. Continue
+            // 7. Continue — appears when the story is told
             Spacer(Modifier.height(40.dp))
-            Text(
-                "CONTINUE",
-                style = MonoLabelSmall,
-                color = if (shown("continue")) colors.textPrimary else colors.textMuted,
-                modifier = Modifier
-                    .alpha(if (shown("continue")) 1f else 0.4f)
-                    .clip(RoundedCornerShape(50))
-                    .border(1.dp, colors.border, RoundedCornerShape(50))
-                    .clickable(enabled = shown("continue"), onClick = onContinue)
-                    .padding(horizontal = 32.dp, vertical = 14.dp),
-            )
+            Beat(shown("continue")) {
+                EmberButton(text = "Continue", onClick = onContinue)
+            }
         }
     }
 }
 
-/** Reveals its content only when [visible]; keeps the staged fade simple. */
+private fun tierLabel(tier: String) = when (tier.lowercase()) {
+    "pristine" -> "Pristine"
+    "flow" -> "Flow state"
+    "steady" -> "Steady"
+    "compromised" -> "Protocol compromised"
+    else -> tier.replace('_', ' ').replaceFirstChar { it.uppercase() }
+}
+
+/** Score as a filling arc; the number counts with the arc. */
 @Composable
-private fun Beat(visible: Boolean, content: @Composable () -> Unit) {
-    if (!visible) return
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        content()
+private fun ScoreRing(score: Int, p: Float) {
+    val colors = Stackd.colors
+    Box(Modifier.size(176.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 12.dp.toPx()
+            val inset = stroke / 2
+            val arc = Size(size.width - stroke, size.height - stroke)
+            drawArc(colors.textPrimary.copy(alpha = 0.07f), -90f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
+            drawArc(
+                colors.accent,
+                -90f, 360f * (score / 100f) * p, false, Offset(inset, inset), arc,
+                style = Stroke(stroke, cap = StrokeCap.Round),
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "${(score * p).toInt()}",
+                style = MaterialTheme.typography.displayLarge.copy(fontFamily = SerifFamily, fontSize = 64.sp),
+                color = colors.textPrimary,
+            )
+            Text("focus score", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
     }
 }
+
+@Composable
+private fun AwardRow(name: String, desc: String) {
+    val colors = Stackd.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .background(colors.accent.copy(alpha = 0.07f), RoundedCornerShape(16.dp))
+            .border(1.dp, colors.accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(40.dp).background(colors.accent.copy(alpha = 0.16f), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Lucide.Award, null, tint = colors.accent, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.size(12.dp))
+        Column {
+            Text(name, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+            if (desc.isNotBlank()) Text(desc, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
+    }
+}
+
+/** A beat rising into place (spring); [pop] adds a scale overshoot for rewards. */
+@Composable
+private fun Beat(visible: Boolean, pop: Boolean = false, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(320)) +
+            slideInVertically(spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)) { it / 3 } +
+            (if (pop) scaleIn(spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow), initialScale = 0.85f) else fadeIn()),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) { content() }
+    }
+}
+
+/** Debug-only sample so the ceremony can be previewed without finishing a session. */
+internal fun sampleSessionSummary() = SessionSummary(
+    score = 92, tier = "flow", durationSeconds = 45 * 60, breaches = 0, xpEarned = 640,
+    lifetimeXp = 2860, prestige = 0, level = 7, levelXpInto = 380, levelXpSpan = 600, streak = 3,
+    achievements = listOf(app.stackd.data.recap.AwardCard("deep", "Deep Diver", "Held a 45-minute stack")),
+    milestones = emptyList(), rankNow = 12, rankBefore = 15, personality = null,
+    friendsFinished = emptyList(),
+)
