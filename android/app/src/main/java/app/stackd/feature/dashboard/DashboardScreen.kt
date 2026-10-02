@@ -62,7 +62,6 @@ import app.stackd.core.formatHours
 import app.stackd.core.parseIsoMillis
 import app.stackd.core.stackdViewModel
 import app.stackd.core.theme.MonoFamily
-import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.RadiusMd
 import app.stackd.core.theme.Stackd
@@ -248,8 +247,11 @@ fun DashboardScreen(
                     }
                     if (!state.isEmpty) {
                         Section("Your stats") { StatTiles(state) }
-                        Section("Insights") {
-                            InsightsCard(state.aiInsights, state.aiInsLoading, state.aiInsError, onRegenInsights)
+                        // A failed, empty insights card is noise on Home; hide it.
+                        if (!(state.aiInsights == null && state.aiInsError && !state.aiInsLoading)) {
+                            Section("Insights") {
+                                InsightsCard(state.aiInsights, state.aiInsLoading, state.aiInsError, onRegenInsights)
+                            }
                         }
                     }
                     // Home shows only rooms you can still walk into; finished
@@ -266,10 +268,16 @@ fun DashboardScreen(
                     }
                     if (!state.isEmpty) {
                         Section("This week") { Tile { WeekBars(state.history) } }
-                        Section(
-                            "Recent sessions",
-                            action = openTimeline?.let { "See all" to it },
-                        ) { SessionHistory(state.history.take(RECENT_SESSIONS), onOpenRoom) }
+                        // Sub-minute test sessions are noise on Home; Timeline keeps them.
+                        val recent = remember(state.history) {
+                            state.history.filter { it.durationSeconds >= 60 }.take(RECENT_SESSIONS)
+                        }
+                        if (recent.isNotEmpty()) {
+                            Section(
+                                "Recent sessions",
+                                action = openTimeline?.let { "See all" to it },
+                            ) { SessionHistory(recent, onOpenRoom) }
+                        }
                     }
                 }
             }
@@ -350,7 +358,7 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).padding(top = 8.dp)) {
                 val clock = now.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
-                Text("${dayPart.uppercase()} · $clock", style = MonoLabelSmall, color = colors.textMuted)
+                Text("$dayPart · ${clock.lowercase()}", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                 Spacer(Modifier.height(6.dp))
                 // Web's greeting: "Afternoon, Raghavendra Sujith." — large, tight, bold.
                 Text(
@@ -515,8 +523,9 @@ private fun SuggestedSession(
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
             Text(
-                if (error) "SUGGESTED" else "SUGGESTED BY ATLAS",
-                style = MonoLabelSmall,
+                if (error) "Suggested" else "Suggested by Atlas",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
                 color = colors.accent,
             )
             Spacer(Modifier.height(4.dp))
@@ -631,7 +640,6 @@ private fun EmptyLedger() {
 @Composable
 private fun StatTiles(state: DashboardUiState) {
     val colors = Stackd.colors
-    val tier = FocusScore.tierForScore(state.avgScore.toDouble())
     // Three equal tiles in one row: one glance, no scrolling past a giant
     // hours number. Streak lives in the hero, so it isn't repeated here.
     // IntrinsicSize.Min + fillMaxHeight: tiles share one height whatever the text.
@@ -652,7 +660,7 @@ private fun StatTiles(state: DashboardUiState) {
                 .semantics(mergeDescendants = true) {},
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("LIFETIME PRESENCE", style = MonoLabelSmall, color = colors.textMuted)
+            Text("Lifetime focus", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     String.format(java.util.Locale.US, "%.1f", app.stackd.core.ui.animatedCount((state.totalSeconds / 3600.0).toFloat())),
@@ -662,8 +670,8 @@ private fun StatTiles(state: DashboardUiState) {
                     maxLines = 1,
                 )
                 Text(
-                    "HOURS",
-                    style = MonoLabelSmall,
+                    "hours",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = colors.textMuted,
                     modifier = Modifier.padding(start = 6.dp, bottom = 10.dp),
                 )
@@ -676,7 +684,7 @@ private fun StatTiles(state: DashboardUiState) {
                 // Tier reads from the value colour; naming it truncated ("Protocol Co…").
                 "Avg score",
                 Modifier.fillMaxWidth(),
-                valueColor = Color(tier.hex),
+                valueColor = scoreColor(state.avgScore.toDouble()),
             )
         }
     }
@@ -845,7 +853,7 @@ private fun SessionHistory(history: List<FocusHistoryRow>, onOpenRoom: (String) 
     ) {
         history.forEachIndexed { i, h ->
             val tier = FocusScore.tierForScore(h.score.toDouble())
-            val tint = Color(tier.hex)
+            val tint = scoreColor(h.score.toDouble())
             val code = h.room?.code
             if (i > 0) {
                 Box(Modifier.fillMaxWidth().height(1.dp).background(colors.border))
@@ -870,12 +878,13 @@ private fun SessionHistory(history: List<FocusHistoryRow>, onOpenRoom: (String) 
                         )
                         if (isNew(h.createdAt)) {
                             Text(
-                                "NEW",
-                                style = MonoLabelSmall,
-                                color = colors.live,
+                                "New",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.accent,
                                 modifier = Modifier
-                                    .border(1.dp, colors.live.copy(alpha = 0.5f), RadiusMd)
-                                    .padding(horizontal = 6.dp, vertical = 1.dp),
+                                    .background(colors.accent.copy(alpha = 0.12f), CircleShape)
+                                    .padding(horizontal = 8.dp, vertical = 1.dp),
                             )
                         }
                     }
@@ -926,7 +935,7 @@ private fun InsightsCard(
 ) {
     val colors = Stackd.colors
     Tile {
-        Text("AI · LEDGER", style = MonoLabelSmall, color = colors.accent)
+        Text("Atlas insight", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = colors.accent)
         when {
             loading && insights == null -> {
                 Spacer(Modifier.height(12.dp))
@@ -1030,7 +1039,7 @@ private fun PrestigeCard(
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("PRESTIGE", style = MonoLabelSmall, color = colors.accent, modifier = Modifier.padding(end = 10.dp))
+            Text("Prestige", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = colors.accent, modifier = Modifier.padding(end = 10.dp))
             Text(
                 "P${p.level}",
                 style = MaterialTheme.typography.headlineSmall,
@@ -1069,10 +1078,10 @@ private fun PrestigeCard(
                     enabled = !ascending,
                     onClick = { onAscend(); confirming = false },
                     modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(if (ascending) "ASCENDING…" else "ASCEND") }
+                ) { Text(if (ascending) "Ascending…" else "Ascend", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
-                TextButton(onClick = { confirming = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text("CANCEL") }
+                TextButton(onClick = { confirming = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold) }
             },
         )
     }
@@ -1091,10 +1100,21 @@ private fun TextAction(text: String, enabled: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = if (enabled) colors.accent else colors.textMuted,
         )
+    }
+}
+
+/** Score tint: ember for strong, primary for middling, muted for low. No red, no cyan. */
+@Composable
+private fun scoreColor(score: Double): Color {
+    val colors = Stackd.colors
+    return when {
+        score >= 80 -> colors.accent
+        score >= 40 -> colors.textPrimary
+        else -> colors.textMuted
     }
 }
 
