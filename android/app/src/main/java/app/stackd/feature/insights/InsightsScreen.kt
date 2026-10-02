@@ -33,17 +33,17 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.stackd.core.AppContainer
 import app.stackd.core.stackdViewModel
-import app.stackd.core.theme.MonoLabel
-import app.stackd.core.theme.MonoLabelSmall
+import androidx.compose.foundation.shape.CircleShape
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
-import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.core.ui.SkeletonCard
+import app.stackd.core.ui.animatedCount
+import app.stackd.core.ui.reveal
 import app.stackd.data.room.FocusHistoryRow
 import app.stackd.feature.dashboard.ActivityHeatmap
 import kotlinx.coroutines.async
@@ -222,29 +222,26 @@ fun InsightsScreen(
     ) {
         ResponsiveColumn {
             app.stackd.core.ui.ScreenHeader("STACK'D / INSIGHTS", onBack, title = "Your progress")
-            Spacer(Modifier.height(16.dp))
-            SectionLabel("120-DAY LEDGER")
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
             when {
                 state.loading -> {
-                    // Same 2-up tile grid + chart cards the ledger renders into.
-                    repeat(4) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            repeat(2) { SkeletonBlock(Modifier.weight(1f).height(72.dp), Radius2Xl) }
-                        }
-                        Spacer(Modifier.height(8.dp))
+                    // Mirrors the layout below: hero, 3-up stats, then chart cards.
+                    SkeletonBlock(Modifier.fillMaxWidth().height(120.dp), Radius2Xl)
+                    Spacer(Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(3) { SkeletonBlock(Modifier.weight(1f).height(72.dp), Radius2Xl) }
                     }
                     Spacer(Modifier.height(24.dp))
+                    SkeletonCard(height = 120.dp)
                     SkeletonCard(height = 200.dp)
-                    SkeletonCard(height = 96.dp)
                 }
                 state.error -> {
                     Text(
                         "Couldn't load your analytics.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(16.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
                 state.rows.isEmpty() -> Column(
@@ -254,13 +251,16 @@ fun InsightsScreen(
                         .border(1.dp, colors.border, Radius2Xl)
                         .padding(24.dp),
                 ) {
-                    SectionLabel("NOTHING TO CHART YET")
-                    Spacer(Modifier.height(12.dp))
                     Text(
-                        "Your focus radar, hourly rhythm and 120-day heatmap",
+                        "Nothing to chart yet",
+                        style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Your focus radar, hourly rhythm and heatmap",
                         style = MaterialTheme.typography.titleLarge,
                         color = colors.textPrimary,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -268,113 +268,82 @@ fun InsightsScreen(
                             "stack and the patterns start appearing here.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                     )
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     EmberButton(text = "Start your first session", onClick = onStart)
                 }
                 else -> {
                     val t = state.totals
-                    // Bento ledger: one hero stat (hours, display scale like the
-                    // web's "0.1 HOURS") beside three compact tiles, then pairs.
-                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1.15f)
-                                .fillMaxHeight()
-                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                                .border(1.dp, colors.border, Radius2Xl)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text("120-DAY FOCUS", style = MonoLabelSmall, color = colors.accent)
-                            Column {
-                                Text(
-                                    "%.1f".format(t.hours),
-                                    // Long values step down a size so they never clip.
-                                    style = if (t.hours >= 1000) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.displayMedium,
-                                    color = colors.textPrimary,
-                                    maxLines = 1,
-                                )
-                                Text("HOURS", style = MonoLabelSmall, color = colors.textMuted)
-                            }
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            LedgerTile("SESSIONS", "${t.sessions}", Modifier.fillMaxWidth())
-                            LedgerTile("TOTAL XP", "${t.xp}", Modifier.fillMaxWidth())
-                            LedgerTile("STREAK", "${state.streak}d", Modifier.fillMaxWidth())
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    listOf(
-                        "AVG SCORE" to "${t.avgScore}",
-                        "CLEAN RATE" to "${t.cleanRate}%",
-                        "BREACHES/SESSION" to "%.1f".format(t.breachesPerSession),
-                        "BREACHES" to "${t.breaches}",
-                    ).chunked(2).forEach { pair ->
-                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            pair.forEach { (label, value) ->
-                                LedgerTile(label, value, Modifier.weight(1f).fillMaxHeight())
-                            }
-                        }
+                    var i = 0
+
+                    // 1. Hero — one number, one sentence. Summary before detail.
+                    Column(Modifier.fillMaxWidth().reveal(i++)) {
+                        val hours = animatedCount(t.hours.toFloat())
+                        Text(
+                            "%.1f".format(hours),
+                            style = MaterialTheme.typography.displayMedium,
+                            fontFamily = SerifFamily,
+                            color = colors.accent,
+                            maxLines = 1,
+                        )
+                        Text(
+                            "hours focused in the last 120 days · ${"%,d".format(t.xp)} XP earned",
+                            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        )
                         Spacer(Modifier.height(8.dp))
+                        Text(takeaway(t), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                     }
 
-                    // Tile grid already ends with an 8dp gap; 16 more makes the 24dp section rhythm.
-                    Spacer(Modifier.height(16.dp))
-                    SectionLabel("FOCUS RADAR")
-                    Spacer(Modifier.height(8.dp))
-                    FocusRadar(state.dna.traits)
-
+                    // 2. Three supporting stats.
                     Spacer(Modifier.height(24.dp))
-                    SectionLabel("BY HOUR OF DAY")
-                    Spacer(Modifier.height(8.dp))
-                    HourBars(state.hourBuckets)
+                    Row(
+                        Modifier.fillMaxWidth().height(IntrinsicSize.Min).reveal(i++),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val scoreColor = when {
+                            t.avgScore >= 80 -> colors.accent
+                            t.avgScore < 40 -> colors.textMuted
+                            else -> colors.textPrimary
+                        }
+                        val tile = Modifier.weight(1f).fillMaxHeight()
+                        StatTile("Sessions", "${t.sessions}", tile)
+                        StatTile("Avg score", "${t.avgScore}", tile, scoreColor)
+                        if (state.streak > 0) {
+                            StatTile("Streak", "${state.streak} ${if (state.streak == 1) "day" else "days"}", tile)
+                        } else {
+                            // Positive zero state: an invitation, not a failing "0d".
+                            StatTile("Streak", "Start one", tile, colors.textMuted)
+                        }
+                    }
 
-                    Spacer(Modifier.height(24.dp))
-                    SectionLabel("HEATMAP · 120 DAYS")
-                    Spacer(Modifier.height(8.dp))
-                    ActivityHeatmap(state.rows, weeks = 17)
-
-                    Spacer(Modifier.height(24.dp))
-                    SectionLabel("SIGNAL")
-                    Spacer(Modifier.height(8.dp))
-                    SignalCallout(state.bestHour, state.bestWeekday)
-
+                    // 3. Deep dive.
+                    Section("Discipline", i++) { DisciplineCard(t) }
+                    Section("Focus shape", i++) { FocusRadar(state.dna.traits) }
+                    Section("When you focus", i++) { HourBars(state.hourBuckets) }
+                    Section("Activity", i++) { ActivityHeatmap(state.rows, weeks = 17) }
+                    Section("Your signal", i++) { SignalCallout(state.bestHour, state.bestWeekday) }
                     if (state.tagDistribution.isNotEmpty()) {
-                        Spacer(Modifier.height(24.dp))
-                        SectionLabel("BY TAG")
-                        Spacer(Modifier.height(8.dp))
-                        TagBars(state.tagDistribution)
+                        Section("By tag", i++) { TagBars(state.tagDistribution) }
                     }
-
-                    Spacer(Modifier.height(24.dp))
-                    SectionLabel("GOAL FORECAST")
-                    Spacer(Modifier.height(8.dp))
-                    ForecastCard(state.forecast)
+                    Section("Goal forecast", i++) { ForecastCard(state.forecast) }
 
                     // AI panels — render only when the backend answered.
                     state.proactive?.let { p ->
-                        Spacer(Modifier.height(24.dp))
-                        SectionLabel("PROACTIVE")
-                        Spacer(Modifier.height(8.dp))
-                        ProactiveCard(p)
+                        Section("Looking ahead", i++) { ProactiveCard(p) }
                     }
                     val story = state.weeklyStory?.takeIf { it.isNotBlank() }
                     if (story != null || state.aiLoading) {
-                        Spacer(Modifier.height(24.dp))
-                        SectionLabel("THIS WEEK")
-                        Spacer(Modifier.height(8.dp))
-                        if (story != null) {
-                            WeeklyStoryCard(story, state.patterns)
-                        } else {
-                            SkeletonCard(height = 96.dp)
+                        Section("This week", i++) {
+                            if (story != null) {
+                                WeeklyStoryCard(story, state.patterns)
+                            } else {
+                                SkeletonCard(height = 96.dp)
+                            }
                         }
                     }
                     state.aiUsage?.takeIf { it.unlimited || it.allowance > 0 }?.let { u ->
                         Spacer(Modifier.height(24.dp))
-                        SectionLabel("AI ACTIONS")
-                        Spacer(Modifier.height(6.dp))
                         Text(
-                            if (u.unlimited) "Unlimited" else "${u.used} of ${u.allowance} used this billing period",
+                            "AI actions: " + if (u.unlimited) "unlimited" else "${u.used} of ${u.allowance} used this billing period",
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.textMuted,
                         )
@@ -384,6 +353,73 @@ fun InsightsScreen(
 
             Spacer(Modifier.height(56.dp))
         }
+    }
+}
+
+/** One plain-language takeaway derived from the totals — no AI call. */
+private fun takeaway(t: AnalyticsEngine.Totals): String = when {
+    t.sessions < 3 -> "A few more sessions and your patterns come into focus."
+    t.cleanRate < 50 -> "Your clean rate is ${t.cleanRate}% — shorter sessions will lift it."
+    t.avgScore >= 80 -> "Averaging ${t.avgScore} with ${t.cleanRate}% clean — elite focus."
+    t.avgScore < 50 -> "${t.cleanRate}% of sessions stay clean. Longer holds will lift your score."
+    else -> "${t.cleanRate}% clean, averaging ${t.avgScore}. Keep stacking."
+}
+
+/** Sentence-case section title over its content, revealed in order. */
+@Composable
+private fun Section(title: String, index: Int, content: @Composable () -> Unit) {
+    Spacer(Modifier.height(32.dp))
+    Column(Modifier.fillMaxWidth().reveal(index)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Stackd.colors.textPrimary,
+        )
+        Spacer(Modifier.height(8.dp))
+        content()
+    }
+}
+
+/** Clean-rate bar + breach figures — one card instead of three boxes. */
+@Composable
+private fun DisciplineCard(t: AnalyticsEngine.Totals) {
+    val colors = Stackd.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
+            .border(1.dp, colors.border, Radius2Xl)
+            .padding(16.dp),
+    ) {
+        DisciplineRow("Clean sessions", "${t.cleanRate}%", colors.textPrimary)
+        Spacer(Modifier.height(8.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .background(colors.textPrimary.copy(alpha = 0.06f), CircleShape),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(t.cleanRate.coerceIn(0, 100) / 100f)
+                    .height(6.dp)
+                    .background(colors.accent, CircleShape),
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        DisciplineRow("Breaches per session", "%.1f".format(t.breachesPerSession))
+        Spacer(Modifier.height(8.dp))
+        DisciplineRow("Total breaches", "${t.breaches}")
+    }
+}
+
+@Composable
+private fun DisciplineRow(label: String, value: String, labelColor: androidx.compose.ui.graphics.Color = Stackd.colors.textMuted) {
+    val colors = Stackd.colors
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = labelColor)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -412,8 +448,8 @@ private fun HourBars(buckets: List<AnalyticsEngine.HourBucket>) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            listOf("00", "06", "12", "18", "23").forEach {
-                Text(it, style = MonoLabelSmall, color = colors.textMuted)
+            listOf("12am", "6am", "12pm", "6pm", "11pm").forEach {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
             }
         }
     }
@@ -459,10 +495,10 @@ private fun TagBars(dist: List<Pair<String, Int>>) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("#$tag", style = MonoLabelSmall, color = colors.textPrimary)
-                Text("$n", style = MonoLabelSmall, color = colors.textMuted)
+                Text("#$tag", style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
+                Text("$n", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
             }
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(4.dp))
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -493,7 +529,7 @@ private fun ForecastCard(f: Forecast) {
     ) {
         Text(
             "~${f.avgDailyMinutes} min/day · ~${f.avgDailyXp} XP/day",
-            style = MonoLabelSmall, color = colors.accent,
+            style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.height(4.dp))
         Text(
@@ -515,8 +551,8 @@ private fun ForecastCard(f: Forecast) {
             ) {
                 Text(pr.label, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
                 Text(
-                    if (pr.daysNeeded >= 9999) "—" else "~${pr.daysNeeded}d",
-                    style = MonoLabelSmall, color = colors.textMuted,
+                    if (pr.daysNeeded >= 9999) "—" else "~${pr.daysNeeded} days",
+                    style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
                 )
             }
         }
@@ -539,26 +575,29 @@ private fun ProactiveCard(p: app.stackd.data.ai.ProactiveInsight) {
             .padding(16.dp),
     ) {
         p.smartSchedule?.let { s ->
-            Text(s.label, style = MonoLabelSmall, color = colors.accent)
+            Text(s.label, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(4.dp))
             Text(s.rationale, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
         }
         Text(
-            "NEXT SESSION ~${p.focusPrediction.nextScore}/100 · ${p.focusPrediction.confidence.uppercase()}",
-            style = MonoLabelSmall, color = colors.textPrimary,
+            "Next session ~${p.focusPrediction.nextScore}/100 · ${p.focusPrediction.confidence} confidence",
+            style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.height(4.dp))
         Text(p.focusPrediction.note, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
 
-        Spacer(Modifier.height(12.dp))
-        val riskColor = if (p.burnout.risk == "high") colors.breach else colors.accent
-        Text("BURNOUT · ${p.burnout.risk.uppercase()}", style = MonoLabelSmall, color = riskColor)
+        Spacer(Modifier.height(16.dp))
+        val riskColor = if (p.burnout.risk == "high") colors.breach else colors.textPrimary
+        Text(
+            "Burnout risk: ${p.burnout.risk}",
+            style = MaterialTheme.typography.bodyMedium, color = riskColor, fontWeight = FontWeight.SemiBold,
+        )
         p.burnout.signals.forEach { sig ->
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(4.dp))
             Text("· $sig", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             p.burnout.recommendation,
             style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary,
@@ -566,19 +605,27 @@ private fun ProactiveCard(p: app.stackd.data.ai.ProactiveInsight) {
     }
 }
 
-/** Compact ledger tile: tracked mono label over a bold value. */
+/** Compact neutral stat tile: sans label over a semibold value. */
 @Composable
-private fun LedgerTile(label: String, value: String, modifier: Modifier = Modifier) {
+private fun StatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: androidx.compose.ui.graphics.Color = Stackd.colors.textPrimary,
+) {
     val colors = Stackd.colors
     Column(
         modifier = modifier
-            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
+            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
             .border(1.dp, colors.border, Radius2Xl)
-            .padding(14.dp),
+            .padding(16.dp),
     ) {
-        Text(label, style = MonoLabelSmall, color = colors.textMuted, maxLines = 1)
-        Spacer(Modifier.height(4.dp))
-        Text(value, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary, fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 1)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            value, style = MaterialTheme.typography.titleLarge, color = valueColor,
+            fontWeight = FontWeight.SemiBold, maxLines = 1,
+        )
     }
 }
 
@@ -608,7 +655,7 @@ private fun WeeklyStoryCard(story: String, patterns: List<String> = emptyList())
             patterns.forEach { p ->
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("◆", style = MonoLabelSmall, color = colors.accent, modifier = Modifier.padding(top = 3.dp))
+                    Text("◆", style = MaterialTheme.typography.bodySmall, color = colors.accent)
                     Text(p, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                 }
             }

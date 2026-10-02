@@ -80,7 +80,7 @@ fun FocusRadar(traits: List<AnalyticsEngine.Trait>, modifier: Modifier = Modifie
         }
         traits.forEachIndexed { i, t ->
             val p = point(i, 1.18f)
-            drawContext.canvas.nativeCanvas.drawText(t.label.uppercase(), p.x, p.y, paint)
+            drawContext.canvas.nativeCanvas.drawText(t.label, p.x, p.y, paint)
         }
     }
 }
