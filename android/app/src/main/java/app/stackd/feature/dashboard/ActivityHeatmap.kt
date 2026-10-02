@@ -198,7 +198,7 @@ fun WeekBars(history: List<FocusHistoryRow>) {
         listOf("M", "T", "W", "T", "F", "S", "S").forEachIndexed { i, d ->
             Text(
                 d,
-                style = MonoLabelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = if (i == todayIdx) colors.accent else colors.textMuted,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
