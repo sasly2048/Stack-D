@@ -70,6 +70,8 @@ data class DashboardUiState(
     val prestige: app.stackd.data.progression.PrestigeStatus? = null,
     val ascending: Boolean = false,
     val prestigeNotice: String? = null,
+    /** Friends in a session right now ("Your people"); empty hides the section. */
+    val friendsFocusing: List<app.stackd.data.social.FriendPresence> = emptyList(),
 ) {
     /** Lifetime focus, summed off the same rows the history table shows. */
     val totalSeconds: Int get() = history.sumOf { it.durationSeconds }
@@ -92,6 +94,7 @@ class DashboardViewModel(
     private val client: io.github.jan.supabase.SupabaseClient,
     private val prefs: android.content.SharedPreferences,
     private val snapshots: app.stackd.core.cache.DiskSnapshots? = null,
+    private val feed: app.stackd.data.social.FeedRepository? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardUiState())
@@ -104,7 +107,7 @@ class DashboardViewModel(
         )
         load()
         fetchAiRecommendation()
-        fetchAiInsights()
+        // Insights card moved to the Progress tab; Home no longer pays for that LLM call.
         viewModelScope.launch {
             val ent = runCatching { premium.myEntitlement() }.getOrNull()
             _state.value = _state.value.copy(isPremium = ent?.isPremium)
@@ -118,6 +121,13 @@ class DashboardViewModel(
             _state.update { it.copy(greeting = extras) }
         }
         refreshPrestige()
+        viewModelScope.launch {
+            val uid = auth.currentUserId ?: return@launch
+            val focusing = runCatching { feed?.friendsPresence(uid, System.currentTimeMillis()) }
+                .getOrNull().orEmpty()
+                .filter { it.status == app.stackd.data.social.PresenceStatus.FOCUSING }
+            _state.update { it.copy(friendsFocusing = focusing) }
+        }
     }
 
     fun refreshPrestige() {
@@ -214,6 +224,7 @@ class DashboardViewModel(
             isPremium = cur.isPremium, upgradeDismissed = cur.upgradeDismissed,
             atlasDismissed = cur.atlasDismissed, greeting = cur.greeting,
             prestige = cur.prestige, ascending = cur.ascending, prestigeNotice = cur.prestigeNotice,
+            friendsFocusing = cur.friendsFocusing,
         ) ?: cur).copy(loading = cached == null, error = false)
         // Cold start (process was killed): paint the last on-disk ledger at once.
         // Guarded on loading so it can never overwrite a fresher network result.

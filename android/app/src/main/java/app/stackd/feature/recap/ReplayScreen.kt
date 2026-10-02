@@ -267,7 +267,7 @@ fun ReplayScreen(
                 state.events.isEmpty() -> FeatureEmptyState(
                     icon = app.stackd.core.ui.StackdIcons.EventBusy,
                     title = "A quiet day",
-                    body = "No focus activity on this day. Try another date.",
+                    body = "Replay plays back a day's Stacks hour by hour. Nothing on this one, so try another date.",
                 )
                 else -> state.visible.forEach { TimelineRow(it) }
             }

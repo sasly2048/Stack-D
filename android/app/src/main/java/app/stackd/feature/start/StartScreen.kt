@@ -82,9 +82,12 @@ fun StartRoute(
     onRoomCreated: (String) -> Unit,
     onBack: (() -> Unit)? = null,
     onJoinRoom: (String) -> Unit = {},
+    /** From a Home ritual chip: opens the form already set to this length/name. */
+    presetMinutes: Int? = null,
+    presetTitle: String? = null,
     vm: StartViewModel = viewModel(
         factory = stackdViewModel {
-            StartViewModel(it.auth, it.profiles, it.rooms, it.settings)
+            StartViewModel(it.auth, it.profiles, it.rooms, it.settings, presetMinutes, presetTitle)
         },
     ),
 ) {
@@ -493,7 +496,7 @@ private fun CreateBar(state: StartUiState, onCreate: () -> Unit, modifier: Modif
                 Spacer(Modifier.height(12.dp))
             }
             EmberButton(
-                text = if (state.busy) "Creating room…" else "Create room",
+                text = if (state.busy) "Creating stack…" else "Create Stack",
                 onClick = onCreate,
                 enabled = !state.busy,
                 busy = state.busy,

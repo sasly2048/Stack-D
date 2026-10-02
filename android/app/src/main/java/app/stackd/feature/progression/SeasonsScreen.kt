@@ -181,7 +181,7 @@ fun SeasonsScreen(
                 state.season == null -> FeatureEmptyState(
                     icon = app.stackd.core.ui.StackdIcons.CalendarMonth,
                     title = "No season running",
-                    body = "The next season opens soon. Your sessions still earn XP meanwhile.",
+                    body = "Seasons rank everyone's XP over a few weeks. The next one opens soon, and your sessions still earn XP meanwhile.",
                 )
                 else -> {
                     val s = state.season

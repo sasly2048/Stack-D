@@ -20,6 +20,17 @@ sealed class Dest(val route: String) {
     // --- Core session loop ------------------------------------------------
     data object Dashboard : Dest("dashboard")
     data object Start : Dest("start")
+    /**
+     * Start pre-filled from a Home ritual chip. A separate route rather than
+     * optional args on [Start], so every existing `navigate("start")` /
+     * `popUpTo("start")` keeps matching exactly.
+     */
+    data object StartPreset : Dest("start/preset?minutes={minutes}&title={title}") {
+        const val ARG_MINUTES = "minutes"
+        const val ARG_TITLE = "title"
+        fun of(minutes: Int, title: String) =
+            "start/preset?minutes=$minutes&title=${android.net.Uri.encode(title)}"
+    }
     data object Room : Dest("room/{code}") {
         const val ARG_CODE = "code"
         fun of(code: String) = "room/$code"

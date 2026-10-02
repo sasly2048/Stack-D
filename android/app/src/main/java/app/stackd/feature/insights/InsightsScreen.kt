@@ -55,6 +55,10 @@ import java.time.Instant
 
 private val WEEKDAY_NAMES = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
+// Mirrors src/lib/proactive-ai.functions.ts: 21-day window, "medium" confidence at 8+ sessions.
+private const val PREDICTION_WINDOW_DAYS = 21
+private const val PREDICTION_MIN_SESSIONS = 8
+
 data class InsightsUiState(
     val loading: Boolean = true,
     val error: Boolean = false,
@@ -104,6 +108,12 @@ data class InsightsUiState(
     }
 
     val forecast: Forecast by lazy { forecast(rows, lifetimeXp) }
+
+    /** Sessions in the proactive model's window — feeds the "learning" progress. */
+    val recentSessions: Int by lazy {
+        val cutoff = System.currentTimeMillis() - PREDICTION_WINDOW_DAYS * 86_400_000L
+        rows.count { (app.stackd.core.parseIsoMillis(it.createdAt) ?: 0L) >= cutoff }
+    }
 
     /** Top session tags by frequency — web's tag-distribution bars. */
     val tagDistribution: List<Pair<String, Int>> by lazy {
@@ -328,7 +338,7 @@ fun InsightsScreen(
 
                     // AI panels — render only when the backend answered.
                     state.proactive?.let { p ->
-                        Section("Looking ahead", i++) { ProactiveCard(p) }
+                        Section("Looking ahead", i++) { ProactiveCard(p, state.recentSessions, onStart) }
                     }
                     val story = state.weeklyStory?.takeIf { it.isNotBlank() }
                     if (story != null || state.aiLoading) {
@@ -565,7 +575,11 @@ private fun ForecastCard(f: Forecast) {
  * the AI backend answered.
  */
 @Composable
-private fun ProactiveCard(p: app.stackd.data.ai.ProactiveInsight) {
+private fun ProactiveCard(
+    p: app.stackd.data.ai.ProactiveInsight,
+    recentSessions: Int,
+    onStart: () -> Unit,
+) {
     val colors = Stackd.colors
     Column(
         modifier = Modifier
@@ -578,14 +592,47 @@ private fun ProactiveCard(p: app.stackd.data.ai.ProactiveInsight) {
             Text(s.label, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(4.dp))
             Text(s.rationale, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+            Spacer(Modifier.height(8.dp))
+            GhostButton(text = "Start a Stack", onClick = onStart)
             Spacer(Modifier.height(16.dp))
         }
-        Text(
-            "Next session ~${p.focusPrediction.nextScore}/100 · ${p.focusPrediction.confidence} confidence",
-            style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(p.focusPrediction.note, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        val fp = p.focusPrediction
+        if (fp.confidence == "medium" || fp.confidence == "high") {
+            // Enough data: the number, with confidence in words rather than a label.
+            val sure = if (fp.confidence == "high") "confident" else "fairly confident"
+            Text(
+                "Next session around ${fp.nextScore} out of 100 · $sure",
+                style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(fp.note, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        } else {
+            // Low confidence: no number. Show how far the model is from a real read.
+            val have = recentSessions.coerceIn(0, PREDICTION_MIN_SESSIONS)
+            Text(
+                "Learning your pattern",
+                style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(colors.textPrimary.copy(alpha = 0.06f), androidx.compose.foundation.shape.CircleShape),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(have / PREDICTION_MIN_SESSIONS.toFloat())
+                        .height(4.dp)
+                        .background(colors.accent, androidx.compose.foundation.shape.CircleShape),
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "$have of $PREDICTION_MIN_SESSIONS sessions in the last 3 weeks before a score prediction.",
+                style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
+            )
+        }
 
         Spacer(Modifier.height(16.dp))
         val riskColor = if (p.burnout.risk == "high") colors.breach else colors.textPrimary

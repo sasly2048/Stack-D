@@ -63,3 +63,19 @@ internal fun FeatureEmptyState(
         }
     }
 }
+
+/** Opens the Android share sheet with a plain-text invite to Stack'd. */
+internal fun shareStackdInvite(context: android.content.Context) {
+    val url = app.stackd.BuildConfig.WEB_BASE_URL
+    val text = if (url.isBlank()) "Stack with me on Stack'd." else "Stack with me on Stack'd — $url"
+    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(android.content.Intent.EXTRA_TEXT, text)
+    }
+    runCatching {
+        context.startActivity(
+            android.content.Intent.createChooser(send, "Invite a friend")
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+}

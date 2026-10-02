@@ -52,6 +52,9 @@ class StartViewModel(
     private val profiles: ProfileRepository,
     private val rooms: RoomRepository,
     private val settings: SettingsStore,
+    /** Home ritual-chip preset; wins over the remembered length. Custom path (tplKey ""). */
+    private val presetMinutes: Int? = null,
+    private val presetTitle: String? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StartUiState())
@@ -68,7 +71,9 @@ class StartViewModel(
                 lastMinutes = last,
                 // Restore the last-used length as the starting duration, exactly
                 // as the web does — the number you keep picking is the default.
-                duration = last ?: _state.value.duration,
+                duration = presetMinutes?.coerceIn(StartUiState.MIN_MINUTES, StartUiState.MAX_MINUTES)
+                    ?: last ?: _state.value.duration,
+                title = presetTitle?.take(80) ?: _state.value.title,
                 showIntro = !completed && !introDismissed,
             )
             // Templates are a shortcut, not a requirement: a failure degrades to

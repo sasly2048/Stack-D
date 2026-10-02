@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,6 +66,8 @@ import app.stackd.core.theme.MonoFamily
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.RadiusMd
 import app.stackd.core.theme.Stackd
+import app.stackd.core.feedback.Sfx
+import app.stackd.core.ui.Avatar
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.NavMenuSheet
@@ -86,8 +89,8 @@ import java.time.ZoneId
 // ponytail: fixed daily goal; make it a profile setting when users ask to tune it.
 private const val DAILY_GOAL_MIN = 60
 
-/** Home shows a taste of history; the Timeline screen owns the full list. */
-private const val RECENT_SESSIONS = 5
+/** One-tap rituals under the hero: label (also the prefilled title) to minutes. */
+private val RITUALS = listOf("Quick focus" to 25, "Deep work" to 90, "Dinner" to 60)
 
 /**
  * Home. Stateless in the render — the [DashboardViewModel] owns the loads, and
@@ -99,6 +102,8 @@ fun DashboardRoute(
     onStart: () -> Unit,
     onOpenRoom: (String) -> Unit,
     menuEntries: List<Pair<String, () -> Unit>> = emptyList(),
+    /** Opens Start pre-filled with a ritual's length and name. */
+    onQuickStart: (minutes: Int, title: String) -> Unit = { _, _ -> },
     /** Opens the Premium screen from the upgrade card; StackdNavHost must wire it. */
     onOpenPremium: () -> Unit = {},
     vm: DashboardViewModel = viewModel(
@@ -108,6 +113,7 @@ fun DashboardRoute(
                 app.stackd.data.progression.PrestigeRepository(it.client), it.client,
                 it.appContextForWork.getSharedPreferences("dashboard_prefs", 0),
                 it.snapshots,
+                it.feed,
             )
         },
     ),
@@ -118,6 +124,7 @@ fun DashboardRoute(
     DashboardScreen(
         state = state,
         onStart = onStart,
+        onQuickStart = onQuickStart,
         onOpenRoom = onOpenRoom,
         menuEntries = menuEntries,
         onRetry = vm::load,
@@ -125,7 +132,6 @@ fun DashboardRoute(
         onOpenPremium = onOpenPremium,
         onRegenRec = { vm.fetchAiRecommendation(fresh = true) },
         onRetryRec = { vm.fetchAiRecommendation(fresh = true) },
-        onRegenInsights = { vm.fetchAiInsights(fresh = true) },
         onDismissAtlas = vm::dismissAtlas,
         onDismissUpgrade = vm::dismissUpgrade,
         onAscend = vm::ascend,
@@ -160,11 +166,11 @@ fun DashboardScreen(
     onOpenPremium: () -> Unit = {},
     onRegenRec: () -> Unit = {},
     onRetryRec: () -> Unit = {},
-    onRegenInsights: () -> Unit = {},
     onDismissAtlas: () -> Unit = {},
     onDismissUpgrade: () -> Unit = {},
     onAscend: () -> Unit = {},
     onMyRoomsPage: (Int) -> Unit = {},
+    onQuickStart: (minutes: Int, title: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -182,6 +188,8 @@ fun DashboardScreen(
     ) {
         ResponsiveColumn(maxContentWidth = WIDE_MAX_CONTENT_WIDTH) {
             TodayHero(state = state, onStart = onStart, onMore = { showMenu = true })
+            Spacer(Modifier.height(16.dp))
+            RitualChips(onQuickStart)
 
             // Atlas, made actionable: the recommendation is only worth showing if
             // acting on it is one tap.
@@ -239,21 +247,15 @@ fun DashboardScreen(
                 state.isEmpty && state.live.isEmpty() -> {
                     EmptyLedger()
                     Spacer(Modifier.height(32.dp))
+                    YourPeople(state.friendsFocusing)
                 }
 
                 else -> {
                     if (state.live.isNotEmpty()) {
                         Section("Live now") { LiveNow(state.live, onOpenRoom) }
                     }
-                    if (!state.isEmpty) {
-                        Section("Your stats") { StatTiles(state) }
-                        // A failed, empty insights card is noise on Home; hide it.
-                        if (!(state.aiInsights == null && state.aiInsError && !state.aiInsLoading)) {
-                            Section("Insights") {
-                                InsightsCard(state.aiInsights, state.aiInsLoading, state.aiInsError, onRegenInsights)
-                            }
-                        }
-                    }
+                    // Stats and insights live on the Progress tab; Home is a launcher.
+                    YourPeople(state.friendsFocusing)
                     // Home shows only rooms you can still walk into; finished
                     // ones are history and live under "See all".
                     val openRooms = remember(state.myRooms, state.live) {
@@ -269,14 +271,14 @@ fun DashboardScreen(
                     if (!state.isEmpty) {
                         Section("This week") { Tile { WeekBars(state.history) } }
                         // Sub-minute test sessions are noise on Home; Timeline keeps them.
-                        val recent = remember(state.history) {
-                            state.history.filter { it.durationSeconds >= 60 }.take(RECENT_SESSIONS)
+                        val last = remember(state.history) {
+                            state.history.firstOrNull { it.durationSeconds >= 60 }
                         }
-                        if (recent.isNotEmpty()) {
+                        if (last != null) {
                             Section(
-                                "Recent sessions",
+                                "Last stack",
                                 action = openTimeline?.let { "See all" to it },
-                            ) { SessionHistory(recent, onOpenRoom) }
+                            ) { LastStack(last, onOpenRoom) }
                         }
                     }
                 }
@@ -438,7 +440,7 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
         }
         Spacer(Modifier.height(20.dp))
         Box(Modifier.padding(end = 12.dp)) {
-            EmberButton(text = "Start focus", onClick = onStart)
+            EmberButton(text = "Start a Stack", onClick = onStart)
         }
     }
 }
@@ -629,96 +631,10 @@ private fun EmptyLedger() {
         Spacer(Modifier.height(8.dp))
         // No second button here: Start focus above is the one way in.
         Text(
-            "Nothing has been measured yet. Tap Start focus, stack your phone and " +
+            "Nothing has been measured yet. Tap Start a Stack, stack your phone and " +
                 "your stats start filling in here.",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textMuted,
-        )
-    }
-}
-
-@Composable
-private fun StatTiles(state: DashboardUiState) {
-    val colors = Stackd.colors
-    // Three equal tiles in one row: one glance, no scrolling past a giant
-    // hours number. Streak lives in the hero, so it isn't repeated here.
-    // IntrinsicSize.Min + fillMaxHeight: tiles share one height whatever the text.
-    Row(
-        modifier = Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        // Bento, as the web's LIFETIME_PRESENCE panel: one hero number in display
-        // type carries the section; the supporting stats stack beside it.
-        val colors = Stackd.colors
-        Column(
-            Modifier
-                .weight(1.25f)
-                .fillMaxHeight()
-                .background(colors.textPrimary.copy(alpha = 0.04f), RadiusMd)
-                .border(1.dp, colors.border, RadiusMd)
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-                .semantics(mergeDescendants = true) {},
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("Lifetime focus", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    String.format(java.util.Locale.US, "%.1f", app.stackd.core.ui.animatedCount((state.totalSeconds / 3600.0).toFloat())),
-                    style = MaterialTheme.typography.displayMedium,
-                    color = colors.textPrimary,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                )
-                Text(
-                    "hours",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textMuted,
-                    modifier = Modifier.padding(start = 6.dp, bottom = 10.dp),
-                )
-            }
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile(app.stackd.core.ui.animatedCount(state.lifetimeXp.toFloat()).toInt().toString(), "Lifetime XP", Modifier.fillMaxWidth())
-            StatTile(
-                state.avgScore.toString(),
-                // Tier reads from the value colour; naming it truncated ("Protocol Co…").
-                "Avg score",
-                Modifier.fillMaxWidth(),
-                valueColor = scoreColor(state.avgScore.toDouble()),
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatTile(
-    value: String,
-    label: String,
-    modifier: Modifier = Modifier,
-    valueColor: Color = Stackd.colors.textPrimary,
-) {
-    val colors = Stackd.colors
-    Column(
-        modifier = modifier
-            .background(colors.textPrimary.copy(alpha = 0.04f), RadiusMd)
-            .border(1.dp, colors.border, RadiusMd)
-            .padding(horizontal = 14.dp, vertical = 16.dp)
-            .semantics(mergeDescendants = true) {},
-    ) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleLarge,
-            color = valueColor,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.textMuted,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -841,69 +757,113 @@ private fun LiveSessionRow(room: RoomRow, onOpenRoom: (String) -> Unit) {
     }
 }
 
+/** The most recent stack as one compact row; Timeline ("See all") owns the list. */
 @Composable
-private fun SessionHistory(history: List<FocusHistoryRow>, onOpenRoom: (String) -> Unit) {
+private fun LastStack(h: FocusHistoryRow, onOpenRoom: (String) -> Unit) {
     val colors = Stackd.colors
-    Column(
+    val code = h.room?.code
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .then(if (code != null) Modifier.tappable { onOpenRoom(code) } else Modifier)
+            .background(colors.textPrimary.copy(alpha = 0.03f), RadiusMd)
+            .border(1.dp, colors.border, RadiusMd)
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        history.forEachIndexed { i, h ->
-            val tier = FocusScore.tierForScore(h.score.toDouble())
-            val tint = scoreColor(h.score.toDouble())
-            val code = h.room?.code
-            if (i > 0) {
-                Box(Modifier.fillMaxWidth().height(1.dp).background(colors.border))
-            }
-            Row(
+        Column(Modifier.weight(1f)) {
+            Text(
+                FocusScore.tierForScore(h.score.toDouble()).label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                "${h.durationSeconds / 60}m · ${h.score}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = scoreColor(h.score.toDouble()),
+            )
+        }
+        Text(shortDate(h.createdAt), style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+    }
+}
+
+/** Horizontally scrolling ritual pills; each opens Start pre-filled. */
+@Composable
+private fun RitualChips(onQuickStart: (minutes: Int, title: String) -> Unit) {
+    val colors = Stackd.colors
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        RITUALS.forEach { (label, minutes) ->
+            val source = remember { MutableInteractionSource() }
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if (code != null) Modifier.tappable { onOpenRoom(code) } else Modifier)
-                    .heightIn(min = 64.dp)
-                    .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .pressFeedback(source, sound = Sfx.Kind.SELECT)
+                    .clickable(
+                        interactionSource = source,
+                        indication = null,
+                        role = Role.Button,
+                        onClick = { onQuickStart(minutes, label) },
+                    )
+                    .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape)
+                    .heightIn(min = 40.dp)
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            tier.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.textPrimary,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                        )
-                        if (isNew(h.createdAt)) {
-                            Text(
-                                "New",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = colors.accent,
-                                modifier = Modifier
-                                    .background(colors.accent.copy(alpha = 0.12f), CircleShape)
-                                    .padding(horizontal = 8.dp, vertical = 1.dp),
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(2.dp))
+                Text("$label · ${minutes}m", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+            }
+        }
+    }
+}
+
+/** Friends focusing right now; renders nothing when nobody is. */
+@Composable
+private fun YourPeople(friends: List<app.stackd.data.social.FriendPresence>) {
+    if (friends.isEmpty()) return
+    val colors = Stackd.colors
+    val names = friends.mapNotNull { f -> f.displayName?.substringBefore(' ')?.takeIf { it.isNotBlank() } }
+    Section("Your people") {
+        Row(
+            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Overlapped stack; the background ring separates neighbours.
+            Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
+                friends.take(5).forEach { f ->
+                    Avatar(
+                        url = f.avatarUrl,
+                        name = f.displayName,
+                        size = 36.dp,
+                        modifier = Modifier
+                            .border(2.dp, colors.accent, CircleShape)
+                            .background(colors.background, CircleShape)
+                            .padding(2.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (friends.size == 1) "1 friend is stacking now" else "${friends.size} friends are stacking now",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                if (names.isNotEmpty()) {
                     Text(
-                        listOfNotNull(shortDate(h.createdAt), formatDuration(h.durationSeconds), "+${h.xp} XP", code)
-                            .joinToString(" · "),
+                        names.joinToString(", "),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(
-                    h.score.toString(),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = tint,
-                    fontWeight = FontWeight.Bold,
-                )
             }
         }
     }
@@ -919,71 +879,6 @@ private fun Tile(modifier: Modifier = Modifier, content: @Composable () -> Unit)
             .border(1.dp, colors.border, Radius2Xl)
             .padding(20.dp),
     ) { content() }
-}
-
-/**
- * LLM-written ledger insights. Mirrors the web dashboard's insights card:
- * a headline over a few short paragraphs, with Regenerate / Retry and a
- * skeleton instead of hiding while the model works.
- */
-@Composable
-private fun InsightsCard(
-    insights: app.stackd.data.ai.DashboardInsights?,
-    loading: Boolean,
-    error: Boolean,
-    onRegenerate: () -> Unit,
-) {
-    val colors = Stackd.colors
-    Tile {
-        Text("Atlas insight", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = colors.accent)
-        when {
-            loading && insights == null -> {
-                Spacer(Modifier.height(12.dp))
-                SkeletonBlock(Modifier.fillMaxWidth(0.7f).height(20.dp))
-                Spacer(Modifier.height(10.dp))
-                SkeletonBlock(Modifier.fillMaxWidth().height(14.dp))
-                Spacer(Modifier.height(6.dp))
-                SkeletonBlock(Modifier.fillMaxWidth(0.85f).height(14.dp))
-            }
-            insights == null -> {
-                Spacer(Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (error) "Insights are unavailable right now." else "No insights yet.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textMuted,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextAction("Retry", enabled = !loading, onClick = onRegenerate)
-                }
-            }
-            else -> {
-                if (insights.headline.isNotBlank()) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        insights.headline,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.textPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                insights.paragraphs.forEach { para ->
-                    Spacer(Modifier.height(8.dp))
-                    Text(para, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
-                }
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (insights.basedOnSessions > 0) "Based on ${insights.basedOnSessions} sessions" else "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextAction(if (loading) "Reading…" else "Regenerate", enabled = !loading, onClick = onRegenerate)
-                }
-            }
-        }
-    }
 }
 
 /** Dismissible free-user nudge — web's UpgradeCard, slimmed to one quiet row. */
@@ -1143,6 +1038,3 @@ private fun shortDate(iso: String?): String {
         .toLocalDate()
         .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT))
 }
-
-private fun isNew(iso: String?): Boolean =
-    parseIsoMillis(iso)?.let { System.currentTimeMillis() - it < 86_400_000L } == true

@@ -183,7 +183,13 @@ fun RoomRoute(
         // has loaded and until the user taps Continue.
         state.ceremony?.let { summary ->
             if (!state.ceremonyDismissed) {
-                SessionCeremony(summary = summary, onContinue = vm::dismissCeremony)
+                SessionCeremony(
+                    summary = summary,
+                    // Mood rides the existing notes/tags RPC as one tag; the Ended
+                    // form's "Mark it" later replaces notes + tags wholesale.
+                    onReflect = { mood -> vm.saveSessionMeta("", mood) },
+                    onContinue = vm::dismissCeremony,
+                )
             }
         }
     }

@@ -114,6 +114,7 @@ fun StackdNavHost(
         composable(Dest.Dashboard.route) {
             DashboardRoute(
                 onStart = { navController.navigate(Dest.Start.route) },
+                onQuickStart = { minutes, title -> navController.navigate(Dest.StartPreset.of(minutes, title)) },
                 onOpenRoom = { code -> navController.navigate(Dest.Room.of(code)) },
                 onOpenPremium = { navController.navigate(Dest.Premium.route) { launchSingleTop = true } },
                 menuEntries = listOf(
@@ -156,6 +157,25 @@ fun StackdNavHost(
                         // from the back stack so Back from the room returns to
                         // the dashboard, not to a stale form.
                         popUpTo(Dest.Start.route) { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable(
+            route = Dest.StartPreset.route,
+            arguments = listOf(
+                navArgument(Dest.StartPreset.ARG_MINUTES) { type = NavType.IntType; defaultValue = 0 },
+                navArgument(Dest.StartPreset.ARG_TITLE) { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) { entry ->
+            StartRoute(
+                presetMinutes = entry.arguments?.getInt(Dest.StartPreset.ARG_MINUTES)?.takeIf { it > 0 },
+                presetTitle = entry.arguments?.getString(Dest.StartPreset.ARG_TITLE)?.takeIf { it.isNotBlank() },
+                onBack = { navController.popBackStack() },
+                onJoinRoom = { code -> navController.navigate(Dest.Room.of(code)) },
+                onRoomCreated = { code ->
+                    navController.navigate(Dest.Room.of(code)) {
+                        popUpTo(Dest.StartPreset.route) { inclusive = true }
                     }
                 },
             )

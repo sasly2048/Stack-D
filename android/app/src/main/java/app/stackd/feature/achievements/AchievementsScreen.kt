@@ -1,6 +1,25 @@
 package app.stackd.feature.achievements
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
+import com.composables.icons.lucide.Award
+import com.composables.icons.lucide.Clock
+import com.composables.icons.lucide.Flame
+import com.composables.icons.lucide.Lock
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Moon
+import com.composables.icons.lucide.Shield
+import com.composables.icons.lucide.Sparkles
+import com.composables.icons.lucide.Sunrise
+import com.composables.icons.lucide.Users
+import com.composables.icons.lucide.Zap
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
@@ -176,7 +195,7 @@ fun AchievementsScreen(
                 SkeletonBlock(Modifier.fillMaxWidth(0.3f).height(14.dp))
             } else {
                 Text(
-                    "${state.unlocked} of ${state.total} unlocked",
+                    "${state.unlocked} of ${state.total} collected",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted,
                 )
@@ -226,72 +245,19 @@ fun AchievementsScreen(
                     title = "No achievements yet",
                     body = "Marks appear here as the catalog fills. Keep holding sessions.",
                 )
-                else -> state.rows.forEachIndexed { i, a ->
-                    val unlocked = a.unlockedAt != null
-                    val accent = tierColor(a.tier, colors.accent)
+                // A collection, not a list: two-up badge tiles. Chunked rows, not a
+                // LazyVerticalGrid, because this whole screen is a verticalScroll.
+                else -> state.rows.chunked(2).forEachIndexed { r, pair ->
                     Row(
                         modifier = Modifier
-                            .reveal(i)
+                            .reveal(r)
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                            .border(
-                                1.dp,
-                                if (unlocked) accent.copy(alpha = 0.5f) else colors.border,
-                                Radius2Xl,
-                            )
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                            .height(IntrinsicSize.Min)
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            // The `icon` column holds Lucide icon *names* the web
-                            // renders as components; Android has no Lucide set, so
-                            // the raw name ("sparkles") was printing as text and
-                            // wrapping mid-word. Map the known names to a glyph.
-                            achievementGlyph(a.icon),
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.width(40.dp),
-                        )
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                a.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (unlocked) colors.textPrimary else colors.textMuted,
-                                fontWeight = if (unlocked) FontWeight.Bold else FontWeight.Normal,
-                            )
-                            // Sans body text, as web (text-sm): the tracked mono
-                            // label style broke sentences into cramped columns.
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                a.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.textMuted,
-                            )
-                            // "Unlocked {date}" sits under the text so the right
-                            // column stays a compact tier/XP stack.
-                            a.unlockedAt?.let { at ->
-                                Spacer(Modifier.height(4.dp))
-                                Text("UNLOCKED ${at.take(10)}", style = MonoLabelSmall, color = colors.textMuted)
-                            }
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column(horizontalAlignment = Alignment.End) {
-                            // "New" badge for a fresh unlock (< 24h), like web.
-                            val unlockedMs = a.unlockedAt?.let {
-                                app.stackd.core.parseIsoMillis(it)
-                            }
-                            val isNew = unlockedMs != null &&
-                                System.currentTimeMillis() - unlockedMs < 24 * 60 * 60 * 1000L
-                            if (isNew) {
-                                Text("NEW", style = MonoLabelSmall, color = colors.accent)
-                            }
-                            Text(a.tier.uppercase(), style = MonoLabelSmall, color = accent)
-                            Text(
-                                if (unlocked) "+${a.xpReward} XP" else "LOCKED",
-                                style = MonoLabelSmall,
-                                color = if (unlocked) colors.accent else colors.textMuted,
-                            )
-                        }
+                        pair.forEach { a -> BadgeTile(a, Modifier.weight(1f).fillMaxHeight()) }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
@@ -354,20 +320,87 @@ private fun ChapterCard(lifetimeXp: Long) {
     }
 }
 
-/**
- * Maps the catalog's Lucide icon names to a glyph. The web renders these as
- * Lucide components; Android has no Lucide set, so each known name gets an
- * emoji that carries the same meaning, with a diamond fallback for anything
- * new so a future catalog addition degrades to a mark, never to raw text.
- */
-private fun achievementGlyph(icon: String): String = when (icon) {
-    "sparkles" -> "✨"   // ✨
-    "flame" -> "🔥" // 🔥
-    "clock" -> "⏱"       // ⏱
-    "shield" -> "🛡" // 🛡
-    "zap" -> "⚡"         // ⚡
-    "users" -> "👥" // 👥
-    "moon" -> "🌒"  // 🌒
-    "sunrise" -> "🌅" // 🌅
-    else -> "◆"          // ◆
+@Composable
+private fun BadgeTile(a: Achievement, modifier: Modifier = Modifier) {
+    val colors = Stackd.colors
+    val unlocked = a.unlockedAt != null
+    val unlockedMs = a.unlockedAt?.let { app.stackd.core.parseIsoMillis(it) }
+    // "New" badge for a fresh unlock (< 24h), like web.
+    val isNew = unlockedMs != null && System.currentTimeMillis() - unlockedMs < 24 * 60 * 60 * 1000L
+    val tier = a.tier.replaceFirstChar { it.uppercase() }
+    Column(
+        modifier = modifier
+            .alpha(if (unlocked) 1f else 0.45f)
+            .background(
+                if (unlocked) colors.accent.copy(alpha = 0.06f) else colors.textPrimary.copy(alpha = 0.03f),
+                Radius2Xl,
+            )
+            .border(
+                1.dp,
+                if (unlocked) tierColor(a.tier, colors.accent).copy(alpha = 0.5f) else colors.border,
+                Radius2Xl,
+            )
+            .padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .background(
+                        if (unlocked) colors.accent.copy(alpha = 0.14f) else colors.textPrimary.copy(alpha = 0.05f),
+                        CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (unlocked) achievementIcon(a.icon) else Lucide.Lock,
+                    contentDescription = null,
+                    tint = if (unlocked) colors.accent else colors.textMuted,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            if (isNew) {
+                Text(
+                    "New", style = MaterialTheme.typography.bodySmall,
+                    color = colors.accent, fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            a.name,
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(a.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(8.dp))
+        Text(
+            when {
+                !unlocked -> "Locked"
+                a.xpReward > 0 -> "+${a.xpReward} XP · $tier"
+                else -> tier
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = if (unlocked) colors.accent else colors.textMuted,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+/** Maps the catalog's Lucide icon names (what the web renders) to the Lucide set. */
+private fun achievementIcon(icon: String): ImageVector = when (icon) {
+    "sparkles" -> Lucide.Sparkles
+    "flame" -> Lucide.Flame
+    "clock" -> Lucide.Clock
+    "shield" -> Lucide.Shield
+    "zap" -> Lucide.Zap
+    "users" -> Lucide.Users
+    "moon" -> Lucide.Moon
+    "sunrise" -> Lucide.Sunrise
+    else -> Lucide.Award
 }

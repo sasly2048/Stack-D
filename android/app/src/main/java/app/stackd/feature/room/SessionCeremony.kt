@@ -12,6 +12,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +58,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,6 +69,7 @@ import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.Confetti
 import app.stackd.core.ui.EaseRitual
 import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.pressFeedback
 import app.stackd.data.recap.SessionSummary
 import com.composables.icons.lucide.Award
 import com.composables.icons.lucide.Lucide
@@ -81,9 +87,16 @@ import kotlinx.coroutines.launch
  * quiet rows. Continue is pinned at the bottom and fades in at ~1.8s.
  * Type scale: 64sp serif score, headlineMedium serif title, titleLarge tile
  * values, bodyMedium for everything else; Normal + SemiBold only.
+ *
+ * [onReflect] (optional) shows one-tap "How did it feel?" chips; the chosen
+ * label is handed back (RoomScreen stores it as a session tag).
  */
 @Composable
-fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
+fun SessionCeremony(
+    summary: SessionSummary,
+    onReflect: ((String) -> Unit)? = null,
+    onContinue: () -> Unit,
+) {
     val colors = Stackd.colors
     val view = LocalView.current
     val extras = remember(summary) { extrasFor(summary) }
@@ -152,20 +165,20 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
                     }
 
                     Spacer(Modifier.height(8.dp))
+                    // A clean run leads with the shared win; the tier drops to the subline.
+                    val clean = summary.breaches == 0
                     Text(
-                        tierTitle(summary.tier),
+                        if (clean) "The stack held." else tierTitle(summary.tier),
                         style = MaterialTheme.typography.headlineMedium.copy(fontFamily = SerifFamily),
                         fontWeight = FontWeight.Normal,
                         color = colors.textPrimary,
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(8.dp))
+                    val minutes = "$mins ${if (mins == 1) "minute" else "minutes"}"
                     Text(
-                        "$mins ${if (mins == 1) "minute" else "minutes"} held · " + when (summary.breaches) {
-                            0 -> "no breaks"
-                            1 -> "1 break"
-                            else -> "${summary.breaches} breaks"
-                        },
+                        if (clean) "${tierTitle(summary.tier).removeSuffix(".")} · $minutes · no breaks"
+                        else "$minutes held · " + if (summary.breaches == 1) "1 break" else "${summary.breaches} breaks",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textMuted,
                         textAlign = TextAlign.Center,
@@ -201,6 +214,11 @@ fun SessionCeremony(summary: SessionSummary, onContinue: () -> Unit) {
                                     slideInVertically(tween(320, easing = EaseRitual)) { it / 3 },
                             ) { ExtraRow(e) }
                         }
+                    }
+
+                    if (onReflect != null) {
+                        Spacer(Modifier.height(32.dp))
+                        ReflectChips(onReflect)
                     }
                 }
         }
@@ -348,6 +366,42 @@ private fun ExtraRow(e: Extra) {
         Column(Modifier.weight(1f)) {
             Text(e.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
             e.sub?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted) }
+        }
+    }
+}
+
+/** "How did it feel?" — one tap, last pick wins, ember when selected. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReflectChips(onReflect: (String) -> Unit) {
+    val colors = Stackd.colors
+    var picked by remember { mutableStateOf<String?>(null) }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("How did it feel?", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+        Spacer(Modifier.height(16.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf("Deep flow", "Distracted", "Low energy").forEach { label ->
+                val on = picked == label
+                val source = remember { MutableInteractionSource() }
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (on) colors.accent else colors.textPrimary,
+                    modifier = Modifier
+                        .pressFeedback(source, sound = Sfx.Kind.SELECT)
+                        .clip(CircleShape)
+                        .background(if (on) colors.accent.copy(alpha = 0.12f) else colors.textPrimary.copy(alpha = 0.04f))
+                        .border(1.dp, if (on) colors.accent else colors.border, CircleShape)
+                        .clickable(source, indication = null, role = Role.Button) {
+                            if (!on) { picked = label; onReflect(label) }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
         }
     }
 }

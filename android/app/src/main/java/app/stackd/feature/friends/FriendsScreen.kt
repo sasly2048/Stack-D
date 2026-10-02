@@ -263,11 +263,14 @@ fun FriendsScreen(
                         Text("FRIENDS · ${state.friends.size}", style = MonoLabelSmall, color = colors.textMuted)
                         Spacer(Modifier.height(8.dp))
                         if (state.friends.isEmpty()) {
-                            // Search sits right above, so no extra button.
+                            // Search above still works; the button covers people not on Stack'd yet.
+                            val context = androidx.compose.ui.platform.LocalContext.current
                             FeatureEmptyState(
                                 icon = app.stackd.core.ui.StackdIcons.PersonAddAlt,
                                 title = "No friends yet",
-                                body = "Search above to send your first request.",
+                                body = "Stack'd is better with someone you know in the room.",
+                                actionText = "Invite a friend",
+                                onAction = { app.stackd.feature.profile.shareStackdInvite(context) },
                             )
                         }
                     }

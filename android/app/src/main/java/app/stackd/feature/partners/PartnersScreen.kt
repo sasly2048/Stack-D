@@ -244,11 +244,17 @@ fun PartnersScreen(
                     Spacer(Modifier.height(12.dp))
                     GhostButton(text = "Retry", onClick = onRetry)
                 }
-                state.partners.isEmpty() -> FeatureEmptyState(
-                    icon = app.stackd.core.ui.StackdIcons.Handshake,
-                    title = "No partners yet",
-                    body = "Search above and invite someone as your mentor or mentee.",
-                )
+                state.partners.isEmpty() -> {
+                    // Invites need a search result, so the empty-state action shares a link instead.
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    FeatureEmptyState(
+                        icon = app.stackd.core.ui.StackdIcons.Handshake,
+                        title = "No partners yet",
+                        body = "One person who checks you show up. Search above, or invite them.",
+                        actionText = "Invite a partner",
+                        onAction = { app.stackd.feature.profile.shareStackdInvite(context) },
+                    )
+                }
                 else -> state.partners.forEach { p ->
                     PartnerRow(p, busy = state.busy, onRespond = onRespond, onEnd = onEnd)
                 }

@@ -194,7 +194,7 @@ fun CirclesScreen(
                 state.circles.isEmpty() -> FeatureEmptyState(
                     icon = app.stackd.core.ui.StackdIcons.Groups,
                     title = "No circles yet",
-                    body = "Study with a small crew and climb a shared weekly board.",
+                    body = "A circle is a small crew that stacks together every week.",
                     actionText = "Create or join",
                     onAction = onManage,
                 )

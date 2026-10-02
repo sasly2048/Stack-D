@@ -92,6 +92,7 @@ import app.stackd.data.premium.Plan
 import com.composables.icons.lucide.Archive
 import com.composables.icons.lucide.Bot
 import com.composables.icons.lucide.ChartLine
+import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.Dna
 import com.composables.icons.lucide.FileText
 import com.composables.icons.lucide.Hourglass
@@ -227,6 +228,11 @@ fun PremiumScreen(
                     }
                     Spacer(Modifier.height(20.dp))
                     Benefits(tier)
+                    // Only worth comparing when both tiers are on sale (not Pro already).
+                    if (tiers.size == 2) {
+                        Spacer(Modifier.height(32.dp))
+                        ComparePlans()
+                    }
                     Spacer(Modifier.height(24.dp))
                     TrustRow()
                 } else {
@@ -513,6 +519,38 @@ private fun Benefits(tier: String) {
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted,
                 )
+            }
+        }
+    }
+}
+
+/** The headline perks, side by side. */
+private val COMPARE = listOf(
+    "Focus DNA", "Deep analytics", "Unlimited history", "Advanced leaderboards",
+    "Atlas AI coach", "Focus forecast", "Memory vault", "Time capsules", "Weekly elite reports",
+).mapNotNull { l -> CATALOG.firstOrNull { it.label == l } }
+
+@Composable
+private fun ComparePlans() {
+    val colors = Stackd.colors
+    val col = Modifier.width(56.dp)
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Compare plans", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = colors.textPrimary, modifier = Modifier.weight(1f))
+            listOf("Pro", "Elite").forEach {
+                Text(it, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary, textAlign = TextAlign.Center, modifier = col)
+            }
+        }
+        COMPARE.forEach { p ->
+            Box(Modifier.fillMaxWidth().height(1.dp).background(colors.border))
+            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(p.label, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, modifier = Modifier.weight(1f))
+                listOf(p.tier == "pro", true).forEach { has ->
+                    Box(col, contentAlignment = Alignment.Center) {
+                        if (has) Icon(Lucide.Check, "Included", tint = colors.accent, modifier = Modifier.size(18.dp))
+                        else Text("—", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                    }
+                }
             }
         }
     }

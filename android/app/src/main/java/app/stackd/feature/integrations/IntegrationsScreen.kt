@@ -47,6 +47,8 @@ import app.stackd.core.ui.SectionLabel
 private data class Integration(
     val name: String,
     val tagline: String,
+    /** One line answering "what happens if I connect this?". */
+    val value: String,
     /** "live" | "soon" */
     val status: String,
     /** Web path for Live tiles; null for Soon. */
@@ -54,14 +56,14 @@ private data class Integration(
 )
 
 private val INTEGRATIONS = listOf(
-    Integration("Webhooks", "Push every session event to your own endpoint.", "live", "/webhooks"),
-    Integration("TypeScript SDK", "Verify signatures and parse events in five lines.", "live", "/sdk"),
-    Integration("Agent (MCP)", "Let Claude or Cursor read your focus history.", "live", "/mcp"),
-    Integration("Calendar", "Auto-block deep-work slots on Google or Apple Calendar.", "soon"),
-    Integration("Notion", "Send session notes and tags straight into a database.", "soon"),
-    Integration("Discord", "Announce room openings and streak milestones to a channel.", "soon"),
-    Integration("Slack", "Focus-mode presence and shared session invites.", "soon"),
-    Integration("Raycast", "Start a session without leaving your keyboard.", "soon"),
+    Integration("Webhooks", "Push every session event to your own endpoint.", "Send session events to your own tools.", "live", "/webhooks"),
+    Integration("TypeScript SDK", "Verify signatures and parse events in five lines.", "Build on your sessions without guessing the format.", "live", "/sdk"),
+    Integration("Agent (MCP)", "Let Claude or Cursor read your focus history.", "Ask your AI how your focus is really going.", "live", "/mcp"),
+    Integration("Calendar", "Auto-block deep-work slots on Google or Apple Calendar.", "Block your focus windows on your calendar.", "soon"),
+    Integration("Notion", "Send session notes and tags straight into a database.", "Archive finished sessions.", "soon"),
+    Integration("Discord", "Announce room openings and streak milestones to a channel.", "Pull your server into the next stack.", "soon"),
+    Integration("Slack", "Focus-mode presence and shared session invites.", "Show you as away while you stack.", "soon"),
+    Integration("Raycast", "Start a session without leaving your keyboard.", "Start focusing in one keystroke.", "soon"),
 )
 
 @Composable
@@ -150,6 +152,8 @@ fun IntegrationsScreen(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(i.tagline, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                    Spacer(Modifier.height(8.dp))
+                    Text(i.value, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
                     if (live) {
                         Spacer(Modifier.height(4.dp))
                         Text(

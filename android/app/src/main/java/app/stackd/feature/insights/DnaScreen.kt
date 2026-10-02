@@ -222,6 +222,12 @@ fun DnaScreen(
                         }
                     }
                 }
+                // Access granted but too little history to map yet.
+                else -> app.stackd.feature.profile.FeatureEmptyState(
+                    icon = app.stackd.core.ui.StackdIcons.Fingerprint,
+                    title = "Your DNA is still forming",
+                    body = "After a few Stacks this maps when and how you focus best.",
+                )
             }
 
             Spacer(Modifier.height(56.dp))

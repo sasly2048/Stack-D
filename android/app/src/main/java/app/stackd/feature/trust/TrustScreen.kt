@@ -183,6 +183,11 @@ fun TrustScreen(
         ResponsiveColumn {
             app.stackd.core.ui.ScreenHeader("STACK'D / SAFETY", onBack, title = "Trust & safety")
             Spacer(Modifier.height(16.dp))
+            Text(
+                "You control your room. Stack'd never shares what happens in your sessions with anyone outside it.",
+                style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary,
+            )
+            Spacer(Modifier.height(24.dp))
             SectionLabel("TRUST & SAFETY")
             Spacer(Modifier.height(8.dp))
             Text(
