@@ -1,87 +1,154 @@
 package app.stackd.feature.premium
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.stackd.BuildConfig
+import app.stackd.core.feedback.Sfx
 import app.stackd.core.stackdViewModel
-import app.stackd.core.theme.MonoLabel
+import app.stackd.core.theme.Ember
+import app.stackd.core.theme.EmberGlow
 import app.stackd.core.theme.MonoLabelSmall
+import app.stackd.core.theme.Obsidian
 import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.RadiusXl
 import app.stackd.core.theme.SerifFamily
+import app.stackd.core.theme.Silver
 import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.EaseRitual
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
-import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.pressFeedback
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.selection.selectable
 import app.stackd.data.premium.Plan
+import com.composables.icons.lucide.Archive
+import com.composables.icons.lucide.Bot
+import com.composables.icons.lucide.ChartLine
+import com.composables.icons.lucide.Dna
+import com.composables.icons.lucide.FileText
+import com.composables.icons.lucide.Hourglass
+import com.composables.icons.lucide.Infinity
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Palette
+import com.composables.icons.lucide.RotateCcw
+import com.composables.icons.lucide.ShieldCheck
+import com.composables.icons.lucide.Sparkles
+import com.composables.icons.lucide.Telescope
+import com.composables.icons.lucide.TrendingUp
+import com.composables.icons.lucide.Trophy
+import com.composables.icons.lucide.Zap
+import kotlinx.coroutines.launch
 
 /**
- * Premium — ported from the web's upgrade dialog + manage-subscription +
- * lifetime coupon + AI usage meter, condensed into one screen.
+ * Premium — the web's upgrade dialog + manage-subscription + lifetime coupon +
+ * AI usage meter, as one screen.
  *
- * Payment itself happens on the web: Razorpay's key secret lives on the web
- * server, and Google Play policy bars in-app third-party billing for digital
- * goods regardless. Every "upgrade" action opens the browser at the web app.
+ * Payment happens on the web: Razorpay's key secret lives on the web server,
+ * and Google Play policy bars in-app third-party billing for digital goods.
+ * Every "upgrade" action opens the browser at the web app.
+ *
+ * Design: sell the outcome, not the tier table. One tactile hero (a member
+ * card you can tilt, that flips when you change plan), two plan cards with
+ * the monthly price up front, only benefits that exist today, a trust row,
+ * and one pinned action.
  */
 
-/** Feature comparison rows — the web's premium-catalog.ts, display fields only. */
-private data class CatalogRow(val label: String, val tier: String, val status: String)
+/** The web's premium-catalog.ts, display fields only. */
+private data class Perk(val label: String, val tier: String, val status: String, val icon: ImageVector)
 
 private val CATALOG = listOf(
-    CatalogRow("Focus DNA", "pro", "live"),
-    CatalogRow("Deep Analytics", "pro", "live"),
-    CatalogRow("Unlimited History", "pro", "live"),
-    CatalogRow("Custom Protocols", "pro", "soon"),
-    CatalogRow("Advanced Session Recaps", "pro", "beta"),
-    CatalogRow("Advanced Leaderboards", "pro", "live"),
-    CatalogRow("Progress Insights", "pro", "beta"),
-    CatalogRow("Custom Themes", "pro", "beta"),
-    CatalogRow("Atlas AI Coach", "elite", "beta"),
-    CatalogRow("Focus Forecast", "elite", "live"),
-    CatalogRow("Adaptive Sessions", "elite", "soon"),
-    CatalogRow("Focus Autopilot", "elite", "soon"),
-    CatalogRow("Private Focus Circles", "elite", "soon"),
-    CatalogRow("Advanced Room Controls", "elite", "soon"),
-    CatalogRow("Elite Weekly Reports", "elite", "beta"),
-    CatalogRow("Memory Vault", "elite", "live"),
-    CatalogRow("Time Capsules", "elite", "live"),
-    CatalogRow("Early Access", "elite", "soon"),
+    Perk("Focus DNA", "pro", "live", Lucide.Dna),
+    Perk("Deep analytics", "pro", "live", Lucide.ChartLine),
+    Perk("Unlimited history", "pro", "live", Lucide.Infinity),
+    Perk("Custom protocols", "pro", "soon", Lucide.Sparkles),
+    Perk("Advanced session recaps", "pro", "beta", Lucide.Sparkles),
+    Perk("Advanced leaderboards", "pro", "live", Lucide.Trophy),
+    Perk("Progress insights", "pro", "beta", Lucide.TrendingUp),
+    Perk("Custom themes", "pro", "beta", Lucide.Palette),
+    Perk("Atlas AI coach", "elite", "beta", Lucide.Bot),
+    Perk("Focus forecast", "elite", "live", Lucide.Telescope),
+    Perk("Adaptive sessions", "elite", "soon", Lucide.Sparkles),
+    Perk("Focus autopilot", "elite", "soon", Lucide.Sparkles),
+    Perk("Private focus circles", "elite", "soon", Lucide.Sparkles),
+    Perk("Advanced room controls", "elite", "soon", Lucide.Sparkles),
+    Perk("Weekly elite reports", "elite", "beta", Lucide.FileText),
+    Perk("Memory vault", "elite", "live", Lucide.Archive),
+    Perk("Time capsules", "elite", "live", Lucide.Hourglass),
+    Perk("Early access", "elite", "soon", Lucide.Sparkles),
 )
+
+/** Elite includes everything in Pro. */
+private fun perksFor(tier: String) = CATALOG.filter { it.tier == "pro" || tier == "elite" }
+
+private val TAGLINE = mapOf("pro" to "Understand your focus", "elite" to "Optimize your focus")
 
 @Composable
 fun PremiumRoute(
@@ -114,311 +181,507 @@ fun PremiumScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        ResponsiveColumn {
-            app.stackd.core.ui.ScreenHeader("STACK'D / PREMIUM", onBack, title = "Premium")
-            Spacer(Modifier.height(24.dp))
+    val ent = state.entitlement
+    val tiers = listOf("pro", "elite").filter { t -> state.plans.any { it.tier == t } && !(ent.isPro && t == "pro") }
+    val selling = !ent.isElite && tiers.isNotEmpty()
+    var tier by rememberSaveable { mutableStateOf("elite") }
+    if (tier !in tiers && tiers.isNotEmpty()) tier = tiers.last()
+    var annual by rememberSaveable { mutableStateOf(true) }
+    fun plan(t: String, yearly: Boolean) = state.plans.firstOrNull { it.tier == t && (it.interval == "annual") == yearly }
+    val chosen = plan(tier, annual) ?: plan(tier, !annual)
 
-            val ent = state.entitlement
-            SectionLabel("YOUR ACCESS")
-            Spacer(Modifier.height(8.dp))
-            Text(
-                ent.tier.uppercase(),
-                style = MaterialTheme.typography.displaySmall,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                when {
-                    ent.source == "lifetime" -> "Lifetime access — yours forever."
-                    ent.isPremium && ent.expiresAt != null -> "Renews / expires ${ent.expiresAt.take(10)}"
-                    ent.isPremium -> "Active subscription."
-                    else -> "Free tier. Upgrade to unlock the intelligence layer."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted,
-            )
+    Box(modifier.fillMaxSize().background(colors.background)) {
+        Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            ResponsiveColumn {
+                app.stackd.core.ui.ScreenHeader("STACK'D / PREMIUM", onBack)
+                Spacer(Modifier.height(8.dp))
 
-            // Manage / cancel lives on the web (Razorpay key secret is server-side).
-            state.subscription?.let { sub ->
-                Spacer(Modifier.height(16.dp))
-                Card {
-                    Text("SUBSCRIPTION", style = MonoLabelSmall, color = colors.textMuted)
-                    Spacer(Modifier.height(4.dp))
+                // Hero: the card you're buying (or already hold).
+                val heroTier = if (selling) tier else ent.tier
+                MemberCard(heroTier, owned = !selling && ent.isPremium)
+                Spacer(Modifier.height(28.dp))
+
+                if (selling) {
                     Text(
-                        "Status: ${sub.status}" +
-                            if (sub.cancelAtPeriodEnd) " · cancels at period end" else "",
-                        style = MaterialTheme.typography.bodySmall,
+                        if (ent.isPro) "Go all the way." else "Unlock your best focus.",
+                        style = MaterialTheme.typography.headlineMedium.copy(fontFamily = SerifFamily),
                         color = colors.textPrimary,
                     )
-                    sub.currentPeriodEnd?.let {
-                        Text(
-                            "Current period ends ${it.take(10)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textMuted,
-                        )
-                    }
                     Spacer(Modifier.height(8.dp))
-                    GhostButton(text = "Manage on the web", onClick = { onOpenWeb("/profile") })
-                }
-            }
-
-            // AI usage meter — transparent counter, same numbers as the web.
-            if (state.aiUsage.allowance > 0 || state.aiUsage.unlimited) {
-                Spacer(Modifier.height(16.dp))
-                Card {
-                    Text("AI USAGE THIS PERIOD", style = MonoLabelSmall, color = colors.textMuted)
-                    Spacer(Modifier.height(6.dp))
-                    if (state.aiUsage.unlimited) {
-                        Text("Unlimited", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
-                    } else {
-                        Text(
-                            "${state.aiUsage.used} / ${state.aiUsage.allowance}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textPrimary,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        val pct = (state.aiUsage.used.toFloat() / state.aiUsage.allowance).coerceIn(0f, 1f)
-                        Box(
-                            Modifier.fillMaxWidth().height(6.dp)
-                                .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape),
-                        ) {
-                            Box(
-                                Modifier.fillMaxWidth(pct).height(6.dp)
-                                    .background(colors.accent, CircleShape),
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Plans — price display from the live `plans` table; pay on web.
-            if (!state.entitlement.isElite && state.plans.isNotEmpty()) {
-                Spacer(Modifier.height(24.dp))
-                SectionLabel("CHOOSE YOUR PLAN")
-                Spacer(Modifier.height(12.dp))
-                PlanPicker(state.plans, state.entitlement.isPro, onOpenWeb)
-            }
-
-            // Lifetime coupon.
-            if (state.promo.active && !state.promo.alreadyRedeemed) {
-                Spacer(Modifier.height(24.dp))
-                Card {
-                    Text("LIFETIME ACCESS", style = MonoLabelSmall, color = colors.accent)
-                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "${state.promo.seatsRemaining} of ${state.promo.seatsTotal} seats left",
-                        style = MaterialTheme.typography.bodySmall,
+                        "Deeper insight into how you focus, an AI coach, and a vault for your best sessions.",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = colors.textMuted,
                     )
-                    Spacer(Modifier.height(8.dp))
-                    var code by remember { mutableStateOf("") }
-                    OutlinedTextField(
-                        value = code,
-                        onValueChange = { code = it.take(120) },
-                        label = { Text("Coupon code") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    // Secondary: the plan CTA above is this screen's one primary action.
-                    GhostButton(
-                        text = if (state.redeeming) "Redeeming…" else "Redeem",
-                        onClick = { onRedeem(code) },
-                        enabled = code.isNotBlank(),
-                        busy = state.redeeming,
-                    )
-                }
-            }
-            state.redeemMessage?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (state.redeemSucceeded) colors.accent else colors.textMuted,
-                )
-            }
+                    Spacer(Modifier.height(24.dp))
 
-            // Feature comparison.
-            Spacer(Modifier.height(24.dp))
-            SectionLabel("WHAT EACH TIER UNLOCKS")
-            Spacer(Modifier.height(8.dp))
-            listOf("pro" to "PRO — UNDERSTAND YOUR FOCUS", "elite" to "ELITE — OPTIMIZE YOUR FOCUS")
-                .forEach { (tier, heading) ->
-                    Card {
-                        Text(heading, style = MonoLabelSmall, color = colors.accent)
-                        Spacer(Modifier.height(6.dp))
-                        CATALOG.filter { it.tier == tier }.forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    row.label,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.textPrimary,
-                                )
-                                Text(
-                                    when (row.status) {
-                                        "live" -> "LIVE"
-                                        "beta" -> "BETA"
-                                        else -> "SOON"
-                                    },
-                                    style = MonoLabelSmall,
-                                    color = if (row.status == "live") colors.accent else colors.textMuted,
-                                )
-                            }
-                        }
+                    val hasBoth = tiers.any { plan(it, true) != null && plan(it, false) != null }
+                    if (hasBoth) {
+                        BillingToggle(annual, savePct(plan(tier, false), plan(tier, true))) { annual = it }
+                        Spacer(Modifier.height(16.dp))
                     }
-                    Spacer(Modifier.height(16.dp))
+                    tiers.reversed().forEach { t ->
+                        val p = plan(t, annual) ?: plan(t, !annual) ?: return@forEach
+                        PlanOption(t, p, selected = t == tier, best = t == "elite" && tiers.size > 1) { tier = t }
+                        Spacer(Modifier.height(10.dp))
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    Benefits(tier)
+                    Spacer(Modifier.height(24.dp))
+                    TrustRow()
+                } else {
+                    Membership(state, onOpenWeb)
                 }
 
-            Spacer(Modifier.height(40.dp))
+                if (state.promo.active && !state.promo.alreadyRedeemed) {
+                    Spacer(Modifier.height(28.dp))
+                    LifetimeCode(state, onRedeem)
+                }
+                Spacer(Modifier.height(if (selling) 150.dp else 48.dp))
+            }
+        }
+        if (selling && chosen != null) {
+            CheckoutBar(chosen, Modifier.align(Alignment.BottomCenter)) { onOpenWeb("/dashboard") }
         }
     }
 }
 
-/**
- * One plan picker instead of four identical "Continue on the web" cards:
- * tier + billing toggles, the resulting price (with the real annual saving
- * computed from the live `plans` rows), what that tier unlocks, one CTA.
- */
-@Composable
-private fun PlanPicker(plans: List<Plan>, alreadyPro: Boolean, onOpenWeb: (String) -> Unit) {
-    val colors = Stackd.colors
-    val tiers = listOf("pro", "elite").filter { t -> plans.any { it.tier == t } && !(alreadyPro && t == "pro") }
-    if (tiers.isEmpty()) return
-    var tier by remember { mutableStateOf(tiers.last()) }
-    var annual by remember { mutableStateOf(true) }
-    fun plan(t: String, yearly: Boolean) = plans.firstOrNull { it.tier == t && (it.interval == "annual") == yearly }
-    val monthly = plan(tier, false)
-    val yearly = plan(tier, true)
-    val selected = (if (annual) yearly else monthly) ?: monthly ?: yearly ?: return
-    val savePct = if (monthly != null && yearly != null && monthly.priceInr > 0) {
+private fun savePct(monthly: Plan?, yearly: Plan?): Int =
+    if (monthly != null && yearly != null && monthly.priceInr > 0) {
         Math.round((1 - yearly.priceInr / (monthly.priceInr * 12.0)) * 100).toInt()
     } else 0
 
-    if (tiers.size > 1) {
-        Segmented(tiers.map { it.uppercase() }, tiers.indexOf(tier)) { tier = tiers[it] }
-        Spacer(Modifier.height(8.dp))
+/**
+ * The tactile hero: a member card that tilts under your finger and springs
+ * back, with a light sheen that tracks the tilt and drifts on its own. When
+ * the plan changes it turns over to reveal the other card.
+ */
+@Composable
+private fun MemberCard(tier: String, owned: Boolean) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val tiltX = remember { Animatable(0f) }
+    val tiltY = remember { Animatable(0f) }
+    val flip = remember { Animatable(0f) }
+    var shown by remember { mutableStateOf(tier) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(tier) {
+        if (tier == shown) return@LaunchedEffect
+        flip.animateTo(90f, tween(220, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+        shown = tier
+        flip.snapTo(-90f)
+        flip.animateTo(0f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow))
     }
-    if (monthly != null && yearly != null) {
-        Segmented(
-            listOf("MONTHLY", if (savePct > 0) "ANNUAL · SAVE $savePct%" else "ANNUAL"),
-            if (annual) 1 else 0,
-        ) { annual = it == 1 }
-        Spacer(Modifier.height(12.dp))
+    val drift by rememberInfiniteTransition(label = "sheen").animateFloat(
+        0f, 1f, infiniteRepeatable(tween(5200, easing = EaseRitual), RepeatMode.Reverse), label = "drift",
+    )
+    val elite = shown == "elite"
+    val base = if (elite) {
+        Brush.linearGradient(listOf(Color(0xFF3A2414), Color(0xFF8A5530), Ember, Color(0xFF5A351C)))
+    } else {
+        Brush.linearGradient(listOf(Color(0xFF2A2A2C), Color(0xFF6E6E72), Silver, Color(0xFF3C3C40)))
     }
-
-    Column(
-        modifier = Modifier
+    val ink = if (elite) Color(0xFFFFF4E8) else Color(0xFF111113)
+    Box(
+        Modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
-            .padding(20.dp),
+            .aspectRatio(1.586f) // ISO card
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragEnd = {
+                        scope.launch { tiltX.animateTo(0f, spring(0.45f, Spring.StiffnessLow)) }
+                        scope.launch { tiltY.animateTo(0f, spring(0.45f, Spring.StiffnessLow)) }
+                    },
+                ) { change, drag ->
+                    change.consume()
+                    scope.launch { tiltY.snapTo((tiltY.value + drag.x / 12f).coerceIn(-16f, 16f)) }
+                    scope.launch { tiltX.snapTo((tiltX.value - drag.y / 12f).coerceIn(-12f, 12f)) }
+                }
+            }
+            .graphicsLayer {
+                cameraDistance = 14f * density.density
+                rotationX = tiltX.value
+                rotationY = tiltY.value + flip.value
+                shadowElevation = 24.dp.toPx()
+                shape = RoundedCornerShape(22.dp)
+                clip = true
+                ambientShadowColor = if (elite) Ember else Color.Black
+                spotShadowColor = if (elite) Ember else Color.Black
+            }
+            .background(base)
+            .drawWithContent {
+                drawContent()
+                // Light catching the card: a soft band whose position follows
+                // the tilt, plus a slow idle drift so it never sits dead.
+                val w = size.width
+                val x = w * (drift * 0.6f - 0.3f + tiltY.value / 40f)
+                drawRect(
+                    Brush.linearGradient(
+                        0f to Color.Transparent,
+                        0.45f to Color.White.copy(alpha = 0.16f),
+                        0.5f to Color.White.copy(alpha = 0.28f),
+                        0.55f to Color.White.copy(alpha = 0.16f),
+                        1f to Color.Transparent,
+                        start = Offset(x, size.height),
+                        end = Offset(x + w * 0.9f, 0f),
+                    ),
+                )
+                drawRect(Color.White.copy(alpha = 0.12f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+            }
+            .padding(22.dp),
     ) {
         Text(
-            if (tier == "elite") "ELITE — OPTIMIZE YOUR FOCUS" else "PRO — UNDERSTAND YOUR FOCUS",
-            style = MonoLabelSmall,
-            color = colors.accent,
+            "Stack'd",
+            style = MaterialTheme.typography.titleLarge.copy(fontFamily = SerifFamily),
+            color = ink,
+            modifier = Modifier.align(Alignment.TopStart),
         )
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                "₹${selected.priceInr}",
-                style = MaterialTheme.typography.displayMedium,
-                fontFamily = SerifFamily,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.Normal,
-            )
-            Text(
-                if (selected.interval == "annual") "/ year" else "/ month",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textMuted,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-        }
-        if (selected.interval == "annual") {
-            Text(
-                "₹${Math.round(selected.priceInr / 12.0)} / month, billed yearly",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted,
-            )
-        }
-        Spacer(Modifier.height(16.dp))
-        CATALOG.filter { it.tier == tier && it.status == "live" }.take(4).forEach { row ->
-            Row(Modifier.padding(vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("✓", style = MaterialTheme.typography.bodySmall, color = colors.accent)
-                Text(row.label, style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        EmberButton(
-            text = "Continue with ${selected.displayName}",
-            onClick = { onOpenWeb("/dashboard") },
-        )
-        Spacer(Modifier.height(8.dp))
         Text(
-            "Checkout opens securely in your browser.",
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.textMuted,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            if (owned) "MEMBER" else "PREVIEW",
+            style = MonoLabelSmall,
+            color = ink.copy(alpha = 0.6f),
+            modifier = Modifier.align(Alignment.TopEnd),
         )
+        Column(Modifier.align(Alignment.BottomStart)) {
+            Text(
+                shown.replaceFirstChar { it.uppercase() }.ifBlank { "Free" },
+                style = MaterialTheme.typography.displayMedium.copy(fontFamily = SerifFamily),
+                color = ink,
+            )
+            Text(
+                TAGLINE[shown] ?: "Focus, together",
+                style = MaterialTheme.typography.bodySmall,
+                color = ink.copy(alpha = 0.72f),
+            )
+        }
     }
 }
 
-/** Pill segmented control; each segment is a full 48dp target. */
 @Composable
-private fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+private fun BillingToggle(annual: Boolean, save: Int, onChange: (Boolean) -> Unit) {
     val colors = Stackd.colors
     Row(
         Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.04f), CircleShape)
-            .border(1.dp, colors.border, CircleShape)
+            .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape)
             .padding(4.dp),
     ) {
-        options.forEachIndexed { i, label ->
-            val on = i == selected
-            val source = remember { MutableInteractionSource() }
-            Box(
+        listOf(false to "Monthly", true to "Yearly").forEach { (yearly, label) ->
+            val on = annual == yearly
+            val bg by animateColorAsState(if (on) colors.textPrimary else Color.Transparent, label = "bill")
+            Row(
                 Modifier
                     .weight(1f)
-                    .heightIn(min = 48.dp)
-                    .pressFeedback(source)
-                    .clip(CircleShape)
-                    .background(if (on) colors.accent.copy(alpha = 0.16f) else androidx.compose.ui.graphics.Color.Transparent, CircleShape)
-                    .selectable(
-                        selected = on,
-                        interactionSource = source,
-                        indication = null,
-                        role = androidx.compose.ui.semantics.Role.Tab,
-                    ) { onSelect(i) },
-                contentAlignment = Alignment.Center,
+                    .heightIn(min = 44.dp)
+                    .background(bg, CircleShape)
+                    .selectable(on, role = Role.Tab) {
+                        if (!on) Sfx.play(Sfx.Kind.SELECT)
+                        onChange(yearly)
+                    },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(label, style = MonoLabelSmall, color = if (on) colors.accent else colors.textMuted, maxLines = 1)
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (on) colors.background else colors.textMuted,
+                )
+                if (yearly && save > 0) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "−$save%",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (on) Obsidian else colors.accent,
+                        modifier = Modifier
+                            .background(if (on) Ember else colors.accent.copy(alpha = 0.14f), CircleShape)
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** One tier as a selectable card: name + promise left, monthly price right. */
+@Composable
+private fun PlanOption(tier: String, plan: Plan, selected: Boolean, best: Boolean, onClick: () -> Unit) {
+    val colors = Stackd.colors
+    val source = remember { MutableInteractionSource() }
+    val border by animateColorAsState(if (selected) colors.accent else colors.border, tween(250, easing = EaseRitual), label = "planBorder")
+    val fill by animateColorAsState(
+        if (selected) colors.accent.copy(alpha = 0.08f) else colors.textPrimary.copy(alpha = 0.03f),
+        label = "planFill",
+    )
+    val yearly = plan.interval == "annual"
+    val perMonth = if (yearly) Math.round(plan.priceInr / 12.0) else plan.priceInr
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .pressFeedback(source, pressedScale = 0.985f, sound = Sfx.Kind.SELECT)
+            .selectable(selected, interactionSource = source, indication = null, role = Role.RadioButton, onClick = onClick)
+            .background(fill, RadiusXl)
+            .border(if (selected) 1.5.dp else 1.dp, border, RadiusXl)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Radio
+        Box(
+            Modifier.size(22.dp).border(1.5.dp, if (selected) colors.accent else colors.textMuted, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = selected,
+                enter = fadeIn() + androidx.compose.animation.scaleIn(),
+                exit = fadeOut() + androidx.compose.animation.scaleOut(),
+            ) {
+                Box(Modifier.size(12.dp).background(colors.accent, CircleShape))
+            }
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    tier.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = SerifFamily),
+                    color = colors.textPrimary,
+                )
+                if (best) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Best value",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Obsidian,
+                        modifier = Modifier.background(Ember, CircleShape).padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                }
+            }
+            Text(TAGLINE[tier].orEmpty(), style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            AnimatedContent(perMonth, transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) }, label = "price") { v ->
+                Text(
+                    "₹$v",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary,
+                )
+            }
+            Text(
+                if (yearly) "/mo · ₹${plan.priceInr}/yr" else "/month",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+            )
+        }
+    }
+}
+
+/** What you actually get — only what exists today; the roadmap is one line. */
+@Composable
+private fun Benefits(tier: String) {
+    val colors = Stackd.colors
+    AnimatedContent(tier, transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(160)) }, label = "perks") { t ->
+        val perks = perksFor(t)
+        val now = perks.filter { it.status != "soon" }
+        val soon = perks.count { it.status == "soon" }
+        Column {
+            Text(
+                if (t == "elite") "Everything in Elite" else "Everything in Pro",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
+            )
+            Spacer(Modifier.height(12.dp))
+            now.forEach { p ->
+                Row(Modifier.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(32.dp).background(colors.accent.copy(alpha = 0.10f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(p.icon, null, tint = colors.accent, modifier = Modifier.size(17.dp)) }
+                    Spacer(Modifier.width(14.dp))
+                    Text(p.label, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, modifier = Modifier.weight(1f))
+                    if (p.status == "beta") {
+                        Text("Beta", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                    }
+                }
+            }
+            if (soon > 0) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "+ $soon more on the way, included when they land",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun Card(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+private fun TrustRow() {
     val colors = Stackd.colors
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        listOf(
+            Lucide.RotateCcw to "Cancel anytime",
+            Lucide.ShieldCheck to "Secure checkout",
+            Lucide.Zap to "Instant access",
+        ).forEach { (icon, label) ->
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(icon, null, tint = colors.textMuted, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.height(6.dp))
+                Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
+/** Pinned purchase action; content fades out beneath it. */
+@Composable
+private fun CheckoutBar(plan: Plan, modifier: Modifier, onCheckout: () -> Unit) {
+    val colors = Stackd.colors
+    val yearly = plan.interval == "annual"
     Column(
-        modifier = Modifier
+        modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
-            .padding(16.dp),
-        content = content,
+            .background(Brush.verticalGradient(0f to Color.Transparent, 0.3f to colors.background))
+            .navigationBarsPadding()
+            .padding(top = 28.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(Modifier.widthIn(max = 560.dp).padding(horizontal = 20.dp)) {
+            EmberButton(
+                text = "Get ${plan.tier.replaceFirstChar { it.uppercase() }}",
+                onClick = {
+                    Sfx.play(Sfx.Kind.PURCHASE)
+                    onCheckout()
+                },
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                (if (yearly) "₹${plan.priceInr} billed yearly" else "₹${plan.priceInr} billed monthly") +
+                    " · checkout opens in your browser",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** Members: status, usage, and the way to manage it. */
+@Composable
+private fun Membership(state: PremiumUiState, onOpenWeb: (String) -> Unit) {
+    val colors = Stackd.colors
+    val ent = state.entitlement
+    Text(
+        when {
+            ent.source == "lifetime" -> "Yours for life."
+            ent.isPremium -> "You're a member."
+            else -> "Focus, free forever."
+        },
+        style = MaterialTheme.typography.headlineMedium.copy(fontFamily = SerifFamily),
+        color = colors.textPrimary,
     )
+    Spacer(Modifier.height(6.dp))
+    Text(
+        when {
+            ent.source == "lifetime" -> "Lifetime access. Every feature, every update."
+            ent.isPremium && ent.expiresAt != null -> "Renews ${ent.expiresAt.take(10)}"
+            else -> "Plans are unavailable right now. Try again later."
+        },
+        style = MaterialTheme.typography.bodyMedium,
+        color = colors.textMuted,
+    )
+    if (state.aiUsage.allowance > 0 || state.aiUsage.unlimited) {
+        Spacer(Modifier.height(24.dp))
+        Text("AI this period", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+        Spacer(Modifier.height(8.dp))
+        if (state.aiUsage.unlimited) {
+            Text("Unlimited", style = MaterialTheme.typography.bodyMedium, color = colors.accent)
+        } else {
+            val pct = (state.aiUsage.used.toFloat() / state.aiUsage.allowance).coerceIn(0f, 1f)
+            Box(Modifier.fillMaxWidth().height(8.dp).background(colors.textPrimary.copy(alpha = 0.06f), CircleShape)) {
+                Box(Modifier.fillMaxWidth(pct).height(8.dp).background(colors.accent, CircleShape))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "${state.aiUsage.used} of ${state.aiUsage.allowance} used",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+            )
+        }
+    }
+    if (ent.isPremium) {
+        Spacer(Modifier.height(24.dp))
+        Benefits(ent.tier)
+    }
+    state.subscription?.let { sub ->
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "Subscription ${sub.status}" + if (sub.cancelAtPeriodEnd) " · ends at period end" else "",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+        )
+        Spacer(Modifier.height(10.dp))
+        GhostButton(text = "Manage on the web", onClick = { onOpenWeb("/profile") })
+    }
+}
+
+/** Lifetime coupon, folded away: most people never need it. */
+@Composable
+private fun LifetimeCode(state: PremiumUiState, onRedeem: (String) -> Unit) {
+    val colors = Stackd.colors
+    var open by rememberSaveable { mutableStateOf(false) }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(Radius2Xl)
+            .clickable(role = Role.Button) {
+                Sfx.play(if (open) Sfx.Kind.CLOSE else Sfx.Kind.OPEN)
+                open = !open
+            }
+            .heightIn(min = 48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Have a lifetime code?", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+            Text(
+                "${state.promo.seatsRemaining} of ${state.promo.seatsTotal} lifetime seats left",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.accent,
+            )
+        }
+        Icon(
+            Lucide.Sparkles,
+            null,
+            tint = colors.textMuted,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+    AnimatedVisibility(open, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+        Column {
+            Spacer(Modifier.height(10.dp))
+            var code by remember { mutableStateOf("") }
+            OutlinedTextField(
+                value = code,
+                onValueChange = { code = it.take(120) },
+                label = { Text("Code") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(10.dp))
+            GhostButton(
+                text = if (state.redeeming) "Redeeming…" else "Redeem",
+                onClick = { onRedeem(code) },
+                enabled = code.isNotBlank(),
+                busy = state.redeeming,
+            )
+        }
+    }
+    state.redeemMessage?.let {
+        Spacer(Modifier.height(8.dp))
+        Text(it, style = MaterialTheme.typography.bodySmall, color = if (state.redeemSucceeded) colors.accent else colors.textMuted)
+    }
 }
