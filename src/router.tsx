@@ -65,7 +65,7 @@ export const getRouter = () => {
     defaultPreloadStaleTime: 0,
     // Any route without its own boundary gets the recovering-first boundary
     // instead of a bare error screen.
-    defaultErrorComponent: RouteErrorBoundary,
+    defaultErrorComponent: (props) => <RouteErrorBoundary error={props.error} reset={props.reset} />,
   });
 
 
