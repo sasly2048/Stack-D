@@ -53,10 +53,10 @@ function ModerationPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <div className="pt-24 max-w-5xl mx-auto px-6 pb-24">
-        <div className="flex items-baseline justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-serif">Moderation</h1>
+      <div className="app-page max-w-5xl">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="page-title font-serif">Moderation</h1>
             <p className="text-xs font-mono text-muted-foreground mt-1">
               Reports filed on rooms you host.
             </p>

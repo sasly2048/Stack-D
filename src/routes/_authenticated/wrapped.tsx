@@ -181,8 +181,8 @@ function WrappedPage() {
   return (
     <div className="min-h-screen bg-obsidian">
       <Nav />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-28 pb-24">
-        <p className="font-mono text-[10px] tracking-[0.35em] uppercase text-ember">
+      <main className="app-page max-w-4xl text-silver">
+        <p className="ritual-label text-ember">
           Stack Wrapped {stats?.rolling ? "· Last 12 months" : stats ? `· ${stats.year}` : ""}
         </p>
         <h1 className="mt-4 font-serif text-5xl sm:text-7xl text-silver leading-[0.95]">

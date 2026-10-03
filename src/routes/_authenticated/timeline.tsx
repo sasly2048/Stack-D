@@ -120,12 +120,12 @@ function TimelinePage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <main className="max-w-3xl mx-auto px-6 pt-24 pb-16 space-y-8">
-        <div>
-          <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
+      <main className="app-page max-w-3xl space-y-8">
+        <div className="page-heading">
+          <div className="ritual-label text-muted-foreground">
             RECORD / SESSIONS
           </div>
-          <h1 className="text-4xl font-bold tracking-tight mt-1">Timeline</h1>
+          <h1 className="page-title">Timeline</h1>
         </div>
 
         {ai && <ProactiveCard ai={ai} />}
