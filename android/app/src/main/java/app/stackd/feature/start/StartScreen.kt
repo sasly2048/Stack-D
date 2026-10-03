@@ -198,7 +198,6 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
                 Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.10f), colors.surface)),
                 Radius2Xl,
             )
-            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(horizontal = 20.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -547,7 +546,6 @@ private fun IntroTip(onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(colors.accent.copy(alpha = 0.06f), RadiusMd)
-            .border(1.dp, colors.accent.copy(alpha = 0.25f), RadiusMd)
             .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

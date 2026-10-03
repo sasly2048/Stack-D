@@ -9,8 +9,8 @@ import androidx.compose.ui.unit.dp
 val RadiusSm = RoundedCornerShape(4.dp)
 val RadiusMd = RoundedCornerShape(8.dp)
 val RadiusLg = RoundedCornerShape(10.dp)
-val RadiusXl = RoundedCornerShape(14.dp)
-val Radius2Xl = RoundedCornerShape(18.dp)
+val RadiusXl = RoundedCornerShape(20.dp)
+val Radius2Xl = RoundedCornerShape(26.dp)
 val RadiusFull = RoundedCornerShape(percent = 50)
 
 val StackdShapes = Shapes(

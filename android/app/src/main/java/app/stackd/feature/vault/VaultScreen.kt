@@ -1,5 +1,7 @@
 package app.stackd.feature.vault
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -356,8 +358,7 @@ private fun VaultItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 8.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -426,7 +427,6 @@ internal fun EliteGate(description: String, onUpgrade: () -> Unit) {
                 Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)),
                 Radius2Xl,
             )
-            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(20.dp),
     ) {
         Text("ELITE FEATURE", style = MonoLabelSmall, color = colors.accent)

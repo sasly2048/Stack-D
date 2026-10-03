@@ -1,7 +1,17 @@
 package app.stackd.feature.insights
 
+import app.stackd.core.ui.pageGlow
+
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.Role
+import app.stackd.core.ui.pressFeedback
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,7 +63,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 
-private val WEEKDAY_NAMES = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+private val WEEKDAY_NAMES = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 
 // Mirrors src/lib/proactive-ai.functions.ts: 21-day window, "medium" confidence at 8+ sessions.
 private const val PREDICTION_WINDOW_DAYS = 21
@@ -228,6 +238,7 @@ fun InsightsScreen(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
+            .pageGlow()
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
@@ -257,8 +268,7 @@ fun InsightsScreen(
                 state.rows.isEmpty() -> Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-                        .border(1.dp, colors.border, Radius2Xl)
+                        .glassSurface(Radius2Xl)
                         .padding(24.dp),
                 ) {
                     Text(
@@ -287,17 +297,21 @@ fun InsightsScreen(
 
                     // 1. Hero — one number, one sentence. Summary before detail.
                     Column(Modifier.fillMaxWidth().reveal(i++)) {
-                        val hours = animatedCount(t.hours.toFloat())
+                        val secs = animatedCount((t.hours * 3600).toFloat())
                         Text(
-                            "%.1f".format(hours),
+                            formatFocus(secs.toLong()),
                             style = MaterialTheme.typography.displayMedium,
                             fontFamily = SerifFamily,
                             color = colors.accent,
                             maxLines = 1,
                         )
                         Text(
-                            "hours focused in the last 120 days · ${"%,d".format(t.xp)} XP earned",
+                            "focused in the last 120 days",
                             style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                        )
+                        Text(
+                            "${"%,d".format(t.xp)} XP · last 120 days",
+                            style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(takeaway(t), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
@@ -317,18 +331,33 @@ fun InsightsScreen(
                         val tile = Modifier.weight(1f).fillMaxHeight()
                         StatTile("Sessions", "${t.sessions}", tile)
                         StatTile("Avg score", "${t.avgScore}", tile, scoreColor)
-                        if (state.streak > 0) {
-                            StatTile("Streak", "${state.streak} ${if (state.streak == 1) "day" else "days"}", tile)
-                        } else {
-                            // Positive zero state: an invitation, not a failing "0d".
-                            StatTile("Streak", "Start one", tile, colors.textMuted)
-                        }
+                        // Zero state stays honest ("0 days") with an invitation under it.
+                        StatTile(
+                            "Streak", "${state.streak} ${if (state.streak == 1) "day" else "days"}", tile,
+                            helper = if (state.streak > 0) null else "Your first Stack starts your run",
+                        )
                     }
 
                     // 3. Deep dive.
                     Section("Discipline", i++) { DisciplineCard(t) }
-                    Section("Focus shape", i++) { FocusRadar(state.dna.traits) }
-                    Section("When you focus", i++) { HourBars(state.hourBuckets) }
+                    Section("Focus shape", i++) {
+                        FocusRadar(state.dna.traits)
+                        Spacer(Modifier.height(8.dp))
+                        FocusRadarReading(state.dna.traits)
+                    }
+                    Section("When you focus", i++) {
+                        HourBars(state.hourBuckets)
+                        strongestWindow(state.hourBuckets)?.let { w ->
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                "Strongest window: $w",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            PlanAction(onStart)
+                        }
+                    }
                     Section("Activity", i++) { ActivityHeatmap(state.rows, weeks = 17) }
                     Section("Your signal", i++) { SignalCallout(state.bestHour, state.bestWeekday) }
                     if (state.tagDistribution.isNotEmpty()) {
@@ -369,7 +398,8 @@ fun InsightsScreen(
 /** One plain-language takeaway derived from the totals — no AI call. */
 private fun takeaway(t: AnalyticsEngine.Totals): String = when {
     t.sessions < 3 -> "A few more sessions and your patterns come into focus."
-    t.cleanRate < 50 -> "Your clean rate is ${t.cleanRate}% — shorter sessions will lift it."
+    t.cleanRate < 50 ->
+        "Your clean rate is ${t.cleanRate}%. You're still finding your rhythm — try a 15–20m Stack next."
     t.avgScore >= 80 -> "Averaging ${t.avgScore} with ${t.cleanRate}% clean — elite focus."
     t.avgScore < 50 -> "${t.cleanRate}% of sessions stay clean. Longer holds will lift your score."
     else -> "${t.cleanRate}% clean, averaging ${t.avgScore}. Keep stacking."
@@ -398,8 +428,7 @@ private fun DisciplineCard(t: AnalyticsEngine.Totals) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(16.dp),
     ) {
         DisciplineRow("Clean sessions", "${t.cleanRate}%", colors.textPrimary)
@@ -465,22 +494,21 @@ private fun HourBars(buckets: List<AnalyticsEngine.HourBucket>) {
     }
 }
 
-/** "You hold best around HH:00, on {weekday}s." — web's Signal card. */
+/** "You hold best around 1 PM on Tuesdays." — web's Signal card. */
 @Composable
 private fun SignalCallout(bestHour: Int?, bestWeekday: String?) {
     val colors = Stackd.colors
     val text = when {
         bestHour != null && bestWeekday != null ->
-            "You hold best around ${bestHour.toString().padStart(2, '0')}:00, on ${bestWeekday}s."
+            "You hold best around ${hour12(bestHour)} on ${bestWeekday}s."
         bestHour != null ->
-            "You hold best around ${bestHour.toString().padStart(2, '0')}:00."
+            "You hold best around ${hour12(bestHour)}."
         else -> "Hold a few more sessions and a pattern will surface here."
     }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(16.dp),
     ) {
         Text(text, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
@@ -495,8 +523,7 @@ private fun TagBars(dist: List<Pair<String, Int>>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(16.dp),
     ) {
         dist.forEachIndexed { i, (tag, n) ->
@@ -526,46 +553,123 @@ private fun TagBars(dist: List<Pair<String, Int>>) {
     }
 }
 
-/** 30-day pace and the next three XP milestones — web's GoalForecast. */
+/**
+ * One concept: the next XP milestone and its ETA at the 30-day pace, plus one
+ * lever ("add 5 min/day") — web's GoalForecast, same data.
+ */
 @Composable
 private fun ForecastCard(f: Forecast) {
     val colors = Stackd.colors
+    val next = f.projections.firstOrNull()
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(16.dp),
     ) {
-        Text(
-            "~${f.avgDailyMinutes} min/day · ~${f.avgDailyXp} XP/day",
-            style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "About ${f.weeklyForecastMinutes} min this week, ${f.monthlyForecastMinutes} this month.",
-            style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
-        )
-        if (f.projections.isEmpty()) {
-            Spacer(Modifier.height(8.dp))
+        if (next == null) {
             Text(
-                "Hold sessions and milestone ETAs appear here.",
-                style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
+                "Hold a few Stacks and your next milestone's ETA appears here.",
+                style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
             )
-        }
-        f.projections.forEach { pr ->
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(pr.label, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+        } else {
+            Text(
+                "Next milestone · ${"%,d".format(next.targetXp)} XP",
+                style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+            )
+            Spacer(Modifier.height(4.dp))
+            if (next.daysNeeded >= 9999) {
                 Text(
-                    if (pr.daysNeeded >= 9999) "—" else "~${pr.daysNeeded} days",
+                    "Hold a few Stacks this month and an ETA appears.",
+                    style = MaterialTheme.typography.titleMedium, color = colors.textPrimary,
+                )
+            } else {
+                Text(
+                    "~${next.daysNeeded} days",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontFamily = SerifFamily,
+                    color = colors.accent,
+                )
+                Text(
+                    "at your current pace · ~${f.avgDailyMinutes} min/day",
                     style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
                 )
             }
+            leverDays(f, next)?.let { days ->
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Add 5 min/day → ~$days days",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
+    }
+}
+
+/** Days to [next] if the user held [extraMin] more minutes a day at their XP-per-minute rate. */
+internal fun leverDays(f: Forecast, next: Projection, extraMin: Int = 5): Int? {
+    if (f.avgDailyMinutes <= 0 || f.avgDailyXp <= 0) return null
+    val xpPerMin = f.avgDailyXp.toDouble() / f.avgDailyMinutes
+    val remaining = (next.targetXp - f.currentXp).coerceAtLeast(0)
+    return Math.ceil(remaining / ((f.avgDailyMinutes + extraMin) * xpPerMin)).toInt()
+}
+
+/** Under an hour as minutes ("18m"), otherwise hours and minutes ("2h 10m"). */
+internal fun formatFocus(totalSeconds: Long): String {
+    val m = totalSeconds.coerceAtLeast(0) / 60
+    return when {
+        m < 60 -> "${m}m"
+        m % 60 == 0L -> "${m / 60}h"
+        else -> "${m / 60}h ${m % 60}m"
+    }
+}
+
+/** 13 -> "1 PM", 0 -> "12 AM". */
+internal fun hour12(h: Int): String = "${h12(h)} ${if (h % 24 < 12) "AM" else "PM"}"
+
+private fun h12(h: Int) = (h % 12).let { if (it == 0) 12 else it }
+
+/**
+ * Best contiguous 2–3h window by focused seconds, e.g. "1–3 PM" (end exclusive,
+ * wraps midnight). Stretches to 3h when the stronger neighbour hour holds at
+ * least half the window's average hour. Null when nothing is held.
+ */
+internal fun strongestWindow(buckets: List<AnalyticsEngine.HourBucket>): String? {
+    val secs = IntArray(24).also { a -> buckets.forEach { a[it.hour] += it.seconds } }
+    if (secs.all { it == 0 }) return null
+    val start = (0 until 24).maxBy { secs[it] + secs[(it + 1) % 24] }
+    val pair = secs[start] + secs[(start + 1) % 24]
+    val before = secs[(start + 23) % 24]
+    val after = secs[(start + 2) % 24]
+    val (s, len) = when {
+        maxOf(before, after) * 4 < pair -> start to 2
+        after >= before -> start to 3
+        else -> (start + 23) % 24 to 3
+    }
+    val e = (s + len) % 24
+    val sameHalf = (s < 12) == (e < 12) && e != 0
+    return if (sameHalf) "${h12(s)}–${hour12(e)}" else "${hour12(s)}–${hour12(e)}"
+}
+
+/** Quiet text action under a chart — opens the plan screen. */
+@Composable
+private fun PlanAction(onStart: () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    Box(
+        Modifier
+            .heightIn(min = 48.dp)
+            .pressFeedback(source)
+            .clickable(source, indication = null, role = Role.Button, onClick = onStart),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            "Plan a Stack →",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Stackd.colors.accent,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
@@ -584,8 +688,7 @@ private fun ProactiveCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(16.dp),
     ) {
         p.smartSchedule?.let { s ->
@@ -659,12 +762,12 @@ private fun StatTile(
     value: String,
     modifier: Modifier = Modifier,
     valueColor: androidx.compose.ui.graphics.Color = Stackd.colors.textPrimary,
+    helper: String? = null,
 ) {
     val colors = Stackd.colors
     Column(
         modifier = modifier
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(16.dp),
     ) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 1)
@@ -673,6 +776,10 @@ private fun StatTile(
             value, style = MaterialTheme.typography.titleLarge, color = valueColor,
             fontWeight = FontWeight.SemiBold, maxLines = 1,
         )
+        helper?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
     }
 }
 
@@ -684,7 +791,6 @@ private fun WeeklyStoryCard(story: String, patterns: List<String> = emptyList())
         modifier = Modifier
             .fillMaxWidth()
             .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(20.dp),
     ) {
         // Editorial serif, as the web sets its featured AI copy.

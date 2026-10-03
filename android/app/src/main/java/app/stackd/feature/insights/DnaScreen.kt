@@ -157,7 +157,6 @@ fun DnaScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
-                            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
                             .padding(20.dp),
                     ) {
                         Text("PRO FEATURE", style = MonoLabelSmall, color = colors.accent)

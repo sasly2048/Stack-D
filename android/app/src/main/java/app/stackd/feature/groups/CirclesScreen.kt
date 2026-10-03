@@ -1,5 +1,7 @@
 package app.stackd.feature.groups
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -285,8 +287,7 @@ private fun CircleBoard(detail: CircleDetail, onOpenProfile: (String) -> Unit) {
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
                 .pressFeedback(source)
-                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                .border(1.dp, colors.border, Radius2Xl)
+                .glassSurface(Radius2Xl)
                 .clickable(interactionSource = source, indication = null, role = Role.Button) { onOpenProfile(m.userId) }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,

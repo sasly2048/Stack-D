@@ -1,5 +1,9 @@
 package app.stackd.feature.profile
 
+import app.stackd.core.ui.pageGlow
+
+import app.stackd.core.ui.glassSurface
+
 import android.content.ContentResolver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -9,8 +13,14 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import app.stackd.core.theme.SerifFamily
+import app.stackd.core.ui.pressFeedback
+import app.stackd.feature.insights.formatFocus
+import com.composables.icons.lucide.ChevronRight
 import androidx.compose.ui.platform.LocalContext
 import app.stackd.core.ui.Avatar
 import java.io.ByteArrayOutputStream
@@ -28,8 +38,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,9 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.stackd.core.AppContainer
-import app.stackd.core.formatHours
 import app.stackd.core.stackdViewModel
-import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.Stackd
@@ -273,6 +279,7 @@ fun ProfileScreen(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
+            .pageGlow()
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
@@ -335,52 +342,25 @@ fun ProfileScreen(
                     }
 
                     Spacer(Modifier.height(24.dp))
-                    // Bento: lifetime XP at display scale beside three compact tiles.
-                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1.15f)
-                                .fillMaxHeight()
-                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                                .border(1.dp, colors.border, Radius2Xl)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text("LIFETIME", style = MonoLabelSmall, color = colors.accent)
-                            Column {
-                                Text(
-                                    "${p.lifetimeXp}",
-                                    // Long values step down a size so they never clip.
-                                    style = if (p.lifetimeXp >= 100_000) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.displayMedium,
-                                    color = colors.textPrimary,
-                                    maxLines = 1,
-                                )
-                                Text("XP", style = MonoLabelSmall, color = colors.textMuted)
-                            }
+                    // A personal record, not a KPI wall: serif values, small labels, one card.
+                    fun days(n: Int) = "$n ${if (n == 1) "day" else "days"}"
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .glassSurface(Radius2Xl)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            RecordStat("${"%,d".format(p.lifetimeXp)} XP", "Lifetime", Modifier.weight(1f), highlight = true)
+                            RecordStat(
+                                days(p.currentFocusStreak), "Current run", Modifier.weight(1f),
+                                helper = if (p.currentFocusStreak > 0) null else "Your first Stack starts your run",
+                            )
                         }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(
-                                "STREAK" to "${p.currentFocusStreak}d",
-                                "BEST" to "${p.bestStreak}d",
-                                "FOCUSED" to formatHours(p.totalFocusSeconds.toInt()),
-                            ).forEach { (label, value) ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                                        .border(1.dp, colors.border, Radius2Xl)
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                ) {
-                                    Text(label, style = MonoLabelSmall, color = colors.textMuted)
-                                    Spacer(Modifier.height(2.dp))
-                                    Text(
-                                        value,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = colors.textPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                            }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            RecordStat(days(p.bestStreak), "Best run", Modifier.weight(1f))
+                            RecordStat(formatFocus(p.totalFocusSeconds), "Focused", Modifier.weight(1f))
                         }
                     }
 
@@ -406,59 +386,94 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(16.dp))
-                    EmberButton(
-                        text = if (state.saving) "Saving…" else "Save",
-                        onClick = { onSave(name, bio) },
-                        enabled = name.isNotBlank(),
-                        busy = state.saving,
-                    )
+                    // Primary only once there's something to save; quiet otherwise.
+                    val dirty = name != p.displayName.orEmpty() || bio != p.bio.orEmpty()
+                    if (dirty || state.saving) {
+                        EmberButton(
+                            text = if (state.saving) "Saving…" else "Save",
+                            onClick = { onSave(name, bio) },
+                            enabled = name.isNotBlank(),
+                            busy = state.saving,
+                        )
+                    } else {
+                        GhostButton(text = "Save", onClick = {}, enabled = false)
+                    }
 
-                    Spacer(Modifier.height(24.dp))
-                    SectionLabel("USERNAME")
+                    // Management actions as one settings list.
+                    Spacer(Modifier.height(32.dp))
+                    Text(
+                        "Settings",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textPrimary,
+                    )
                     Spacer(Modifier.height(8.dp))
                     var username by remember(p) { mutableStateOf(p.username.orEmpty()) }
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = {
-                            if (it.length <= 20) {
-                                username = it
-                                onUsernameInput(it)
+                    var usernameOpen by remember { mutableStateOf(false) }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .glassSurface(Radius2Xl)
+                            .padding(horizontal = 16.dp),
+                    ) {
+                        SettingsRow(
+                            label = "Username",
+                            value = p.username?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: "Set username",
+                            onClick = { usernameOpen = !usernameOpen },
+                        )
+                        if (usernameOpen) {
+                            OutlinedTextField(
+                                value = username,
+                                onValueChange = {
+                                    if (it.length <= 20) {
+                                        username = it
+                                        onUsernameInput(it)
+                                    }
+                                },
+                                label = { Text("Username") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            // Short rules by default; the extra rules only when they apply.
+                            val startsBad = username.isNotEmpty() && !username.first().isLetter()
+                            val (hint, hintColor) = if (startsBad) {
+                                "Must start with a letter" to colors.breach
+                            } else when (val s = state.usernameStatus) {
+                                UsernameStatus.Checking -> "Checking…" to colors.textMuted
+                                UsernameStatus.Available -> "Available" to colors.accent
+                                is UsernameStatus.Unavailable -> s.message to colors.breach
+                                UsernameStatus.Idle ->
+                                    "3–20 characters · letters, numbers, _ and -" to colors.textMuted
                             }
-                        },
-                        label = { Text("Username") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    // Live availability hint, else the rules + change-cooldown copy.
-                    val (hint, hintColor) = when (val s = state.usernameStatus) {
-                        UsernameStatus.Checking -> "Checking…" to colors.textMuted
-                        UsernameStatus.Available -> "Available" to colors.accent
-                        is UsernameStatus.Unavailable -> s.message to colors.breach
-                        UsernameStatus.Idle ->
-                            "3–20 characters, starts with a letter, letters/numbers/_/- only. " +
-                                "You can change it once every 24h." to colors.textMuted
+                            Text(hint, style = MaterialTheme.typography.bodySmall, color = hintColor)
+                            if (username.isNotBlank() && username != p.username.orEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "You can change it once every 24h",
+                                    style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
+                                )
+                            }
+                            state.usernameNotice?.let {
+                                Spacer(Modifier.height(4.dp))
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            GhostButton(
+                                text = if (state.usernameSaving) "Setting…" else "Set username",
+                                onClick = { onSaveUsername(username) },
+                                enabled = username.isNotBlank() && username != p.username && !startsBad,
+                                busy = state.usernameSaving,
+                            )
+                            Spacer(Modifier.height(16.dp))
+                        }
+                        app.stackd.core.ui.HairlineDivider()
+                        SoundToggle()
+                        app.stackd.core.ui.HairlineDivider()
+                        SettingsRow(label = "Manage plan", value = state.tier.replaceFirstChar { it.uppercase() }, onClick = onOpenPremium)
+                        app.stackd.core.ui.HairlineDivider()
+                        SettingsRow(label = "Sign out", onClick = onSignOut, color = colors.breach, chevron = false)
                     }
-                    Text(hint, style = MaterialTheme.typography.bodySmall, color = hintColor)
-                    state.usernameNotice?.let {
-                        Spacer(Modifier.height(4.dp))
-                        Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    // Secondary: "Save" above is this screen's one primary action.
-                    GhostButton(
-                        text = if (state.usernameSaving) "Setting…" else "Set username",
-                        onClick = { onSaveUsername(username) },
-                        enabled = username.isNotBlank() && username != p.username,
-                        busy = state.usernameSaving,
-                    )
-
-                    Spacer(Modifier.height(24.dp))
-                    SoundToggle()
-                    Spacer(Modifier.height(16.dp))
-                    GhostButton(text = "Manage plan", onClick = onOpenPremium)
-                    Spacer(Modifier.height(8.dp))
-                    GhostButton(text = "Sign out", onClick = onSignOut)
                 }
             }
 
@@ -484,6 +499,68 @@ private fun ProfileSkeleton() {
     SkeletonBlock(Modifier.fillMaxWidth().height(56.dp))
 }
 
+/** Serif value over a small sans label — one line of the personal record. */
+@Composable
+private fun RecordStat(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    highlight: Boolean = false,
+    helper: String? = null,
+) {
+    val colors = Stackd.colors
+    Column(modifier) {
+        Text(
+            value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontFamily = SerifFamily,
+            color = if (highlight) colors.accent else colors.textPrimary,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+        Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        helper?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
+    }
+}
+
+/** A settings-list row: label, optional trailing value, chevron. */
+@Composable
+private fun SettingsRow(
+    label: String,
+    onClick: () -> Unit,
+    value: String? = null,
+    color: androidx.compose.ui.graphics.Color = Stackd.colors.textPrimary,
+    chevron: Boolean = true,
+) {
+    val colors = Stackd.colors
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .pressFeedback(source, pressedScale = 0.99f)
+            .clickable(source, indication = null, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = color, modifier = Modifier.weight(1f))
+        value?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted, maxLines = 1)
+        }
+        if (chevron) {
+            Spacer(Modifier.width(8.dp))
+            androidx.compose.material3.Icon(
+                com.composables.icons.lucide.Lucide.ChevronRight,
+                contentDescription = null,
+                tint = colors.textMuted,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
 /** UI sounds on/off — web SoundToggle on the profile page. */
 @Composable
 private fun SoundToggle() {
@@ -496,14 +573,14 @@ private fun SoundToggle() {
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("SOUND EFFECTS", style = MonoLabel, color = colors.textMuted, modifier = Modifier.weight(1f))
+        Text("Sound effects", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, modifier = Modifier.weight(1f))
         androidx.compose.material3.Switch(
             checked = on,
             onCheckedChange = { next ->
                 scope.launch { settings.setSoundEnabled(next) }
                 if (next) {
                     app.stackd.core.feedback.Sfx.enabled = true
-                    app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.SELECT)
+                    app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.NOTIFY)
                 }
             },
         )
@@ -523,7 +600,13 @@ private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf)
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         SectionLabel("LIFETIME MILESTONES")
-        Text("${shelf.totalHours}H HELD", style = MonoLabelSmall, color = colors.textMuted)
+        // ponytail: hour thresholds mirror the ms_hours_* plates; read them from defs if they change.
+        val hourTarget = shelf.next?.card?.takeIf { it.metric == "hours" }?.threshold
+            ?: listOf(100, 250, 500, 1000).firstOrNull { it > shelf.totalHours }
+        Text(
+            if (hourTarget != null) "${shelf.totalHours} / ${hourTarget}h held" else "${shelf.totalHours}h held",
+            style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
+        )
     }
     Spacer(Modifier.height(12.dp))
 
@@ -539,8 +622,7 @@ private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf)
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
-                    .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                    .border(1.dp, colors.border, Radius2Xl)
+                    .glassSurface(Radius2Xl)
                     .padding(16.dp),
             ) {
                 Text(m.metric.uppercase(), style = MonoLabelSmall, color = colors.accent)
@@ -563,14 +645,17 @@ private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf)
 
     shelf.next?.let { next ->
         Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("NEXT · ${next.card.name.uppercase()}", style = MonoLabelSmall, color = colors.textMuted)
-            Text("${next.current} / ${next.card.threshold}", style = MonoLabelSmall, color = colors.textMuted)
+        val left = (next.card.threshold - next.current).coerceAtLeast(0)
+        val unit = when (next.card.metric) {
+            "hours" -> if (left == 1) "hour" else "hours"
+            "sessions" -> if (left == 1) "session" else "sessions"
+            else -> if (left == 1) "streak day" else "streak days"
         }
-        Spacer(Modifier.height(6.dp))
+        Text(
+            "$left $unit to your next milestone",
+            style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary,
+        )
+        Spacer(Modifier.height(8.dp))
         val frac = (next.current.toFloat() / next.card.threshold.coerceAtLeast(1)).coerceIn(0f, 1f)
         Box(
             Modifier

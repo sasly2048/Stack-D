@@ -1,5 +1,7 @@
 package app.stackd.feature.groups
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -348,8 +350,7 @@ private fun GroupCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

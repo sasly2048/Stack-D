@@ -1,5 +1,7 @@
 package app.stackd.feature.profile
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -217,8 +219,7 @@ fun ProfileDetailScreen(
                             modifier = Modifier
                                 .weight(1.15f)
                                 .fillMaxHeight()
-                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                                .border(1.dp, colors.border, Radius2Xl)
+                                .glassSurface(Radius2Xl)
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -243,8 +244,7 @@ fun ProfileDetailScreen(
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                                        .border(1.dp, colors.border, Radius2Xl)
+                                        .glassSurface(Radius2Xl)
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
                                 ) {
                                     Text(label, style = MonoLabelSmall, color = colors.textMuted)
@@ -280,8 +280,7 @@ fun ProfileDetailScreen(
                             state.profile.achievements.forEach { a ->
                                 Column(
                                     modifier = Modifier
-                                        .background(colors.textPrimary.copy(alpha = 0.03f), RadiusMd)
-                                        .border(1.dp, colors.border, RadiusMd)
+                                        .glassSurface(RadiusMd)
                                         .padding(horizontal = 12.dp, vertical = 8.dp),
                                 ) {
                                     Text(a.tier.uppercase(), style = MonoLabelSmall, color = colors.accent)

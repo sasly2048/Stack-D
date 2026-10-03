@@ -1,5 +1,7 @@
 package app.stackd.feature.room
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,8 +59,7 @@ private fun Panel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(16.dp),
         content = content,
     )

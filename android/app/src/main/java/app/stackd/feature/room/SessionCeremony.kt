@@ -1,31 +1,26 @@
 package app.stackd.feature.room
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,7 +29,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,51 +36,65 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.stackd.core.feedback.Sfx
+import app.stackd.core.theme.LocalReduceMotion
 import app.stackd.core.theme.SerifFamily
 import app.stackd.core.theme.Stackd
-import app.stackd.core.ui.Confetti
+import app.stackd.core.ui.Avatar
 import app.stackd.core.ui.EaseRitual
 import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.StackArt
+import app.stackd.core.ui.glassSurface
+import app.stackd.core.ui.pageGlow
 import app.stackd.core.ui.pressFeedback
+import app.stackd.data.recap.FriendFinish
 import app.stackd.data.recap.SessionSummary
 import com.composables.icons.lucide.Award
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.TrendingUp
 import com.composables.icons.lucide.Trophy
-import com.composables.icons.lucide.Users
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Post-session ceremony (web SessionCeremony, Duolingo lesson-complete).
+ * Post-session ceremony, "the table": a ritual close rather than a scoreboard.
  *
- * One hero — the score ring with an ember bloom — then three stat tiles pop
- * in, the level bar fills, and any extras (awards, rank, friends) fade in as
- * quiet rows. Continue is pinned at the bottom and fades in at ~1.8s.
- * Type scale: 64sp serif score, headlineMedium serif title, titleLarge tile
- * values, bodyMedium for everything else; Normal + SemiBold only.
+ * Choreography (~2.8s, EaseRitual throughout, no springs, no bounces):
+ *  0.0s  screen fades up from black onto obsidian + page glow; a 4-phone
+ *        stack rests centred at the top.
+ *  0.25s phones lift off one at a time, top first (220ms apart), rising and
+ *        fading: everyone picked their phone back up. The ember glow stays
+ *        and settles to a soft residue.
+ *  1.1s  as the last phone lifts, the serif headline rises in ("The stack
+ *        held.") with its muted subline. One SUCCESS sound + gentle haptic.
+ *  1.35s quiet score line ("92 · Flow state · +640 XP"), XP counts up.
+ *  1.6s  hairline, then the level row; the bar fills from before to now.
+ *  1.85s "Held with you" avatars (only when friends finished too).
+ *  ~2.0s extras rise in; the first award row gets one slow light sweep
+ *        (+ ACHIEVEMENT sound).
+ *  last  reflection chips and the pinned Continue fade in (~2.5-2.8s).
+ * With system animations off everything is shown at rest immediately.
+ *
+ * Type: displaySmall serif headline, titleLarge serif score, bodyMedium for
+ * everything else; Normal + SemiBold only.
  *
  * [onReflect] (optional) shows one-tap "How did it feel?" chips; the chosen
  * label is handed back (RoomScreen stores it as a session tag).
@@ -99,131 +107,169 @@ fun SessionCeremony(
 ) {
     val colors = Stackd.colors
     val view = LocalView.current
+    val reduce = LocalReduceMotion.current
     val extras = remember(summary) { extrasFor(summary) }
+    val sweepIndex = remember(extras) { extras.indexOfFirst { it.award } }
+    val friends = summary.friendsFinished
 
-    val ring = remember(summary) { Animatable(0f) }
-    val bloom = remember(summary) { Animatable(0f) }
+    val fade = remember(summary) { Animatable(0f) }
+    val title = remember(summary) { Animatable(0f) }
+    val score = remember(summary) { Animatable(0f) }
     val xp = remember(summary) { Animatable(0f) }
-    var tiles by remember(summary) { mutableIntStateOf(0) }
-    var levelOn by remember(summary) { mutableStateOf(false) }
-    var extrasShown by remember(summary) { mutableIntStateOf(0) }
+    val levelIn = remember(summary) { Animatable(0f) }
+    val level = remember(summary) { Animatable(0f) }
+    val held = remember(summary) { Animatable(0f) }
+    val rows = remember(summary) { List(extras.size) { Animatable(0f) } }
+    val sweep = remember(summary) { Animatable(0f) }
+    val tail = remember(summary) { Animatable(0f) }
     var ctaOn by remember(summary) { mutableStateOf(false) }
 
     LaunchedEffect(summary) {
-        Sfx.play(Sfx.Kind.SUCCESS)
-        view.performHapticFeedback(if (android.os.Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.LONG_PRESS)
-        launch { bloom.animateTo(1f, tween(1400, easing = EaseRitual)) }
-        launch { delay(1800); ctaOn = true }
-        ring.animateTo(1f, tween(1100, easing = EaseRitual))
-        launch { xp.animateTo(summary.xpEarned.toFloat(), tween(800, easing = EaseRitual)) }
-        repeat(3) { i ->
-            tiles = i + 1
-            Sfx.play(if (i == 0) Sfx.Kind.XP else Sfx.Kind.SELECT)
-            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-            delay(120)
+        fun landed() {
+            Sfx.play(Sfx.Kind.SUCCESS)
+            view.performHapticFeedback(
+                if (android.os.Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK,
+            )
         }
-        levelOn = true
-        delay(200)
-        extras.forEachIndexed { i, e ->
-            extrasShown = i + 1
-            e.sound?.let { Sfx.play(it) }
-            delay(120)
+        if (reduce) {
+            landed()
+            (listOf(fade, title, score, levelIn, level, held, tail) + rows).forEach { it.snapTo(1f) }
+            xp.snapTo(summary.xpEarned.toFloat())
+            ctaOn = true
+            return@LaunchedEffect
         }
+        fun go(at: Long, a: Animatable<Float, AnimationVector1D>, ms: Int, to: Float = 1f) =
+            launch { delay(at); a.animateTo(to, tween(ms, easing = EaseRitual)) }
+
+        go(0, fade, 500)
+        // StackArt(liftOff) lifts its last phone at ~0.91s; the headline lands with it.
+        launch { delay(1100); landed() }
+        go(1100, title, 700)
+        go(1350, score, 600)
+        go(1350, xp, 900, summary.xpEarned.toFloat())
+        go(1600, levelIn, 500)
+        go(1700, level, 800)
+        val extrasAt = if (friends.isNotEmpty()) { go(1850, held, 500); 2000L } else 1850L
+        rows.forEachIndexed { i, r -> go(extrasAt + i * 120, r, 450) }
+        if (sweepIndex >= 0) launch {
+            delay(extrasAt + sweepIndex * 120 + 300)
+            Sfx.play(Sfx.Kind.ACHIEVEMENT)
+            sweep.animateTo(1f, tween(1100, easing = FastOutSlowInEasing))
+        }
+        val ctaAt = maxOf(2800L, extrasAt + extras.size * 120 + 300)
+        go(ctaAt - 300, tail, 450)
+        delay(ctaAt)
+        ctaOn = true
     }
 
     val mins = maxOf(1, Math.round(summary.durationSeconds / 60.0).toInt())
+    val body = MaterialTheme.typography.bodyMedium
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .then(with(app.stackd.core.ui.CeremonyGlow) { Modifier.glow() })
-            .statusBarsPadding(),
-    ) {
-        // Scrolling story; bottom padding reserves the pinned bar's space.
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
         Box(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding(),
-            contentAlignment = Alignment.TopCenter,
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = fade.value }
+                .background(colors.background)
+                .pageGlow()
+                .statusBarsPadding(),
         ) {
+            // Scrolling story; bottom padding reserves the pinned bar's space.
+            Box(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding(),
+                contentAlignment = Alignment.TopCenter,
+            ) {
                 Column(
-                    Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 120.dp),
+                    Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 56.dp, bottom = 120.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    // Hero: bloom + ring.
-                    Box(Modifier.size(256.dp), contentAlignment = Alignment.Center) {
-                        val b = bloom.value
-                        Canvas(
-                            Modifier.fillMaxSize().graphicsLayer {
-                                val s = 0.6f + 0.5f * b
-                                scaleX = s; scaleY = s
-                                alpha = if (b < 0.4f) b / 0.4f else 1f - 0.65f * ((b - 0.4f) / 0.6f)
-                            },
-                        ) {
-                            drawCircle(Brush.radialGradient(listOf(colors.accent.copy(alpha = 0.55f), Color.Transparent)))
+                    // The table: the stack, then everyone picks their phone back up.
+                    // Once the phones have lifted, the art's space folds away so the
+                    // result settles into the upper-middle instead of under a void.
+                    val artH = remember { androidx.compose.animation.core.Animatable(if (reduce) 72f else 200f) }
+                    LaunchedEffect(Unit) {
+                        if (!reduce) {
+                            delay(1150)
+                            artH.animateTo(72f, tween(800, easing = EaseRitual))
                         }
-                        ScoreRing(summary.score, ring.value)
+                    }
+                    Box(Modifier.fillMaxWidth().height(artH.value.dp), contentAlignment = Alignment.Center) {
+                        StackArt(size = 200.dp, phones = 4, liftOff = true, modifier = Modifier.requiredSize(200.dp))
                     }
 
-                    Spacer(Modifier.height(8.dp))
-                    // A clean run leads with the shared win; the tier drops to the subline.
                     val clean = summary.breaches == 0
-                    Text(
-                        if (clean) "The stack held." else tierTitle(summary.tier),
-                        style = MaterialTheme.typography.headlineMedium.copy(fontFamily = SerifFamily),
-                        fontWeight = FontWeight.Normal,
-                        color = colors.textPrimary,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    val minutes = "$mins ${if (mins == 1) "minute" else "minutes"}"
-                    Text(
-                        if (clean) "${tierTitle(summary.tier).removeSuffix(".")} · $minutes · no breaks"
-                        else "$minutes held · " + if (summary.breaches == 1) "1 break" else "${summary.breaches} breaks",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textMuted,
-                        textAlign = TextAlign.Center,
-                    )
-
-                    // Three equal stat tiles.
-                    Spacer(Modifier.height(32.dp))
-                    Row(
-                        Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        val mod = Modifier.weight(1f).fillMaxHeight()
-                        StatTile(tiles >= 1, "XP", "+${xp.value.toInt()}", colors.accent, mod)
-                        StatTile(tiles >= 2, "Time", "${mins}m", colors.textMuted, mod)
-                        if (summary.streak > 0) {
-                            StatTile(tiles >= 3, "Streak", "${summary.streak} ${if (summary.streak == 1) "day" else "days"}", colors.textMuted, mod)
-                        } else {
-                            StatTile(tiles >= 3, "Breaks", "${summary.breaches}", colors.textMuted, mod)
-                        }
+                    Column(Modifier.rise(title.value, 16f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            if (clean) "The stack held."
+                            else "Held, with ${summary.breaches} ${if (summary.breaches == 1) "break" else "breaks"}.",
+                            style = MaterialTheme.typography.displaySmall.copy(fontFamily = SerifFamily),
+                            fontWeight = FontWeight.Normal,
+                            color = colors.textPrimary,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            buildList {
+                                add("$mins ${if (mins == 1) "minute" else "minutes"}")
+                                if (clean) add("no breaks")
+                                if (summary.streak > 0) add("${summary.streak}-day streak")
+                            }.joinToString(" · "),
+                            style = body,
+                            color = colors.textMuted,
+                            textAlign = TextAlign.Center,
+                        )
                     }
 
-                    // Level line.
+                    // Score as a quiet line, not a hero.
                     Spacer(Modifier.height(24.dp))
-                    LevelLine(summary, levelOn)
+                    Row(Modifier.rise(score.value)) {
+                        Text(
+                            "${summary.score}",
+                            style = MaterialTheme.typography.titleLarge.copy(fontFamily = SerifFamily),
+                            fontWeight = FontWeight.Normal,
+                            color = colors.textPrimary,
+                            modifier = Modifier.alignByBaseline(),
+                        )
+                        Text(
+                            " · ${tierTitle(summary.tier).removeSuffix(".")} · ",
+                            style = body, color = colors.textMuted, modifier = Modifier.alignByBaseline(),
+                        )
+                        Text(
+                            "+${xp.value.toInt()} XP",
+                            style = body, fontWeight = FontWeight.SemiBold, color = colors.accent,
+                            modifier = Modifier.alignByBaseline(),
+                        )
+                    }
 
-                    // Extras as quiet rows.
-                    if (extras.isNotEmpty()) {
+                    // Hairline, then the level row.
+                    Spacer(Modifier.height(32.dp))
+                    Column(Modifier.rise(levelIn.value)) {
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(colors.textPrimary.copy(alpha = 0.08f)))
                         Spacer(Modifier.height(24.dp))
+                        LevelRow(summary, level.value)
+                    }
+
+                    if (friends.isNotEmpty()) {
+                        Spacer(Modifier.height(24.dp))
+                        HeldWithYou(friends, Modifier.rise(held.value))
+                    }
+
+                    // Extras as quiet rows; slots are reserved so nothing shifts.
+                    if (extras.isNotEmpty()) {
+                        Spacer(Modifier.height(16.dp))
                         extras.forEachIndexed { i, e ->
-                            AnimatedVisibility(
-                                visible = extrasShown > i,
-                                enter = fadeIn(tween(320, easing = EaseRitual)) +
-                                    slideInVertically(tween(320, easing = EaseRitual)) { it / 3 },
-                            ) { ExtraRow(e) }
+                            ExtraRow(e, if (i == sweepIndex) sweep.value else 0f, Modifier.rise(rows[i].value))
                         }
                     }
 
                     if (onReflect != null) {
                         Spacer(Modifier.height(32.dp))
-                        ReflectChips(onReflect)
+                        ReflectChips(onReflect, Modifier.rise(tail.value))
                     }
                 }
-        }
+            }
 
-            // Pinned action over a fade; space always reserved, button fades in.
+            // Pinned action over a fade; space always reserved, button fades in last.
             Box(
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -233,14 +279,18 @@ fun SessionCeremony(
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                val a by animateFloatAsState(if (ctaOn) 1f else 0f, tween(400, easing = EaseRitual), label = "cta")
-                Box(Modifier.widthIn(max = 420.dp).graphicsLayer { alpha = a }) {
+                Box(Modifier.widthIn(max = 420.dp).graphicsLayer { alpha = tail.value }) {
                     EmberButton(text = "Continue", onClick = onContinue, enabled = ctaOn)
                 }
             }
-
-        if (summary.score >= 80 && tiles > 0) Confetti(modifier = Modifier.fillMaxSize())
+        }
     }
+}
+
+/** Fade + short upward drift, driven by an eased 0..1 progress. */
+private fun Modifier.rise(p: Float, dy: Float = 12f) = graphicsLayer {
+    alpha = p
+    translationY = (1f - p) * dy * density
 }
 
 private fun tierTitle(tier: String) = when (tier.lowercase()) {
@@ -251,113 +301,97 @@ private fun tierTitle(tier: String) = when (tier.lowercase()) {
     else -> tier.replace('_', ' ').replaceFirstChar { it.uppercase() } + "."
 }
 
-/** Score as a filling arc; the number counts with the arc. */
+/** "Level 7 ──── 380 / 600": the slim bar fills from before this session to now. */
 @Composable
-private fun ScoreRing(score: Int, p: Float) {
-    val colors = Stackd.colors
-    Box(Modifier.size(176.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val stroke = 12.dp.toPx()
-            val inset = stroke / 2
-            val arc = Size(size.width - stroke, size.height - stroke)
-            drawArc(colors.textPrimary.copy(alpha = 0.07f), -90f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
-            drawArc(
-                colors.accent,
-                -90f, 360f * (score / 100f) * p, false, Offset(inset, inset), arc,
-                style = Stroke(stroke, cap = StrokeCap.Round),
-            )
-        }
-        Text(
-            "${(score * p).toInt()}",
-            style = MaterialTheme.typography.displayLarge.copy(fontFamily = SerifFamily, fontSize = 64.sp),
-            fontWeight = FontWeight.Normal,
-            color = colors.textPrimary,
-        )
-    }
-}
-
-@Composable
-private fun StatTile(visible: Boolean, label: String, value: String, labelColor: Color, modifier: Modifier) {
-    val colors = Stackd.colors
-    // Spring pop driven by state so the tile keeps its slot (equal heights).
-    val p by animateFloatAsState(
-        if (visible) 1f else 0f,
-        spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow),
-        label = "tile",
-    )
-    Column(
-        modifier
-            .graphicsLayer {
-                val s = 0.8f + 0.2f * p
-                scaleX = s; scaleY = s
-                alpha = p.coerceIn(0f, 1f)
-            }
-            .clip(RoundedCornerShape(16.dp))
-            .background(colors.textPrimary.copy(alpha = 0.04f))
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
-            .padding(horizontal = 8.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = labelColor, maxLines = 1)
-        Spacer(Modifier.height(8.dp))
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = colors.textPrimary, maxLines = 1)
-    }
-}
-
-@Composable
-private fun LevelLine(summary: SessionSummary, on: Boolean) {
+private fun LevelRow(summary: SessionSummary, p: Float) {
     val colors = Stackd.colors
     val span = summary.levelXpSpan.coerceAtLeast(1).toFloat()
     val now = (summary.levelXpInto / span).coerceIn(0f, 1f)
     val before = ((summary.levelXpInto - summary.xpEarned).coerceAtLeast(0) / span).coerceIn(0f, 1f)
-    val fill by animateFloatAsState(if (on) now else before, tween(700, easing = EaseRitual), label = "level")
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            val prestige = if (summary.prestige > 0) "P${summary.prestige} · " else ""
-            Text("${prestige}Level ${summary.level}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
-            Text("${summary.levelXpInto} / ${summary.levelXpSpan} XP", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
-        }
-        Spacer(Modifier.height(8.dp))
-        Box(Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(colors.textPrimary.copy(alpha = 0.07f))) {
+    val fill = before + (now - before) * p
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        val prestige = if (summary.prestige > 0) "P${summary.prestige} · " else ""
+        Text("${prestige}Level ${summary.level}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+        Spacer(Modifier.width(16.dp))
+        Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(colors.textPrimary.copy(alpha = 0.07f))) {
             // Gained segment (brighter) under the prior progress.
             Box(Modifier.fillMaxWidth(fill).fillMaxHeight().clip(CircleShape).background(colors.textPrimary.copy(alpha = 0.85f)))
             Box(Modifier.fillMaxWidth(before).fillMaxHeight().clip(CircleShape).background(colors.textPrimary.copy(alpha = 0.35f)))
         }
+        Spacer(Modifier.width(16.dp))
+        Text("${summary.levelXpInto} / ${summary.levelXpSpan}", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
     }
 }
 
-private class Extra(val icon: ImageVector, val title: String, val sub: String?, val accent: Boolean, val sound: Sfx.Kind?)
+/** Friends who also finished a stack today: overlapping avatars + first names. */
+@Composable
+private fun HeldWithYou(friends: List<FriendFinish>, modifier: Modifier) {
+    val colors = Stackd.colors
+    val shown = friends.take(4)
+    Column(modifier.fillMaxWidth()) {
+        Text("Held with you", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.textMuted)
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+                shown.forEach { f ->
+                    Avatar(f.avatarUrl, f.displayName, 32.dp, Modifier.border(2.dp, colors.background, CircleShape))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            val names = shown.joinToString(", ") {
+                it.displayName?.substringBefore(' ')?.takeIf { n -> n.isNotBlank() } ?: "A friend"
+            } + if (friends.size > shown.size) " +${friends.size - shown.size}" else ""
+            Text(names, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** [award] rows (achievements, milestones) are eligible for the one light sweep. */
+private class Extra(val icon: ImageVector, val title: String, val sub: String?, val accent: Boolean, val award: Boolean = false)
 
 private fun extrasFor(s: SessionSummary): List<Extra> = buildList {
-    s.achievements.forEachIndexed { i, a ->
-        add(Extra(Lucide.Award, a.name, a.description.takeIf { it.isNotBlank() }, true, if (i == 0) Sfx.Kind.ACHIEVEMENT else null))
+    s.achievements.forEach { a ->
+        add(Extra(Lucide.Award, a.name, a.description.takeIf { it.isNotBlank() }, true, award = true))
     }
-    s.milestones.forEachIndexed { i, m ->
-        val sound = if (i == 0 && s.achievements.isEmpty()) Sfx.Kind.ACHIEVEMENT else null
-        add(Extra(Lucide.Trophy, m.name, m.description.takeIf { it.isNotBlank() }, true, sound))
+    s.milestones.forEach { m ->
+        add(Extra(Lucide.Trophy, m.name, m.description.takeIf { it.isNotBlank() }, true, award = true))
     }
     if (s.rankNow != s.rankBefore) {
         val delta = s.rankBefore - s.rankNow
         if (delta > 0) {
-            add(Extra(Lucide.TrendingUp, "Up $delta ${if (delta == 1) "place" else "places"}", "Now #${s.rankNow} on the board", true, Sfx.Kind.SUCCESS))
+            add(Extra(Lucide.TrendingUp, "Up $delta ${if (delta == 1) "place" else "places"}", "Now #${s.rankNow} on the board", true))
         } else {
-            add(Extra(Lucide.TrendingUp, "Now #${s.rankNow} on the board", null, false, null))
+            add(Extra(Lucide.TrendingUp, "Now #${s.rankNow} on the board", null, false))
         }
-    }
-    if (s.friendsFinished.isNotEmpty()) {
-        val names = s.friendsFinished.take(3).joinToString(", ") {
-            it.displayName?.substringBefore(' ')?.takeIf { n -> n.isNotBlank() } ?: "A friend"
-        }
-        add(Extra(Lucide.Users, "$names also focused today", null, false, null))
     }
 }
 
 @Composable
-private fun ExtraRow(e: Extra) {
+private fun ExtraRow(e: Extra, sweep: Float, modifier: Modifier) {
     val colors = Stackd.colors
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
-            Modifier.size(40.dp).background(colors.textPrimary.copy(alpha = 0.04f), CircleShape).border(1.dp, colors.border, CircleShape),
+            Modifier
+                .size(40.dp)
+                .glassSurface(CircleShape)
+                .clip(CircleShape)
+                .drawWithContent {
+                    drawContent()
+                    // One diagonal band of ember light crossing the chip, like a glint.
+                    if (sweep > 0f && sweep < 1f) {
+                        val w = size.width
+                        val x = -w + sweep * 3f * w
+                        drawRect(
+                            Brush.linearGradient(
+                                0f to Color.Transparent,
+                                0.5f to colors.accentGlow.copy(alpha = 0.45f),
+                                1f to Color.Transparent,
+                                start = Offset(x - w * 0.5f, 0f),
+                                end = Offset(x + w * 0.5f, size.height),
+                            ),
+                        )
+                    }
+                },
             contentAlignment = Alignment.Center,
         ) {
             Icon(e.icon, null, tint = if (e.accent) colors.accent else colors.textMuted, modifier = Modifier.size(20.dp))
@@ -373,11 +407,11 @@ private fun ExtraRow(e: Extra) {
 /** "How did it feel?" — one tap, last pick wins, ember when selected. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReflectChips(onReflect: (String) -> Unit) {
+private fun ReflectChips(onReflect: (String) -> Unit, modifier: Modifier) {
     val colors = Stackd.colors
     var picked by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("How did it feel?", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("How did it feel?", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
         Spacer(Modifier.height(16.dp))
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -412,5 +446,5 @@ internal fun sampleSessionSummary() = SessionSummary(
     lifetimeXp = 2860, prestige = 0, level = 7, levelXpInto = 380, levelXpSpan = 600, streak = 3,
     achievements = listOf(app.stackd.data.recap.AwardCard("deep", "Deep Diver", "Held a 45-minute stack")),
     milestones = emptyList(), rankNow = 12, rankBefore = 15, personality = null,
-    friendsFinished = emptyList(),
+    friendsFinished = listOf(FriendFinish("a", "Maya Chen", null, 420), FriendFinish("b", "Theo Park", null, 300)),
 )

@@ -1,5 +1,9 @@
 package app.stackd.feature.dashboard
 
+import app.stackd.core.ui.pageGlow
+
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -42,7 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -87,7 +95,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 // ponytail: fixed daily goal; make it a profile setting when users ask to tune it.
-private const val DAILY_GOAL_MIN = 60
+internal const val DAILY_GOAL_MIN = 60
 
 /** One-tap rituals under the hero: label (also the prefilled title) to minutes. */
 private val RITUALS = listOf("Quick focus" to 25, "Deep work" to 90, "Dinner" to 60)
@@ -184,10 +192,13 @@ fun DashboardScreen(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
+            // Landing-page light: one ember glow washing the whole screen from
+            // the top, fading slowly to black. Fixed behind the scroll.
+            .pageGlow()
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn(maxContentWidth = WIDE_MAX_CONTENT_WIDTH) {
-            TodayHero(state = state, onStart = onStart, onMore = { showMenu = true })
+            HomeHeroV3(state = state, onStart = onStart, onMore = { showMenu = true })
             Spacer(Modifier.height(16.dp))
             RitualChips(onQuickStart)
 
@@ -209,13 +220,7 @@ fun DashboardScreen(
                 )
             }
 
-            TodayStrip(
-                reward = state.reward,
-                claiming = state.claiming,
-                notice = state.claimNotice,
-                challengeProgress = state.greeting.challengeProgress,
-                onClaim = onClaimReward,
-            )
+            // Home reads in time order: now (above) -> recent -> long-term (tail).
             Spacer(Modifier.height(36.dp))
 
             when {
@@ -269,7 +274,21 @@ fun DashboardScreen(
                         Section("Open rooms") { MyRooms(state, openRooms, onOpenRoom, onMyRoomsPage) }
                     }
                     if (!state.isEmpty) {
-                        Section("This week") { Tile { WeekBars(state.history) } }
+                        val weekEmpty = remember(state.history) {
+                            weekMinutes(state.history, LocalDate.now(), ZoneId.systemDefault()).sum() == 0
+                        }
+                        Section("This week") {
+                            if (weekEmpty) {
+                                // Seven empty bars read as failure; one calm line reads as a start.
+                                Text(
+                                    "Your week is empty. Your first Stack starts it.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textMuted,
+                                )
+                            } else {
+                                Tile { WeekBars(state.history) }
+                            }
+                        }
                         // Sub-minute test sessions are noise on Home; Timeline keeps them.
                         val last = remember(state.history) {
                             state.history.firstOrNull { it.durationSeconds >= 60 }
@@ -284,13 +303,21 @@ fun DashboardScreen(
                 }
             }
 
-            // Quiet tail: upsell and prestige matter, but not more than the ledger.
+            // Quiet long-term tail: reward cycle, prestige, then the upsell.
             if (!state.loading) {
-                if (state.isPremium == false && !state.upgradeDismissed) {
-                    UpgradeRow(onOpenPremium = onOpenPremium, onDismiss = onDismissUpgrade)
-                    Spacer(Modifier.height(12.dp))
-                }
+                TodayStrip(
+                    reward = state.reward,
+                    claiming = state.claiming,
+                    notice = state.claimNotice,
+                    challengeProgress = state.greeting.challengeProgress,
+                    onClaim = onClaimReward,
+                )
+                Spacer(Modifier.height(12.dp))
                 state.prestige?.let { PrestigeCard(it, state.ascending, state.prestigeNotice, onAscend) }
+                if (state.isPremium == false && !state.upgradeDismissed) {
+                    Spacer(Modifier.height(12.dp))
+                    UpgradeRow(onOpenPremium = onOpenPremium, onDismiss = onDismissUpgrade)
+                }
             }
         }
     }
@@ -300,6 +327,7 @@ fun DashboardScreen(
         NavMenuSheet(
             onDismiss = { showMenu = false },
             entries = menuEntries + ("Export focus history (CSV)" to onExportCsv),
+            statuses = rememberMenuStatuses(state),
         )
     }
 }
@@ -354,7 +382,6 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
                 Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)),
                 Radius2Xl,
             )
-            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 20.dp),
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -485,7 +512,7 @@ private fun GoalRing(minutes: Int, goal: Int, modifier: Modifier = Modifier) {
 }
 
 /** Sum of focused seconds on one local calendar day. */
-private fun focusSecondsOn(history: List<FocusHistoryRow>, day: LocalDate, zone: ZoneId): Int =
+internal fun focusSecondsOn(history: List<FocusHistoryRow>, day: LocalDate, zone: ZoneId): Int =
     history.sumOf { row ->
         val onDay = parseIsoMillis(row.createdAt)
             ?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() == day } == true
@@ -512,7 +539,6 @@ private fun SuggestedSession(
             .fillMaxWidth()
             .tappable(onClick = onStart)
             .background(colors.surface, Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.22f), Radius2Xl)
             .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -543,7 +569,7 @@ private fun SuggestedSession(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                rec.rationale,
+                humanRationale(rec.rationale),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textMuted,
                 maxLines = 2,
@@ -622,6 +648,10 @@ private fun LoadingSkeleton() {
 private fun EmptyLedger() {
     val colors = Stackd.colors
     Tile {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            app.stackd.core.ui.StackArt(size = 160.dp)
+        }
+        Spacer(Modifier.height(8.dp))
         Text(
             "Your first session writes the first line",
             style = MaterialTheme.typography.titleMedium,
@@ -681,8 +711,7 @@ private fun MyRooms(
                 modifier = Modifier
                     .fillMaxWidth()
                     .tappable { onOpenRoom(room.code) }
-                    .background(colors.textPrimary.copy(alpha = 0.03f), RadiusMd)
-                    .border(1.dp, colors.border, RadiusMd)
+                    .glassSurface(RadiusMd)
                     .heightIn(min = 56.dp)
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -766,8 +795,7 @@ private fun LastStack(h: FocusHistoryRow, onOpenRoom: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .then(if (code != null) Modifier.tappable { onOpenRoom(code) } else Modifier)
-            .background(colors.textPrimary.copy(alpha = 0.03f), RadiusMd)
-            .border(1.dp, colors.border, RadiusMd)
+            .glassSurface(RadiusMd)
             .heightIn(min = 56.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .semantics(mergeDescendants = true) {},
@@ -784,7 +812,7 @@ private fun LastStack(h: FocusHistoryRow, onOpenRoom: (String) -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "${h.durationSeconds / 60}m · ${h.score}",
+                "${minutesLabel(h.durationSeconds / 60)} · ${h.score}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = scoreColor(h.score.toDouble()),
             )
@@ -793,17 +821,39 @@ private fun LastStack(h: FocusHistoryRow, onOpenRoom: (String) -> Unit) {
     }
 }
 
-/** Horizontally scrolling ritual pills; each opens Start pre-filled. */
+/**
+ * Horizontally scrolling ritual tiles (name over duration); each opens Start
+ * pre-filled. The row fades out at its right edge so a clipped tile reads as
+ * "more this way", not as a layout bug.
+ */
 @Composable
 private fun RitualChips(onQuickStart: (minutes: Int, title: String) -> Unit) {
     val colors = Stackd.colors
     Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        modifier = Modifier
+            .fillMaxWidth()
+            // Offscreen + DstOut: a true alpha fade, so the page glow shows through.
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+            .drawWithContent {
+                drawContent()
+                val fade = 48.dp.toPx()
+                drawRect(
+                    Brush.horizontalGradient(
+                        listOf(Color.Transparent, Color.Black),
+                        startX = size.width - fade,
+                        endX = size.width,
+                    ),
+                    topLeft = Offset(size.width - fade, 0f),
+                    size = Size(fade, size.height),
+                    blendMode = BlendMode.DstOut,
+                )
+            }
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         RITUALS.forEach { (label, minutes) ->
             val source = remember { MutableInteractionSource() }
-            Box(
+            Column(
                 modifier = Modifier
                     .pressFeedback(source, sound = Sfx.Kind.SELECT)
                     .clickable(
@@ -812,14 +862,17 @@ private fun RitualChips(onQuickStart: (minutes: Int, title: String) -> Unit) {
                         role = Role.Button,
                         onClick = { onQuickStart(minutes, label) },
                     )
-                    .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape)
-                    .heightIn(min = 40.dp)
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.Center,
+                    .background(colors.textPrimary.copy(alpha = 0.05f), RadiusMd)
+                    .heightIn(min = 56.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.Center,
             ) {
-                Text("$label · ${minutes}m", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                Text(minutesLabel(minutes), style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
             }
         }
+        // Lets the last tile scroll clear of the fade.
+        Spacer(Modifier.width(32.dp))
     }
 }
 
@@ -875,8 +928,7 @@ private fun Tile(modifier: Modifier = Modifier, content: @Composable () -> Unit)
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(20.dp),
     ) { content() }
 }
@@ -888,7 +940,6 @@ private fun UpgradeRow(onOpenPremium: () -> Unit, onDismiss: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, colors.border, RadiusMd)
             .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -930,7 +981,6 @@ private fun PrestigeCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, colors.border, RadiusMd)
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1032,9 +1082,27 @@ internal fun Modifier.tappable(enabled: Boolean = true, onClick: () -> Unit): Mo
         )
 }
 
+/** Human date: "Sep 9", with the year only when it isn't this year. */
 private fun shortDate(iso: String?): String {
     val ms = parseIsoMillis(iso) ?: return "—"
-    return Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
-        .toLocalDate()
-        .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT))
+    val day = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).toLocalDate()
+    val pattern = if (day.year == LocalDate.now().year) "MMM d" else "MMM d, yyyy"
+    return day.format(java.time.format.DateTimeFormatter.ofPattern(pattern))
+}
+
+/** Focus time in Home's units: "18m" under an hour, "1h 20m" above. */
+private fun minutesLabel(m: Int): String = if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m"
+
+/**
+ * Atlas's local heuristic explains itself in numbers ("Averaging 18/100 across
+ * 13 sessions at 1 min. Shorter, cleaner runs first."). Say it like a person;
+ * anything else (e.g. the LLM's own sentence) passes through untouched.
+ */
+internal fun humanRationale(text: String): String {
+    val score = Regex("""Averaging (\d+)/100""").find(text)?.groupValues?.get(1)?.toIntOrNull() ?: return text
+    return if (score >= 80) {
+        "You've been holding focus well. You're ready to go a little longer."
+    } else {
+        "Your recent sessions hold better when they're short and clean."
+    }
 }

@@ -12,7 +12,13 @@ val Obsidian = Color(0xFF0A0A0A)
 val Obsidian2 = Color(0xFF111111)
 val Obsidian3 = Color(0xFF181818)
 
-val Silver = Color(0xFFE2E2E2)
+// Warm ivory, not stark white: the primary fill (buttons, Start pill) and the
+// body-text tone. Name kept so every caller picks it up.
+val Silver = Color(0xFFE9E1D3)
+/** Body text, a touch lighter than the fill so it reads on obsidian. */
+val Ivory = Color(0xFFEDE6DA)
+/** Ink on an ivory fill (~16:1 contrast). */
+val IvoryInk = Color(0xFF1A140E)
 val SilverDim = Color(0xFF9A9A9A)
 
 val Muted = Color(0xFF404040)
@@ -39,7 +45,7 @@ data class StackdColors(
     val background: Color = Obsidian,
     val surface: Color = Obsidian2,
     val surfaceRaised: Color = Obsidian3,
-    val textPrimary: Color = Silver,
+    val textPrimary: Color = Ivory,
     val textMuted: Color = SilverDim,
     val divider: Color = Muted,
     val surfaceInset: Color = Muted2,

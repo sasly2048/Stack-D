@@ -2,8 +2,13 @@ package app.stackd.feature.insights
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
@@ -82,5 +87,39 @@ fun FocusRadar(traits: List<AnalyticsEngine.Trait>, modifier: Modifier = Modifie
             val p = point(i, 1.18f)
             drawContext.canvas.nativeCanvas.drawText(t.label, p.x, p.y, paint)
         }
+    }
+}
+
+private val RADAR_TIPS = mapOf(
+    "Depth" to "Try one longer Stack this week.",
+    "Precision" to "Hold each Stack all the way through to lift your score.",
+    "Discipline" to "Pick a length you can hold clean, then build from there.",
+    "Flow" to "Protect one quiet window for an uninterrupted Stack.",
+    "Consistency" to "Try shorter daily Stacks.",
+    "Volume" to "Add one more Stack to your week.",
+)
+
+/** "Strongest: X · Weakest: Y" plus a tip for the weakest axis; null when there's no shape yet. */
+internal fun radarReading(traits: List<AnalyticsEngine.Trait>): Pair<String, String?>? {
+    val strongest = traits.maxByOrNull { it.value } ?: return null
+    val weakest = traits.minByOrNull { it.value } ?: return null
+    if (strongest.value == weakest.value) return null
+    return "Strongest: ${strongest.label} · Weakest: ${weakest.label}" to RADAR_TIPS[weakest.label]
+}
+
+/** One interpretation line under the radar so the shape turns into an action. */
+@Composable
+fun FocusRadarReading(traits: List<AnalyticsEngine.Trait>) {
+    val (line, tip) = radarReading(traits) ?: return
+    val colors = Stackd.colors
+    Text(
+        line,
+        style = MaterialTheme.typography.bodyMedium,
+        color = colors.textPrimary,
+        fontWeight = FontWeight.SemiBold,
+    )
+    tip?.let {
+        Spacer(Modifier.height(4.dp))
+        Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
     }
 }

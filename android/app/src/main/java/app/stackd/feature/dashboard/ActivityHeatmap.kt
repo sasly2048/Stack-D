@@ -88,6 +88,16 @@ fun ActivityHeatmap(history: List<FocusHistoryRow>, weeks: Int = 26) {
     }
 }
 
+/** Focus minutes for each day (Mon..Sun) of [today]'s week. */
+internal fun weekMinutes(history: List<FocusHistoryRow>, today: LocalDate, zone: ZoneId): List<Int> {
+    val monday = today.minusDays(today.dayOfWeek.value - 1L)
+    val byDay = history.groupBy(
+        { row -> parseIsoMillis(row.createdAt)?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() } },
+        { it.durationSeconds / 60 },
+    )
+    return (0..6).map { byDay[monday.plusDays(it.toLong())]?.sum() ?: 0 }
+}
+
 /**
  * Home's at-a-glance week: seven bars, Monday–Sunday, today highlighted.
  * Replaces the 26-week heatmap on Home — a mostly-empty half-year grid reads
@@ -99,14 +109,7 @@ fun WeekBars(history: List<FocusHistoryRow>) {
     val zone = remember { ZoneId.systemDefault() }
     val today = remember { LocalDate.now(zone) }
     val todayIdx = today.dayOfWeek.value - 1
-    val minutes = remember(history, today) {
-        val monday = today.minusDays(todayIdx.toLong())
-        val byDay = history.groupBy(
-            { row -> parseIsoMillis(row.createdAt)?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() } },
-            { it.durationSeconds / 60 },
-        )
-        (0..6).map { byDay[monday.plusDays(it.toLong())]?.sum() ?: 0 }
-    }
+    val minutes = remember(history, today) { weekMinutes(history, today, zone) }
     val total = minutes.sum()
     val max = maxOf(30, minutes.max())
     val grow = remember { Animatable(0f) }

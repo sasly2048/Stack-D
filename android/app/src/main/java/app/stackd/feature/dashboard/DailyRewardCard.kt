@@ -1,5 +1,7 @@
 package app.stackd.feature.dashboard
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -51,14 +53,10 @@ fun TodayStrip(
     if (reward == null && !showChallenge) return
     val colors = Stackd.colors
     Column(Modifier.fillMaxWidth()) {
-        Spacer(Modifier.height(12.dp))
-        // IntrinsicSize.Min so both chips share the taller one's height.
-        Row(
-            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            reward?.let { RewardChip(it, claiming, onClaim, Modifier.weight(1f).fillMaxHeight()) }
-            if (showChallenge) ChallengeChip(challengeProgress, Modifier.weight(1f).fillMaxHeight())
+        // Stacked full-width: the reward needs room to explain itself.
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            reward?.let { RewardChip(it, claiming, onClaim, Modifier.fillMaxWidth()) }
+            if (showChallenge) ChallengeChip(challengeProgress, Modifier.fillMaxWidth())
         }
         notice?.let {
             Spacer(Modifier.height(8.dp))
@@ -81,9 +79,11 @@ private fun RewardChip(
 ) {
     val colors = Stackd.colors
     val claimable = !reward.claimedToday && !claiming
-    // Days of the 7-day cycle already banked. After claiming day 7 the next
-    // day wraps to 1, which would read as an empty cycle, so show it full.
-    val banked = (reward.nextDayOfStreak - 1).let { if (reward.claimedToday && it == 0) DAILY_REWARDS.size else it }
+    // nextDayOfStreak is today's day in the 7-day cycle (the one claimed, or
+    // the one waiting); nextRewardXp is that day's reward.
+    val day = reward.nextDayOfStreak
+    val banked = if (reward.claimedToday) day else day - 1
+    val tomorrowXp = DAILY_REWARDS[day % DAILY_REWARDS.size]
     Row(
         modifier = modifier
             .tappable(enabled = claimable, onClick = onClaim)
@@ -91,9 +91,8 @@ private fun RewardChip(
                 if (claimable) colors.accent.copy(alpha = 0.10f) else colors.textPrimary.copy(alpha = 0.03f),
                 RadiusMd,
             )
-            .border(1.dp, if (claimable) colors.accent.copy(alpha = 0.4f) else colors.border, RadiusMd)
             .heightIn(min = 56.dp)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -102,38 +101,51 @@ private fun RewardChip(
             tint = if (claimable) colors.accent else colors.textMuted,
             modifier = Modifier.size(20.dp),
         )
-        Spacer(Modifier.width(10.dp))
-        Column {
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
             Text(
-                when {
-                    reward.claimedToday -> "Reward claimed"
-                    claiming -> "Claiming…"
-                    else -> "Claim +${reward.nextRewardXp} XP"
-                },
-                // Web renders the reward line in its serif ("+10 XP waiting").
-                style = MaterialTheme.typography.titleMedium,
-                fontFamily = app.stackd.core.theme.SerifFamily,
+                "Today's reward · +${reward.nextRewardXp} XP",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
                 color = colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                repeat(DAILY_REWARDS.size) { i ->
-                    val today = !reward.claimedToday && i + 1 == reward.nextDayOfStreak
-                    Box(
-                        Modifier
-                            .size(6.dp)
-                            .background(
-                                when {
-                                    i < banked -> colors.accent
-                                    today -> colors.accent.copy(alpha = 0.45f)
-                                    else -> colors.textPrimary.copy(alpha = 0.12f)
-                                },
-                                CircleShape,
-                            ),
-                    )
+            Text(
+                when {
+                    reward.claimedToday -> "Claimed — next reward tomorrow (+$tomorrowXp XP)"
+                    claiming -> "Claiming…"
+                    else -> "Claim +${reward.nextRewardXp} XP"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (claimable) colors.accent else colors.textMuted,
+            )
+            Spacer(Modifier.height(8.dp))
+            // The dots are the 7-day cycle of daily rewards: one per day claimed in a row.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    repeat(DAILY_REWARDS.size) { i ->
+                        val today = !reward.claimedToday && i + 1 == day
+                        Box(
+                            Modifier
+                                .size(6.dp)
+                                .background(
+                                    when {
+                                        i < banked -> colors.accent
+                                        today -> colors.accent.copy(alpha = 0.45f)
+                                        else -> colors.textPrimary.copy(alpha = 0.12f)
+                                    },
+                                    CircleShape,
+                                ),
+                        )
+                    }
                 }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Day $day of ${DAILY_REWARDS.size} · daily streak",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted,
+                )
             }
         }
     }
@@ -145,8 +157,7 @@ private fun ChallengeChip(progress: Float, modifier: Modifier) {
     val done = progress >= 1f
     Row(
         modifier = modifier
-            .background(colors.textPrimary.copy(alpha = 0.03f), RadiusMd)
-            .border(1.dp, colors.border, RadiusMd)
+            .glassSurface(RadiusMd)
             .heightIn(min = 56.dp)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,

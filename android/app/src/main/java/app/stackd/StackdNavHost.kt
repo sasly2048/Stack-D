@@ -74,22 +74,22 @@ fun StackdNavHost(
         startDestination = startDestination,
         modifier = modifier,
         enterTransition = {
-            if (isTabSwap(initialState, targetState)) vtIn else
+            if (isTabSwap(initialState, targetState)) androidx.compose.animation.EnterTransition.None else
             androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 4 } +
                 androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(320, easing = ease))
         },
         exitTransition = {
-            if (isTabSwap(initialState, targetState)) vtOut else
+            if (isTabSwap(initialState, targetState)) androidx.compose.animation.ExitTransition.None else
             androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { -it / 10 } +
                 androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160))
         },
         popEnterTransition = {
-            if (isTabSwap(initialState, targetState)) vtIn else
+            if (isTabSwap(initialState, targetState)) androidx.compose.animation.EnterTransition.None else
             androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { -it / 10 } +
                 androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(320, easing = ease))
         },
         popExitTransition = {
-            if (isTabSwap(initialState, targetState)) vtOut else
+            if (isTabSwap(initialState, targetState)) androidx.compose.animation.ExitTransition.None else
             androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 4 } +
                 androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160))
         },

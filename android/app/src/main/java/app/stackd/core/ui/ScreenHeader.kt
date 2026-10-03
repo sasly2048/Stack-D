@@ -23,7 +23,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import app.stackd.core.theme.MonoLabel
+import app.stackd.core.theme.TechLabel
 import app.stackd.core.theme.Stackd
 
 /**
@@ -77,7 +77,7 @@ fun ScreenHeader(
         }
         Text(
             path,
-            style = MonoLabel,
+            style = TechLabel,
             color = colors.textMuted,
             // Pulled over the 48dp target's padding: chevron stroke on the content
             // edge, ~10dp to the label.

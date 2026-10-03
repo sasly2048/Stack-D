@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -204,6 +205,9 @@ class DashboardViewModel(
 
     private fun cacheKey(userId: String) = "dashboard:$userId"
 
+    /** One automatic retry when a load comes back without a profile (auth race). */
+    private var retriedEmpty = false
+
     fun load() {
         val userId = auth.currentUserId
         if (userId == null) {
@@ -242,6 +246,13 @@ class DashboardViewModel(
             }
         }
         viewModelScope.launch {
+            // Cold start after the access token expired: the SDK refreshes it
+            // asynchronously, and queries fired meanwhile run as anon — RLS then
+            // returns EMPTY rows (not an error), which painted "Evening, You." with
+            // no history and got cached. Wait for a confirmed session first.
+            kotlinx.coroutines.withTimeoutOrNull(10_000) {
+                auth.sessionStatus.first { it is io.github.jan.supabase.auth.status.SessionStatus.Authenticated }
+            }
             runCatching {
                 // Three independent reads — fan them out, mirroring the web's
                 // Promise.all, so the slowest one bounds the wait, not the sum.
@@ -270,6 +281,18 @@ class DashboardViewModel(
                 }
             }.fold(
                 onSuccess = { (profile, history, live, reward, myRooms) ->
+                    // A signed-in user always has a profile row. None back means
+                    // the reads ran unauthenticated: keep what's on screen, don't
+                    // cache the empty result, and retry once shortly.
+                    if (profile == null) {
+                        _state.value = _state.value.copy(loading = false, error = cached == null && !fromDisk && _state.value.history.isEmpty())
+                        if (!retriedEmpty) {
+                            retriedEmpty = true
+                            kotlinx.coroutines.delay(2_000)
+                            load()
+                        }
+                        return@fold
+                    }
                     // Copy over current state (not a fresh instance) so the
                     // concurrently-fetched AI fields aren't wiped if they landed
                     // before this load's fan-out returned. Clear the transient

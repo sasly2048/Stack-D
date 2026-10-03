@@ -130,7 +130,12 @@ fun AuthScreen(
             style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
         )
-        Spacer(Modifier.height(48.dp))
+        // First impression: the ritual itself, drawn — phones landing on the stack.
+        app.stackd.core.ui.StackArt(
+            size = 220.dp,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 8.dp),
+        )
+        Spacer(Modifier.height(16.dp))
 
         Column(modifier = Modifier.widthIn(max = 480.dp).align(Alignment.CenterHorizontally)) {
             SectionLabel(

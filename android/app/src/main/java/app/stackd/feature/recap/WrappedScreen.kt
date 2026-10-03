@@ -1,5 +1,7 @@
 package app.stackd.feature.recap
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -176,8 +178,7 @@ fun WrappedScreen(
                             modifier = Modifier
                                 .weight(1.15f)
                                 .fillMaxHeight()
-                                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                                .border(1.dp, colors.border, Radius2Xl)
+                                .glassSurface(Radius2Xl)
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -252,8 +253,7 @@ private fun StatTile(label: String, value: String, modifier: Modifier = Modifier
     val colors = Stackd.colors
     Column(
         modifier = modifier
-            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Text(label, style = MonoLabelSmall, color = colors.textMuted, maxLines = 1)

@@ -23,6 +23,8 @@ data class PremiumUiState(
     /** Feedback from the last coupon attempt, shown inline. */
     val redeemMessage: String? = null,
     val redeemSucceeded: Boolean = false,
+    /** Name engraved on the member card; null until (or unless) the profile loads. */
+    val holderName: String? = null,
 )
 
 /** The web's `RedeemResult` → user copy map, verbatim. */
@@ -52,6 +54,14 @@ class PremiumViewModel(private val container: AppContainer) : ViewModel() {
         // shows data instantly instead of a spinner, then revalidate below.
         val cached: PremiumUiState? = container.cache.get(cacheKey)
         _state.value = (cached ?: _state.value).copy(loading = cached == null)
+        // Card name only: its own launch so a slow profile read never holds up plans.
+        container.auth.currentUserId?.let { uid ->
+            viewModelScope.launch {
+                val name = runCatching { container.profiles.getProfile(uid)?.displayName }.getOrNull()
+                    ?.takeIf { it.isNotBlank() } ?: return@launch
+                _state.value = _state.value.copy(holderName = name)
+            }
+        }
         viewModelScope.launch {
             val premium = container.premium
             val entRead = runCatching { premium.myEntitlement() }

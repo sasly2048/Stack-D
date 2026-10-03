@@ -1,5 +1,7 @@
 package app.stackd.feature.companion
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -261,8 +263,7 @@ private fun MessageBubble(m: CompanionMessage) {
                 .then(
                     if (isUser) {
                         Modifier
-                            .background(colors.textPrimary.copy(alpha = 0.06f), Radius2Xl)
-                            .border(1.dp, colors.border, Radius2Xl)
+                            .glassSurface(Radius2Xl)
                     } else {
                         Modifier
                     },

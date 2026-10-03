@@ -33,7 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.stackd.core.theme.MonoLabel
 import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.RadiusMd
@@ -66,8 +69,8 @@ fun SectionLabel(
 )
 
 /**
- * Primary call to action — the ONE filled element on a screen. Silver fill,
- * obsidian text, 10dp corners: exactly the web's primary (`--primary` is
+ * Primary call to action — the ONE filled element on a screen. Warm ivory fill (`Silver`),
+ * dark ink text, 10dp corners: exactly the web's primary (`--primary` is
  * silver; "New session" is `bg-silver text-obsidian rounded-lg`). Ember is the
  * web's accent, not its action colour, so it stays off the big buttons.
  */
@@ -80,18 +83,24 @@ fun EmberButton(
     busy: Boolean = false,
 ) {
     val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val ink = app.stackd.core.theme.Obsidian
+    val (fill, click) = rememberFillClick(source, onClick)
+    val on = enabled && !busy
+    val ink = androidx.compose.ui.graphics.lerp(app.stackd.core.theme.IvoryInk, app.stackd.core.theme.Obsidian, fill())
     Button(
-        onClick = onClick,
-        enabled = enabled && !busy,
+        onClick = click,
+        enabled = on,
         shape = app.stackd.core.theme.RadiusLg,
         interactionSource = source,
+        // Container painted here (Button's own is transparent) so the ember
+        // fill can sit between the ivory and the label.
         modifier = modifier.fillMaxWidth().height(54.dp).pressFeedback(source)
-            .clip(app.stackd.core.theme.RadiusLg).emberSweep(source, app.stackd.core.theme.Ember, 0.28f),
+            .clip(app.stackd.core.theme.RadiusLg)
+            .background(app.stackd.core.theme.Silver.copy(alpha = if (on) 1f else 0.18f))
+            .fillSweep(fill, EmberFill, app.stackd.core.theme.EmberGlow.copy(alpha = 0.7f)),
         colors = ButtonDefaults.buttonColors(
-            containerColor = app.stackd.core.theme.Silver,
+            containerColor = Color.Transparent,
             contentColor = ink,
-            disabledContainerColor = app.stackd.core.theme.Silver.copy(alpha = 0.18f),
+            disabledContainerColor = Color.Transparent,
             disabledContentColor = ink.copy(alpha = 0.6f),
         ),
         elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
@@ -103,6 +112,9 @@ fun EmberButton(
         Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold, letterSpacing = pressedTracking(source))
     }
 }
+
+/** Ember gradient the primary fill sweeps in with (web `.btn-ember` band). */
+val EmberFill: Brush = Brush.horizontalGradient(listOf(app.stackd.core.theme.Ember, app.stackd.core.theme.EmberGlow))
 
 /**
  * Ember-outlined action — the web's `.btn-ember` at rest (ember hairline +
@@ -125,7 +137,7 @@ fun AccentButton(
         shape = app.stackd.core.theme.RadiusLg,
         interactionSource = source,
         modifier = modifier.height(48.dp).pressFeedback(source)
-            .clip(app.stackd.core.theme.RadiusLg).emberSweep(source, colors.accent, 0.35f),
+            .clip(app.stackd.core.theme.RadiusLg).fillSweep(rememberPressFill(source), SolidColor(colors.accent.copy(alpha = 0.18f))),
         border = BorderStroke(1.dp, colors.accent.copy(alpha = if (enabled) 0.7f else 0.3f)),
         colors = ButtonDefaults.buttonColors(
             containerColor = colors.accent.copy(alpha = 0.08f),
@@ -160,10 +172,9 @@ fun GhostButton(
         shape = app.stackd.core.theme.RadiusLg,
         interactionSource = source,
         modifier = modifier.fillMaxWidth().height(52.dp).pressFeedback(source)
-            .clip(app.stackd.core.theme.RadiusLg).emberSweep(source, colors.accent, 0.22f),
-        border = BorderStroke(1.dp, colors.textPrimary.copy(alpha = 0.15f)),
+            .clip(app.stackd.core.theme.RadiusLg).fillSweep(rememberPressFill(source), SolidColor(colors.accent.copy(alpha = 0.18f))),
         colors = ButtonDefaults.buttonColors(
-            containerColor = colors.textPrimary.copy(alpha = 0.05f),
+            containerColor = colors.textPrimary.copy(alpha = 0.08f),
             contentColor = colors.textPrimary,
             disabledContainerColor = colors.textPrimary.copy(alpha = 0.03f),
             disabledContentColor = colors.textMuted,
@@ -246,7 +257,7 @@ fun StackdField(
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
             textStyle =
                 if (centeredMono) {
-                    MaterialTheme.typography.labelLarge.copy(textAlign = TextAlign.Center)
+                    app.stackd.core.theme.TechLabel.copy(fontSize = 16.sp, textAlign = TextAlign.Center)
                 } else {
                     MaterialTheme.typography.bodyMedium
                 },

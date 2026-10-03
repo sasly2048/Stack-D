@@ -1,5 +1,7 @@
 package app.stackd.feature.friends
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -313,8 +315,7 @@ private fun PersonRow(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .then(if (onOpen != null) Modifier.pressFeedback(source, pressedScale = 0.98f) else Modifier)
-            .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-            .border(1.dp, colors.border, Radius2Xl)
+            .glassSurface(Radius2Xl)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

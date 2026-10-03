@@ -1,5 +1,7 @@
 package app.stackd.feature.recap
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -361,8 +363,7 @@ private fun TimelineRow(ev: ReplayEvent) {
         Column(
             modifier = Modifier
                 .weight(1f)
-                .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                .border(1.dp, colors.border, Radius2Xl)
+                .glassSurface(Radius2Xl)
                 .padding(12.dp),
         ) {
             Text(

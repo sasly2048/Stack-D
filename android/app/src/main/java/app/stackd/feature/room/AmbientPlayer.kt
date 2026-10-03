@@ -1,5 +1,7 @@
 package app.stackd.feature.room
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -86,8 +88,7 @@ fun AmbientPlayer(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.02f), RadiusMd)
-            .border(1.dp, colors.border, RadiusMd)
+            .glassSurface(RadiusMd)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

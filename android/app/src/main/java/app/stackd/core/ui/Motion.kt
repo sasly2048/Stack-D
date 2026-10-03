@@ -20,9 +20,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -33,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.stackd.core.feedback.Sfx
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Web `--ease-ritual`: every product motion shares this curve. */
 val EaseRitual = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
@@ -71,45 +76,100 @@ fun Modifier.pressFeedback(
     return this.graphicsLayer { scaleX = scale; scaleY = scale }
 }
 
+/** How long the ember fill takes to cross a control (web 1.2s; long enough to be seen, not waited on). */
+private const val FillMs = 650
+
+/** Symmetric ease-in-out: the fill visibly travels instead of jumping on touch-down. */
+private val FillEase = CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
+
 /**
- * Web `.btn-ember` on touch: a 120° band of [color] sweeps left-to-right
- * across the control while it's held, then fades on release. Hover doesn't
- * exist on a phone, so press is the moment it plays. Clip to the control's
- * shape before applying.
+ * Web `.btn-ember` activation on touch: the fill starts growing from the left
+ * edge on touch-down and [onClick] fires only once it has crossed the control.
+ * ONE continuous animation per press: releasing early never restarts it (that
+ * restart was the visible stutter) — the click simply waits for the running
+ * fill to finish, holds full for a beat, then fires. Dragged off (Cancel), it
+ * retracts and nothing fires. After firing it resets 600ms later in case the
+ * control stays on screen; a control that leaves composition starts fresh.
+ *
+ * Returns the fill progress (0..1, read it at draw time) and the click to wire
+ * into the control in place of [onClick].
  */
 @Composable
-fun Modifier.emberSweep(interactionSource: InteractionSource, color: Color, strength: Float = 0.35f): Modifier {
-    val pressed by interactionSource.collectIsPressedAsState()
-    val travel = remember { Animatable(0f) }
-    val alpha = remember { Animatable(0f) }
-    LaunchedEffect(pressed) {
-        if (pressed) {
-            alpha.snapTo(1f)
-            travel.snapTo(0f)
-            travel.animateTo(1f, tween(520, easing = EaseRitual))
-        } else {
-            alpha.animateTo(0f, tween(320, easing = EaseRitual))
+fun rememberFillClick(interactionSource: InteractionSource, onClick: () -> Unit): Pair<() -> Float, () -> Unit> {
+    val fill = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val latest by rememberUpdatedState(onClick)
+    val firing = remember { booleanArrayOf(false) }
+    val run = remember { arrayOfNulls<kotlinx.coroutines.Job>(1) }
+    fun startFill() {
+        if (run[0]?.isActive == true) return
+        val remaining = ((1f - fill.value) * FillMs).toInt()
+        run[0] = scope.launch { if (remaining > 0) fill.animateTo(1f, tween(remaining, easing = FillEase)) }
+    }
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect {
+            if (firing[0]) return@collect
+            when (it) {
+                is PressInteraction.Press -> startFill()
+                is PressInteraction.Cancel -> {
+                    run[0]?.cancel()
+                    launch { fill.animateTo(0f, tween(260, easing = FillEase)) }
+                }
+            }
         }
     }
-    return drawWithContent {
-        drawContent()
-        val a = alpha.value
-        if (a > 0f) {
-            val w = size.width
-            val x = (travel.value - 1f) * w
+    val click: () -> Unit = {
+        if (!firing[0]) {
+            firing[0] = true
+            scope.launch {
+                startFill()          // no-op if the press already started it
+                run[0]?.join()       // wait for the same fill, never restart it
+                delay(120)           // a beat on full so the completion registers
+                latest()
+                delay(600)
+                fill.snapTo(0f)
+                firing[0] = false
+            }
+        }
+    }
+    return remember(fill) { { fill.value } } to click
+}
+
+/**
+ * The light variant for secondary buttons: the fill sweeps across while held
+ * and fades back on release; the click is not delayed.
+ */
+@Composable
+fun rememberPressFill(interactionSource: InteractionSource): () -> Float {
+    val pressed by interactionSource.collectIsPressedAsState()
+    val fill = remember { Animatable(0f) }
+    LaunchedEffect(pressed) {
+        if (pressed) fill.animateTo(1f, tween(FillMs, easing = FillEase))
+        else fill.animateTo(0f, tween(360, easing = FillEase))
+    }
+    return remember(fill) { { fill.value } }
+}
+
+/**
+ * Paints the fill behind the control's content: [brush] from the left edge to
+ * [progress] of the width, with a soft glowing leading edge. Clip to the
+ * control's shape first and put it after the container background.
+ */
+fun Modifier.fillSweep(progress: () -> Float, brush: Brush, edge: Color = Color.Transparent): Modifier =
+    drawBehind {
+        val p = progress()
+        if (p <= 0f) return@drawBehind
+        val x = size.width * p
+        drawRect(brush, size = Size(x, size.height))
+        if (edge != Color.Transparent && p < 1f) {
+            val glow = 28.dp.toPx()
             drawRect(
-                Brush.linearGradient(
-                    0f to Color.Transparent,
-                    0.45f to color.copy(alpha = strength * a),
-                    0.55f to color.copy(alpha = strength * a),
-                    1f to Color.Transparent,
-                    start = Offset(x, size.height),
-                    end = Offset(x + w * 1.15f, 0f),
-                ),
+                Brush.horizontalGradient(listOf(edge, Color.Transparent), startX = x, endX = x + glow),
+                topLeft = Offset(x, 0f),
+                size = Size(glow, size.height),
             )
         }
     }
-}
 
 /**
  * Web `.btn-ember:hover { letter-spacing: 0.25em }`: the label breathes out

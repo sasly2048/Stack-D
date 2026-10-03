@@ -1,5 +1,7 @@
 package app.stackd.feature.timeline
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -320,8 +322,7 @@ private fun TagRow(tags: List<String>) {
                 style = MonoLabelSmall,
                 color = colors.textMuted,
                 modifier = Modifier
-                    .background(colors.textPrimary.copy(alpha = 0.05f), RadiusMd)
-                    .border(1.dp, colors.border, RadiusMd)
+                    .glassSurface(RadiusMd)
                     .padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
@@ -368,8 +369,7 @@ private fun ReactionBar(reactions: List<Reaction>, onReact: (String) -> Unit) {
                 .minimumInteractiveComponentSize()
                 .clip(CircleShape)
                 .clickable { picking = !picking }
-                .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape)
-                .border(1.dp, colors.border, CircleShape)
+                .glassSurface(CircleShape)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
         )
     }
@@ -410,7 +410,6 @@ private fun ProactiveCard(ai: ProactiveInsight) {
                 Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)),
                 Radius2Xl,
             )
-            .border(1.dp, colors.accent.copy(alpha = 0.18f), Radius2Xl)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

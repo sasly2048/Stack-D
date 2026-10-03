@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -45,7 +46,6 @@ fun GlassCard(
         modifier = modifier
             .clip(shape)
             .background(colors.surface.copy(alpha = fillAlpha))
-            .border(1.dp, colors.border, shape)
             .padding(contentPadding),
         content = content,
     )
@@ -57,3 +57,20 @@ private val supportsBackdropBlur: Boolean
 /** Hairline divider matching the web app's `border-white/5` rules. */
 @Composable
 fun hairline(): Color = Stackd.colors.border
+
+/**
+ * Card surface (v3, Regain-direction): a soft filled tile — no outline, no
+ * shadow — separated from the page by tone alone, with a whisper of top light.
+ * Big corners come from the shape tokens.
+ */
+fun Modifier.glassSurface(
+    shape: Shape = Radius2Xl,
+    tint: Color = Color.White,
+    strength: Float = 1f,
+): Modifier = this
+    .clip(shape)
+    .background(
+        androidx.compose.ui.graphics.Brush.verticalGradient(
+            listOf(tint.copy(alpha = 0.075f * strength), tint.copy(alpha = 0.055f * strength)),
+        ),
+    )

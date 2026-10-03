@@ -1,5 +1,7 @@
 package app.stackd.feature.room
 
+import app.stackd.core.ui.glassSurface
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -304,14 +306,6 @@ fun RoomScreen(
             )
             RoomPhase.ENDED -> Ended(state, onExit, onSaveSessionMeta, onRegenerateRecap)
         }
-      }
-      // Celebration burst over a clean, high finish — not on aborted/compromised
-      // sessions, where confetti would read as mockery. One-shot; self-stops.
-      if (state.phase == RoomPhase.ENDED &&
-          state.room?.statusEnum?.wire != "aborted" &&
-          state.result?.tier?.key.let { it == "flow" || it == "pristine" }
-      ) {
-          app.stackd.core.ui.Confetti(modifier = Modifier.fillMaxSize())
       }
     }
 }
@@ -757,8 +751,7 @@ private fun Ended(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.textPrimary.copy(alpha = 0.03f), app.stackd.core.theme.Radius2Xl)
-                .border(1.dp, colors.border, app.stackd.core.theme.Radius2Xl)
+                .glassSurface(app.stackd.core.theme.Radius2Xl)
                 .padding(16.dp),
         ) {
             Text("RECAP", style = MonoLabelSmall, color = colors.textMuted)
@@ -782,8 +775,7 @@ private fun Ended(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.textPrimary.copy(alpha = 0.03f), app.stackd.core.theme.Radius2Xl)
-                    .border(1.dp, colors.border, app.stackd.core.theme.Radius2Xl)
+                    .glassSurface(app.stackd.core.theme.Radius2Xl)
                     .padding(16.dp),
             ) {
                 Text("BREACH LOG", style = MonoLabelSmall, color = colors.textMuted)
@@ -864,7 +856,6 @@ private fun AiRecapCard(state: RoomUiState, onRegenerate: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(colors.accent.copy(alpha = 0.06f), app.stackd.core.theme.Radius2Xl)
-            .border(1.dp, colors.accent.copy(alpha = 0.25f), app.stackd.core.theme.Radius2Xl)
             .padding(20.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -947,8 +938,7 @@ private fun SessionMetaForm(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.textPrimary.copy(alpha = 0.03f), app.stackd.core.theme.Radius2Xl)
-            .border(1.dp, colors.border, app.stackd.core.theme.Radius2Xl)
+            .glassSurface(app.stackd.core.theme.Radius2Xl)
             .padding(16.dp),
     ) {
         Text("MARK THIS SESSION", style = MonoLabelSmall, color = colors.textMuted)

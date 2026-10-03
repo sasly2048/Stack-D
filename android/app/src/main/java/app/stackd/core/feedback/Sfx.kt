@@ -32,7 +32,7 @@ object Sfx {
 
     @Volatile var enabled: Boolean = true
 
-    private enum class Voice { SINE, TRIANGLE, BELL, PLUCK, CLICK, PAD }
+    private enum class Voice { SINE, TRIANGLE, BELL, PLUCK, CLICK, PAD, SOFT }
 
     /** f = Hz (cutoff for CLICK), t = start s, d = length s, g = relative gain, to = glide target Hz. */
     private class Note(val f: Double, val t: Double, val d: Double, val v: Voice, val g: Double = 1.0, val to: Double? = null)
@@ -43,7 +43,7 @@ object Sfx {
     private val PATCHES: Map<Kind, Patch> = mapOf(
         Kind.TAP to Patch(
             listOf(Note(4200.0, 0.0, 0.012, Voice.CLICK, 1.0), Note(2350.0, 0.0, 0.022, Voice.SINE, 0.25)),
-            wet = 0.0, peak = 0.16,
+            wet = 0.0, peak = 0.08,
         ),
         Kind.SELECT to Patch(
             listOf(Note(1174.66, 0.0, 0.16, Voice.PLUCK, 1.0), Note(5200.0, 0.0, 0.008, Voice.CLICK, 0.35)),
@@ -57,93 +57,58 @@ object Sfx {
             listOf(Note(1174.66, 0.0, 0.2, Voice.BELL, 0.9), Note(783.99, 0.055, 0.26, Voice.BELL, 0.8)),
             wet = 0.1, peak = 0.2,
         ),
+        // --- Kept moments: soft, pure, short. One to three notes, no reverb. ---
         Kind.SUCCESS to Patch(
-            listOf(Note(1046.5, 0.0, 0.34, Voice.BELL, 0.9), Note(1567.98, 0.09, 0.5, Voice.BELL, 1.0)),
-            wet = 0.2, peak = 0.32,
+            listOf(Note(659.25, 0.0, 0.28, Voice.SOFT, 0.9), Note(987.77, 0.1, 0.4, Voice.SOFT, 0.8)),
+            wet = 0.0, peak = 0.16,
         ),
-        // A soft "uh-uh": two low, round thuds. Firm, never harsh.
+        // A gentle low "hm", gliding down. Never a buzz.
         Kind.ERROR to Patch(
-            listOf(
-                Note(240.0, 0.0, 0.14, Voice.SINE, 1.0, 170.0),
-                Note(2200.0, 0.0, 0.01, Voice.CLICK, 0.25),
-                Note(200.0, 0.12, 0.18, Voice.SINE, 0.9, 140.0),
-            ),
-            wet = 0.05, peak = 0.3,
+            listOf(Note(330.0, 0.0, 0.26, Voice.SOFT, 1.0, 247.0)),
+            wet = 0.0, peak = 0.14,
         ),
         Kind.AUTH to Patch(
-            listOf(
-                Note(659.25, 0.0, 0.4, Voice.BELL, 0.8),
-                Note(987.77, 0.1, 0.45, Voice.BELL, 0.9),
-                Note(1318.51, 0.2, 0.7, Voice.BELL, 1.0),
-            ),
-            wet = 0.22, peak = 0.32,
+            listOf(Note(523.25, 0.0, 0.3, Voice.SOFT, 0.9), Note(783.99, 0.1, 0.42, Voice.SOFT, 0.8)),
+            wet = 0.0, peak = 0.15,
         ),
         Kind.XP to Patch(
-            listOf(
-                Note(1318.51, 0.0, 0.14, Voice.PLUCK, 0.8),
-                Note(1760.0, 0.06, 0.16, Voice.PLUCK, 0.9),
-                Note(2637.02, 0.12, 0.34, Voice.BELL, 0.7),
-            ),
-            wet = 0.15, peak = 0.28,
+            listOf(Note(987.77, 0.0, 0.2, Voice.SOFT, 1.0)),
+            wet = 0.0, peak = 0.1,
         ),
         Kind.ACHIEVEMENT to Patch(
             listOf(
-                Note(1046.5, 0.0, 0.4, Voice.BELL, 0.8),
-                Note(1318.51, 0.08, 0.42, Voice.BELL, 0.85),
-                Note(1567.98, 0.16, 0.46, Voice.BELL, 0.9),
-                Note(2093.0, 0.26, 0.8, Voice.BELL, 1.0),
-                Note(3135.96, 0.3, 0.5, Voice.SINE, 0.15),
+                Note(523.25, 0.0, 0.4, Voice.SOFT, 0.85),
+                Note(659.25, 0.09, 0.42, Voice.SOFT, 0.85),
+                Note(783.99, 0.18, 0.55, Voice.SOFT, 0.9),
             ),
-            wet = 0.28, peak = 0.4,
+            wet = 0.0, peak = 0.18,
         ),
         Kind.NOTIFY to Patch(
-            listOf(Note(1318.51, 0.0, 0.3, Voice.BELL, 0.9), Note(1760.0, 0.08, 0.42, Voice.BELL, 1.0)),
-            wet = 0.15, peak = 0.26,
+            listOf(Note(880.0, 0.0, 0.22, Voice.SOFT, 0.9), Note(1174.66, 0.08, 0.3, Voice.SOFT, 0.8)),
+            wet = 0.0, peak = 0.13,
         ),
         Kind.PURCHASE to Patch(
-            listOf(
-                Note(880.0, 0.0, 0.5, Voice.BELL, 0.8),
-                Note(1318.51, 0.07, 0.6, Voice.BELL, 1.0),
-                Note(1760.0, 0.07, 0.6, Voice.BELL, 0.5),
-                Note(2637.02, 0.14, 0.45, Voice.SINE, 0.12),
-            ),
-            wet = 0.25, peak = 0.34,
+            listOf(Note(659.25, 0.0, 0.45, Voice.SOFT, 0.85), Note(987.77, 0.06, 0.45, Voice.SOFT, 0.7)),
+            wet = 0.0, peak = 0.16,
         ),
-        // web playProSfx: two tones converging to a "signal lock".
         Kind.CELEBRATE_PRO to Patch(
-            listOf(
-                Note(587.33, 0.0, 0.3, Voice.BELL, 0.8),
-                Note(880.0, 0.14, 0.7, Voice.BELL, 1.0),
-                Note(1760.0, 0.16, 0.4, Voice.SINE, 0.25),
-            ),
-            wet = 0.3, peak = 0.5,
+            listOf(Note(587.33, 0.0, 0.4, Voice.SOFT, 0.85), Note(880.0, 0.14, 0.6, Voice.SOFT, 0.9)),
+            wet = 0.08, peak = 0.22,
         ),
-        // playEliteSfx: rising drone, A-major arpeggio, landing chord, sparkle tail.
         Kind.CELEBRATE_ELITE to Patch(
             buildList {
-                add(Note(110.0, 0.0, 1.5, Voice.PAD, 0.9, 220.0))
                 listOf(440.0, 554.37, 659.25, 880.0).forEachIndexed { i, f ->
-                    add(Note(f, 0.25 + i * 0.16, 0.5, Voice.BELL, 0.8))
+                    add(Note(f, i * 0.15, 0.6, Voice.SOFT, 0.8))
                 }
-                listOf(880.0, 1108.73, 1318.51).forEach { add(Note(it, 1.05, 1.1, Voice.BELL, 0.7)) }
-                add(Note(2637.02, 1.1, 0.7, Voice.SINE, 0.15))
+                add(Note(880.0, 0.6, 0.9, Voice.SOFT, 0.7))
+                add(Note(1318.51, 0.6, 0.9, Voice.SOFT, 0.45))
             },
-            wet = 0.35, peak = 0.55,
+            wet = 0.1, peak = 0.26,
         ),
-        // App-open signature: a felt mallet thump, three phones landing on the
-        // stack (rising A-major plucks), a warm bell bloom, an airy shimmer.
+        // App open: a quiet two-note "ding-dong" (A4 -> E5).
         Kind.STARTUP to Patch(
-            buildList {
-                add(Note(120.0, 0.0, 0.3, Voice.SINE, 1.0, 62.0))
-                add(Note(500.0, 0.0, 0.02, Voice.CLICK, 0.5))
-                listOf(659.25, 880.0, 1108.73).forEachIndexed { i, f ->
-                    add(Note(f, 0.1 + i * 0.12, 0.3, Voice.PLUCK, 0.75))
-                }
-                listOf(440.0, 659.25, 880.0).forEach { add(Note(it, 0.46, 1.1, Voice.BELL, 0.55)) }
-                add(Note(1760.0, 0.5, 0.7, Voice.SINE, 0.12))
-                add(Note(2637.02, 0.58, 0.6, Voice.SINE, 0.07))
-            },
-            wet = 0.3, peak = 0.42,
+            listOf(Note(440.0, 0.0, 0.5, Voice.SOFT, 0.9), Note(659.25, 0.16, 0.7, Voice.SOFT, 0.8)),
+            wet = 0.05, peak = 0.16,
         ),
     )
 
@@ -157,8 +122,11 @@ object Sfx {
     }
 
     /** Play a UI sound. Silent if sound is off or audio fails. */
+    /** Routine interactions stay silent — sound is reserved for moments that matter. */
+    private val QUIET = setOf(Kind.TAP, Kind.SELECT, Kind.OPEN, Kind.CLOSE, Kind.XP)
+
     fun play(kind: Kind) {
-        if (!enabled) return
+        if (!enabled || kind in QUIET) return
         worker.execute {
             runCatching {
                 val pcm = cache.getOrPut(kind) { render(PATCHES.getValue(kind)) }
@@ -226,6 +194,18 @@ object Sfx {
                     val p = ph - ph.toLong()
                     val w = if (n.v == Voice.SINE) sin(2 * PI * p) else 1 - 4 * abs(p - 0.5)
                     add(out, start + i, w * env(s, 0.006) * n.g)
+                }
+            }
+            Voice.SOFT -> {
+                // Pure sine, 20ms swell, smooth fade, faint 2nd harmonic for warmth.
+                var ph = 0.0
+                for (i in 0 until len) {
+                    val s = i.toDouble() / RATE
+                    ph += freqAt(s) / RATE
+                    val p = ph - ph.toLong()
+                    val w = sin(2 * PI * p) + 0.08 * sin(4 * PI * p)
+                    val e = if (s < 0.02) s / 0.02 else exp(-4.0 * (s - 0.02) / (n.d - 0.02))
+                    add(out, start + i, w * e * n.g)
                 }
             }
             Voice.PAD -> {

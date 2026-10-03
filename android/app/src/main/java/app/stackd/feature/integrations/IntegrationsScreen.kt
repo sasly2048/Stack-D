@@ -1,5 +1,7 @@
 package app.stackd.feature.integrations
 
+import app.stackd.core.ui.glassSurface
+
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -109,8 +111,7 @@ fun IntegrationsScreen(
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .then(if (tappable) Modifier.pressFeedback(source) else Modifier)
-                        .background(colors.textPrimary.copy(alpha = 0.04f), Radius2Xl)
-                        .border(1.dp, colors.border, Radius2Xl)
+                        .glassSurface(Radius2Xl)
                         .then(
                             if (tappable) {
                                 Modifier.clickable(interactionSource = source, indication = null, role = Role.Button) {

@@ -31,22 +31,29 @@ val MonoFamily = FontFamily(
 )
 
 /**
- * The mono style carries most of Stack'd's identity: small, uppercase, and
- * widely letter-spaced (`tracking-[0.3em]` in the web app) for labels, room
- * codes, and status pips.
+ * True monospace, kept only for technical tags: the screen path breadcrumb
+ * ("STACK'D / INSIGHTS") and room codes. Everything else moved to sans.
  */
-val MonoLabel = TextStyle(
+val TechLabel = TextStyle(
     fontFamily = MonoFamily,
     fontWeight = FontWeight.Normal,
-    // 11.5sp / 0.26em (was 10sp / 0.3em): at 9–10sp the labels — several of
-    // them tappable — sat under the ~11sp legibility floor on a phone. Tracking
-    // is eased slightly so the wider glyphs keep roughly the old line length.
     fontSize = 11.5.sp,
     letterSpacing = 0.26.em,
 )
 
-val MonoLabelSmall = MonoLabel.copy(fontSize = 11.sp, letterSpacing = 0.2.em)
+/**
+ * Small label / eyebrow style. Was widely spaced JetBrains Mono, which read as
+ * dated and noisy across ~260 labels; now Inter SemiBold with light tracking,
+ * so uppercase eyebrows stay crisp and modern. Name kept to avoid churn.
+ */
+val MonoLabel = TextStyle(
+    fontFamily = DisplayFamily,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 12.sp,
+    letterSpacing = 0.06.em,
+)
 
+val MonoLabelSmall = MonoLabel.copy(fontSize = 11.5.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.05.em)
 val StackdTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = DisplayFamily,
@@ -107,11 +114,12 @@ val StackdTypography = Typography(
         fontSize = 13.sp,
         lineHeight = 20.sp,
     ),
+    // Buttons and actions: sans SemiBold, lightly tracked (was spaced mono).
     labelLarge = TextStyle(
-        fontFamily = MonoFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        letterSpacing = 0.2.em,
+        fontFamily = DisplayFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        letterSpacing = 0.08.em,
     ),
     labelMedium = MonoLabel,
     labelSmall = MonoLabelSmall,

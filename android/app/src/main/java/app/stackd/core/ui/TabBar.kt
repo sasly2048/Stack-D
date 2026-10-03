@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
@@ -30,9 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -43,6 +42,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.stackd.core.theme.Obsidian
 import dev.chrisbanes.haze.hazeChild
@@ -53,8 +53,12 @@ import app.stackd.core.theme.Stackd
 /** True on a tab's root screen: there is nowhere to go "back" to, so headers hide the chevron. */
 val LocalIsTabRoot = compositionLocalOf { false }
 
-private val BarHeight = 66.dp
-private val BarMargin = 14.dp
+private val BarHeight = 60.dp
+private val BarMargin = 12.dp
+/** Gap between the bar's edge and the active capsule — equal on all sides. */
+private val CapsuleInset = 5.dp
+/** Concentric with the bar: outer radius minus the inset. */
+private val CapsuleShape = RoundedCornerShape(BarHeight / 2 - CapsuleInset)
 
 /** Vertical space the floating bar occupies above the system nav inset (bar + its bottom margin). */
 val TabBarHeight = BarHeight + BarMargin
@@ -106,7 +110,8 @@ fun TabBar(
                             style = dev.chrisbanes.haze.HazeStyle(
                                 backgroundColor = Obsidian,
                                 tint = dev.chrisbanes.haze.HazeTint(Obsidian2.copy(alpha = 0.62f)),
-                                blurRadius = 24.dp,
+                                // 20dp reads as glass at a lower per-frame cost while scrolling.
+                                blurRadius = 20.dp,
                                 noiseFactor = 0f,
                             ),
                         )
@@ -117,13 +122,11 @@ fun TabBar(
                 // Top-edge sheen: a hint of light on the upper rim sells "glass".
                 .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)))
                 .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
-                .padding(horizontal = 6.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                .padding(horizontal = CapsuleInset),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            StackdTabs.take(2).forEach { TabCell(it, it.route == currentRoute, onSelect, Modifier.weight(1f)) }
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { StartButton(onStart) }
-            StackdTabs.drop(2).forEach { TabCell(it, it.route == currentRoute, onSelect, Modifier.weight(1f)) }
+            // Four destinations only: starting a Stack lives in Home's pinned pill.
+            StackdTabs.forEach { TabCell(it, it.route == currentRoute, onSelect, Modifier.weight(1f)) }
         }
     }
 }
@@ -137,29 +140,26 @@ private fun TabCell(item: TabItem, selected: Boolean, onSelect: (String) -> Unit
     Column(
         modifier
             .fillMaxHeight()
-            .padding(vertical = 7.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .padding(vertical = CapsuleInset)
+            .clip(CapsuleShape)
             // Soft capsule behind the active tab — position at a glance.
-            .background(Color.White.copy(alpha = 0.05f * glow))
+            .background(Color.White.copy(alpha = 0.045f * glow))
             .clickable(interactionSource = source, indication = null, role = Role.Tab) { onSelect(item.route) }
             .pressFeedback(source, pressedScale = 0.92f, sound = app.stackd.core.feedback.Sfx.Kind.SELECT)
             .semantics { this.selected = selected },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        // Icon + one label line, centred as a pair. Lucide is stroke-only:
+        // selection is carried by the accent tint and the soft capsule.
         Icon(if (selected) item.iconSelected else item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
         Spacer(Modifier.height(3.dp))
-        Text(item.label, color = tint, fontSize = 10.5.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
-        // Web's active-nav glow dot (`--dot-glow`).
-        Box(
-            Modifier
-                .padding(top = 3.dp)
-                .size(4.dp)
-                .graphicsLayer { alpha = glow }
-                .drawBehind {
-                    drawCircle(colors.accent.copy(alpha = 0.45f), radius = size.minDimension * 1.6f, center = Offset(size.width / 2, size.height / 2))
-                    drawCircle(colors.accent)
-                },
+        Text(
+            item.label,
+            color = tint,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 12.sp, letterSpacing = 0.sp),
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
         )
     }
 }
@@ -178,5 +178,72 @@ private fun StartButton(onStart: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(app.stackd.core.ui.StackdIcons.Add, contentDescription = null, tint = Obsidian, modifier = Modifier.size(28.dp))
+    }
+}
+
+/** Height the pinned Start pill adds above the tab bar (pill + gap). */
+val StartPillSpace = 76.dp
+
+/**
+ * Home's primary action, pinned just above the tab bar (Regain pattern): a
+ * bright silver pill — label left, ember play disc right — always under the
+ * thumb, never scrolled away. Pressing it floods it with ember (web
+ * `.btn-ember`) and Start fires when the fill completes.
+ */
+@Composable
+fun StartPill(onStart: () -> Unit, modifier: Modifier = Modifier) {
+    val source = remember { MutableInteractionSource() }
+    // Press: ember floods the pill from the left; Start fires once it's full.
+    val (fill, click) = rememberFillClick(source, onStart)
+    val p = fill()
+    val shape = RoundedCornerShape(32.dp)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(start = 16.dp, end = 16.dp, bottom = TabBarHeight + 10.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .pressFeedback(source, pressedScale = 0.97f, sound = null)
+                .shadow(18.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
+                .clip(shape)
+                .background(Silver)
+                .fillSweep(fill, EmberFill, app.stackd.core.theme.EmberGlow.copy(alpha = 0.7f))
+                .clickable(interactionSource = source, indication = null, role = Role.Button, onClick = click)
+                .semantics { contentDescription = "Start a Stack" }
+                .padding(start = 26.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Start a Stack",
+                color = androidx.compose.ui.graphics.lerp(app.stackd.core.theme.IvoryInk, Obsidian, p),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = (0.04f * p).em,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                Modifier
+                    .size(48.dp)
+                    // The disc swells as the fill reaches it, then settles into the ember.
+                    .graphicsLayer {
+                        val s = 1f + 0.16f * kotlin.math.sin(Math.PI.toFloat() * fill())
+                        scaleX = s
+                        scaleY = s
+                    }
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(app.stackd.core.theme.EmberGlow, app.stackd.core.theme.Ember),
+                        ),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(app.stackd.core.ui.StackdIcons.PlayArrow, contentDescription = null, tint = Obsidian, modifier = Modifier.size(24.dp))
+            }
+        }
     }
 }

@@ -54,6 +54,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.ui.graphics.Brush
 import app.stackd.core.theme.Obsidian
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -139,6 +140,25 @@ class MainActivity : ComponentActivity() {
         }
         // `--ez ceremony true` previews the post-session ceremony with sample data.
         if (intent?.getBooleanExtra("ceremony", false) == true) debugCeremony.value = true
+        // `--es card matte|glass`, `--es cardmotion tilt|shine`, `--es carddetails crest|minimal`
+        // switch the Premium member card variant.
+        intent?.let { i ->
+            val preview = app.stackd.feature.premium.cardPreview
+            var (style, motion, details) = preview.value
+            when (i.getStringExtra("card")) {
+                "matte" -> style = app.stackd.feature.premium.CardStyle.MATTE_FOIL
+                "glass" -> style = app.stackd.feature.premium.CardStyle.FROSTED_GLASS
+            }
+            when (i.getStringExtra("cardmotion")) {
+                "tilt" -> motion = app.stackd.feature.premium.CardMotion.TILT_ONLY
+                "shine" -> motion = app.stackd.feature.premium.CardMotion.SHINE_ON_OPEN
+            }
+            when (i.getStringExtra("carddetails")) {
+                "crest" -> details = app.stackd.feature.premium.CardDetails.CREST
+                "minimal" -> details = app.stackd.feature.premium.CardDetails.MINIMAL
+            }
+            preview.value = Triple(style, motion, details)
+        }
         // `--ez recap_pdf true` renders the recap PDF from sample data.
         if (intent?.getBooleanExtra("recap_pdf", false) == true) {
             app.stackd.feature.room.RecapPdf.share(
@@ -247,7 +267,8 @@ class MainActivity : ComponentActivity() {
                                 val showTabs = route != null && app.stackd.core.ui.StackdTabs.any { it.route == route }
                                 val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                                 // Content stops above the bar instead of scrolling under it.
-                                val barSpace = if (showTabs) app.stackd.core.ui.TabBarHeight + navInset else 0.dp
+                                val onHome = route == Dest.Dashboard.route
+                                val barSpace = if (showTabs) app.stackd.core.ui.TabBarHeight + navInset + (if (onHome) app.stackd.core.ui.StartPillSpace else 0.dp) else 0.dp
                                 // The floating bar blurs whatever scrolls beneath it
                                 // (web glass: backdrop-filter blur), so content runs
                                 // full-height and screens pad their own scroll end.
@@ -264,21 +285,18 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                // Status-bar scrim: edge-to-edge screens scroll under
-                                // the clock/icons; without this both are unreadable.
-                                // Fades out below the bar so there's no hard seam.
+                                // Status-bar veil: the page glow runs up under the
+                                // clock/icons; a short, soft fade (no solid band)
+                                // keeps them legible over scrolled content.
                                 Box(
                                     Modifier
                                         .align(Alignment.TopCenter)
                                         .fillMaxWidth()
-                                        // Solid behind the icons, then a 16dp fade below
-                                        // them: text no longer ghosts under the clock.
-                                        .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp)
+                                        .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
                                         .background(
                                             Brush.verticalGradient(
-                                                0f to Obsidian,
-                                                0.62f to Obsidian,
-                                                1f to Obsidian.copy(alpha = 0f),
+                                                0f to Color.Black.copy(alpha = 0.35f),
+                                                1f to Color.Transparent,
                                             ),
                                         ),
                                 )
@@ -317,6 +335,31 @@ class MainActivity : ComponentActivity() {
                                         .padding(bottom = 96.dp + barSpace),
                                 )
 
+                                // Bottom fade behind the floating nav (and Home's pill):
+                                // content dissolves into the background instead of
+                                // running hard into the controls. barSpace is untouched,
+                                // so the last item still scrolls clear of the pill.
+                                if (showTabs) {
+                                    Box(
+                                        Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .fillMaxWidth()
+                                            .height(barSpace + 24.dp)
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    0f to Color.Transparent,
+                                                    0.35f to Obsidian.copy(alpha = 0.7f),
+                                                    1f to Obsidian.copy(alpha = 0.9f),
+                                                ),
+                                            ),
+                                    )
+                                }
+                                if (onHome) {
+                                    app.stackd.core.ui.StartPill(
+                                        onStart = { navController.navigate(Dest.Start.route) { launchSingleTop = true } },
+                                        modifier = Modifier.align(Alignment.BottomCenter),
+                                    )
+                                }
                                 if (showTabs) {
                                     app.stackd.core.ui.TabBar(
                                         currentRoute = route,

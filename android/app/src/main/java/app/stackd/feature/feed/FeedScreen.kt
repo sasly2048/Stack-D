@@ -1,5 +1,7 @@
 package app.stackd.feature.feed
 
+import app.stackd.core.ui.pageGlow
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -37,18 +39,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.stackd.core.AppContainer
 import app.stackd.core.parseIsoMillis
 import app.stackd.core.stackdViewModel
-import app.stackd.core.theme.MonoLabel
-import app.stackd.core.theme.MonoLabelSmall
 import app.stackd.core.theme.Radius2Xl
 import app.stackd.core.theme.Stackd
 import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.ResponsiveColumn
-import app.stackd.core.ui.SectionLabel
 import app.stackd.core.ui.SkeletonBlock
 import app.stackd.core.ui.SkeletonCard
 import app.stackd.core.ui.pressFeedback
 import app.stackd.feature.profile.FeatureEmptyState
+import app.stackd.feature.profile.shareStackdInvite
+import app.stackd.core.ui.glassSurface
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.remember
 import app.stackd.data.social.FeedItem
@@ -181,6 +182,7 @@ fun FeedScreen(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
+            .pageGlow()
             .verticalScroll(rememberScrollState()),
     ) {
         ResponsiveColumn {
@@ -209,7 +211,7 @@ fun FeedScreen(
                 }
                 state.error -> {
                     Text(
-                        "Couldn't load your circle.",
+                        "Couldn't load your people.",
                         style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
                     )
                     Spacer(Modifier.height(12.dp))
@@ -225,7 +227,7 @@ fun FeedScreen(
                         FeatureEmptyState(
                             icon = app.stackd.core.ui.StackdIcons.Sensors,
                             title = "Quiet so far",
-                            body = "Finished sessions from you and your circle show up here.",
+                            body = "Finished sessions from you and your people show up here.",
                         )
                         EmberButton(text = "Start a session", onClick = onStart)
                     } else {
@@ -247,27 +249,53 @@ fun FeedScreen(
 @Composable
 private fun CircleStrip(circle: List<FriendPresence>, onOpenFriends: () -> Unit, onOpenProfile: (String) -> Unit) {
     val colors = Stackd.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
     val focusing = circle.count { it.status == PresenceStatus.FOCUSING }
-    Text(
-        when {
-            circle.isEmpty() -> "Your circle"
-            focusing == 1 -> "1 friend focusing now"
-            focusing > 1 -> "$focusing friends focusing now"
-            else -> "Your circle · ${circle.size}"
-        },
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = if (focusing > 0) colors.accent else colors.textPrimary,
-    )
-    if (circle.isEmpty()) {
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Add a friend to see when they're focusing — and stack together.",
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.textMuted,
+    // Presence first: who's stacking right now leads the screen.
+    when {
+        focusing > 0 -> Text(
+            if (focusing == 1) "1 person stacking now" else "$focusing people stacking now",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.accent,
         )
+        circle.isEmpty() -> Column(
+            Modifier
+                .fillMaxWidth()
+                .glassSurface(Radius2Xl)
+                .padding(16.dp),
+        ) {
+            Text(
+                "Stack'd is better with your people.",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Invite a friend and you'll see when they're stacking — then stack together.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+            )
+            Spacer(Modifier.height(16.dp))
+            GhostButton(text = "Invite someone", onClick = { shareStackdInvite(context) })
+        }
+        else -> {
+            Text(
+                "Your people · ${circle.size}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "No one's stacking right now.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+            )
+        }
     }
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(16.dp))
     val sorted = remember(circle) { circle.sortedBy { it.status.ordinal } }
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
@@ -346,9 +374,25 @@ private fun Bubble(
     }
 }
 
-/** Activity as a calm list grouped by day — dividers, not a stack of boxes. */
+/**
+ * Activity split by who: friends under "Your people", your own under "You",
+ * each grouped by day — dividers, not a stack of boxes.
+ */
 @Composable
 private fun Activity(rows: List<FeedItem>, now: Long, meId: String?, onOpenProfile: (String) -> Unit) {
+    val (mine, theirs) = remember(rows, meId) { rows.partition { it.userId == meId } }
+    if (theirs.isNotEmpty()) ActivitySection("Your people", theirs, now, mine = false, onOpenProfile)
+    if (mine.isNotEmpty()) ActivitySection("You", mine, now, mine = true, onOpenProfile)
+}
+
+@Composable
+private fun ActivitySection(
+    title: String,
+    rows: List<FeedItem>,
+    now: Long,
+    mine: Boolean,
+    onOpenProfile: (String) -> Unit,
+) {
     val colors = Stackd.colors
     val zone = remember { java.time.ZoneId.systemDefault() }
     val groups = remember(rows, now) {
@@ -362,15 +406,22 @@ private fun Activity(rows: List<FeedItem>, now: Long, meId: String?, onOpenProfi
             }
         }
     }
+    Text(
+        title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = colors.textPrimary,
+    )
+    Spacer(Modifier.height(8.dp))
     groups.forEach { (day, items) ->
-        Text(day.uppercase(), style = MonoLabelSmall, color = colors.textMuted)
-        Spacer(Modifier.height(4.dp))
+        Text(day, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
         items.forEachIndexed { i, item ->
-            FeedRow(item, now, item.userId == meId, onOpenProfile)
+            FeedRow(item, now, mine, onOpenProfile)
             if (i < items.lastIndex) app.stackd.core.ui.HairlineDivider()
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
     }
+    Spacer(Modifier.height(16.dp))
 }
 
 @Composable
