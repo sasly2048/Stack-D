@@ -92,9 +92,9 @@ function WebhooksPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <div className="pt-24 max-w-4xl mx-auto px-6 pb-24">
-        <h1 className="text-3xl font-serif mb-2">Webhooks</h1>
-        <p className="text-sm text-muted-foreground mb-8 max-w-xl">
+      <div className="app-page max-w-4xl">
+        <h1 className="page-title mb-3 font-serif">Webhooks</h1>
+        <p className="text-sm leading-relaxed text-muted-foreground mb-8 max-w-xl">
           Stream focus events to your own systems. Each delivery is signed with HMAC-SHA256 in the
           <code className="mx-1 px-1.5 py-0.5 rounded bg-white/5 font-mono text-xs">
             X-Stackd-Signature

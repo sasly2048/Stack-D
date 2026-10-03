@@ -88,11 +88,11 @@ function SeasonsPage() {
   return (
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
-      <div className="pt-24 max-w-4xl mx-auto px-6 pb-24">
-        <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+      <div className="app-page max-w-4xl">
+        <div className="ritual-label text-muted-foreground">
           Seasons
         </div>
-        <h1 className="text-3xl font-serif mt-1 mb-8">Compete in cycles.</h1>
+        <h1 className="page-title mt-2 mb-8 font-serif sm:mb-12">Compete in cycles.</h1>
 
         {loading ? (
           <div className="glass rounded-xl p-12 text-center">
