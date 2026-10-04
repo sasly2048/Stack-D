@@ -8,7 +8,7 @@ export const FP_MAX_HITS = 15;
 export const EMAIL_FAILURE_WINDOW_SEC = 600;
 export const EMAIL_LOCKOUT_THRESHOLD = 5;
 
-export type GuardProvider = "email" | "google" | "apple";
+export type GuardProvider = "email" | "google" | "apple" | "github";
 
 export type GuardFailure = {
   ok: false;

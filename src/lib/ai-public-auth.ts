@@ -5,7 +5,7 @@
  * handler, where middleware doesn't apply. Same token → same token-scoped
  * client → same userId, so the routes enforce exactly what the web RPCs do.
  *
- * The LOVABLE_API_KEY the AI calls need never leaves the server; the client only
+ * The GEMINI_API_KEY the AI calls need never leaves the server; the client only
  * ever sends its own Supabase access token, which RLS already governs.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";

@@ -31,6 +31,5 @@ Disallow: /webhooks
 # Internal/machine endpoints.
 Disallow: /api/
 Disallow: /.mcp/
-Disallow: /lovable/
 
 Sitemap: https://stackd.raghav.studio/sitemap.xml

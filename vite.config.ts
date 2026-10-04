@@ -1,33 +1,60 @@
-// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
-// or the app will break with duplicate plugins:
-//   - tanstackStart, viteReact, tailwindcss, tsConfigPaths, nitro (build-only using cloudflare as a default target),
-//     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
-//     error logger plugins, and sandbox detection (port/host/strictPort).
-// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
-
-const useMcp = process.env.LOVABLE === "true";
-const supabaseProjectId = process.env.VITE_SUPABASE_PROJECT_ID ?? "wmqyswkqdnfnpdcpdhan";
-const supabaseUrl =
-  process.env.VITE_SUPABASE_URL ??
-  process.env.SUPABASE_URL ??
-  `https://${supabaseProjectId}.supabase.co`;
-const supabasePublishableKey =
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.SUPABASE_PUBLISHABLE_KEY ??
-  "sb_publishable_nfOoJHauVvdNHIZIHZQ7Zg_rCjXHUAe";
+// Plain Vite config for TanStack Start, built for Cloudflare Workers.
+// Supabase URL/keys come from VITE_* env vars (.env locally, Cloudflare build
+// settings in CI); there is deliberately no hard-coded fallback project.
+import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
+import tsConfigPaths from "vite-tsconfig-paths";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { nitro } from "nitro/vite";
+import viteReact from "@vitejs/plugin-react";
 
 export default defineConfig({
-  tanstackStart: {
-    server: { entry: "server" },
+  css: { transformer: "lightningcss" },
+  resolve: {
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "@tanstack/query-core",
+    ],
   },
-  vite: {
-    define: {
-      "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(supabaseProjectId),
-      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
-      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(supabasePublishableKey),
-    },
-    plugins: useMcp ? [mcpPlugin()] : [],
-  },
+  plugins: [
+    tailwindcss(),
+    tsConfigPaths({ projects: ["./tsconfig.json"] }),
+    tanstackStart({
+      server: { entry: "server" },
+      // Server-only code must never reach the browser bundle.
+      importProtection: {
+        behavior: "error",
+        client: { files: ["**/server/**"], specifiers: ["server-only"] },
+      },
+    }),
+    nitro({
+      preset: "cloudflare-module",
+      // Emits the wrangler config next to the build so `wrangler deploy` needs no hand-written file.
+      cloudflare: {
+        nodeCompat: true,
+        deployConfig: true,
+        wrangler: {
+          name: "stackd",
+          // Served on our own domain; no *.workers.dev address. beta stays as
+          // a second hostname for testing.
+          workers_dev: false,
+          routes: [
+            { pattern: "stackd.raghav.studio", custom_domain: true },
+            { pattern: "beta.raghav.studio", custom_domain: true },
+          ],
+          // Public (non-secret) server config; secrets go in via `wrangler secret put`.
+          vars: {
+            SUPABASE_URL: "https://grsekkegkpwwgzrqvlqk.supabase.co",
+            SUPABASE_PUBLISHABLE_KEY: "sb_publishable_rqLKiMFbGUkEFmHLqb8sjg_abzll6QH",
+            SUPABASE_PROJECT_ID: "grsekkegkpwwgzrqvlqk",
+          },
+        },
+      },
+    }),
+    viteReact(),
+  ],
 });

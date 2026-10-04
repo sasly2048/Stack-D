@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP, getRequestHeader } from "@tanstack/react-start/server";
 
-export type AuthProvider = "apple" | "google" | "email";
+export type AuthProvider = "apple" | "google" | "github" | "email";
 
 const SIGNIN_WINDOW_SEC = 60;
 const SIGNIN_MAX_HITS = 10; // per (provider, ip)
@@ -64,7 +64,7 @@ export const guardSignIn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }): Promise<GuardResult> => {
-    if (!["apple", "google", "email"].includes(data.provider)) {
+    if (!["apple", "google", "github", "email"].includes(data.provider)) {
       return { ok: false, code: "invalid_input", message: "Unknown provider." };
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

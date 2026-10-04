@@ -3,6 +3,7 @@ import { publicDbError } from "@/lib/db-error";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeature } from "@/lib/require-tier";
 import { withAiBudget } from "@/lib/require-ai-budget";
+import { callAIText } from "@/lib/ai.server";
 import { z } from "zod";
 import { httpUrl } from "@/lib/zod-url";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -143,30 +144,14 @@ export async function summarizeVaultItemCore(
       .eq("user_id", userId)
       .maybeSingle();
     if (!item) throw new Error("not_found");
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    // Reserve the AI action around the gateway call so a provider failure
+    // Reserve the AI action around the provider call so a failure
     // refunds the unit instead of burning it.
-    const summary = await withAiBudget(supabase, userId, async () => {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-        body: JSON.stringify({
-          model: "google/gemini-3.5-flash",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You summarize study notes in 2 sentences. Precise, useful for later recall.",
-            },
-            { role: "user", content: `Title: ${item.title}\n\n${item.body ?? ""}` },
-          ],
-        }),
-      });
-      if (!res.ok) throw new Error("ai_failed");
-      const j = await res.json();
-      return String(j.choices?.[0]?.message?.content ?? "").trim();
-    });
+    const summary = await withAiBudget(supabase, userId, () =>
+      callAIText(
+        "You summarize study notes in 2 sentences. Precise, useful for later recall.",
+        `Title: ${item.title}\n\n${item.body ?? ""}`,
+      ),
+    );
     await supabase
       .from("memory_vault_items")
       .update({ ai_summary: summary })

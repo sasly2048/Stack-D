@@ -43,9 +43,9 @@ function write(key: Key, value: string): void {
 
 /* ---------- auth ---------- */
 
-export type AuthProviderId = "google" | "apple" | "email";
+export type AuthProviderId = "google" | "apple" | "github" | "email";
 
-const PROVIDERS: readonly AuthProviderId[] = ["google", "apple", "email"];
+const PROVIDERS: readonly AuthProviderId[] = ["google", "apple", "github", "email"];
 
 /**
  * Which provider signed in successfully last, for the "Last used" hint on the

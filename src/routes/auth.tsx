@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/use-auth";
 import { siteUrl } from "@/lib/site";
 import { feedback } from "@/lib/feedback";
@@ -23,7 +22,7 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Sign in to Stack'd with Google, Apple or email, or enter a room code to join a friend's focus session.",
+          "Sign in to Stack'd with Google, GitHub or email, or enter a room code to join a friend's focus session.",
       },
       { property: "og:title", content: "Enter Stack'd" },
       {
@@ -31,8 +30,8 @@ export const Route = createFileRoute("/auth")({
         content: "Sign in or enter a room code to join a shared focus session on Stack'd.",
       },
       { property: "og:url", content: siteUrl("/auth") },
-       { property: "og:type", content: "website" },
-       { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex" },
     ],
     links: [{ rel: "canonical", href: siteUrl("/auth") }],
@@ -40,7 +39,16 @@ export const Route = createFileRoute("/auth")({
   component: Auth,
 });
 
-type ProviderKey = "apple" | "google" | "email";
+/** Apple needs a paid Apple Developer account + Supabase Apple provider; off until then. */
+const APPLE_SIGN_IN = false;
+
+type ProviderKey = "apple" | "google" | "github" | "email";
+type OAuthProvider = Exclude<ProviderKey, "email">;
+const PROVIDER_LABEL: Record<OAuthProvider, string> = {
+  apple: "Apple",
+  google: "Google",
+  github: "GitHub",
+};
 const MAX_CONFIRM_ATTEMPTS = 3;
 
 function Auth() {
@@ -63,7 +71,12 @@ function Auth() {
   const [pending, setPending] = useState<ProviderKey | null>(null);
   const [errors, setErrors] = useState<Partial<Record<ProviderKey, string>>>({});
   const [confirmStep, setConfirmStep] = useState(false);
-  const cooldown = useRef<Record<ProviderKey, number>>({ apple: 0, google: 0, email: 0 });
+  const cooldown = useRef<Record<ProviderKey, number>>({
+    apple: 0,
+    google: 0,
+    github: 0,
+    email: 0,
+  });
   const retryRefs = useRef<Partial<Record<ProviderKey, HTMLButtonElement | null>>>({});
   const emailRef = useRef<HTMLInputElement>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -115,7 +128,7 @@ function Auth() {
   const setErr = (k: ProviderKey, msg: string | null) =>
     setErrors((e) => ({ ...e, [k]: msg ?? undefined }));
 
-  const onOAuth = async (provider: "google" | "apple") => {
+  const onOAuth = async (provider: OAuthProvider) => {
     if (!clientGuard(provider)) return;
     setErr(provider, null);
     setPending(provider);
@@ -134,12 +147,15 @@ function Auth() {
       // navigates away from this page and never returns to this line, so
       // storing on "success" would mean the badge never appears.
       setLastAuthProvider(provider);
-      const res = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri:
-          window.location.origin + "/auth" + (next ? `?next=${encodeURIComponent(next)}` : ""),
+      const res = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo:
+            window.location.origin + "/auth" + (next ? `?next=${encodeURIComponent(next)}` : ""),
+        },
       });
       if (res.error) {
-        const msg = `${provider === "apple" ? "Apple" : "Google"} sign-in failed. Please retry.`;
+        const msg = `${PROVIDER_LABEL[provider]} sign-in failed. Please retry.`;
         setErr(provider, msg);
         setPending(null);
         void log({ data: { provider, success: false, reason: "provider_error" } });
@@ -233,10 +249,7 @@ function Auth() {
 
   return (
     <div className="public-page flex flex-col">
-      <a
-        href="#auth-main"
-        className="sr-only focus:not-sr-only focus:skip-link"
-      >
+      <a href="#auth-main" className="sr-only focus:not-sr-only focus:skip-link">
         Skip to sign-in
       </a>
       <header className="app-gutter py-6 safe-top">
@@ -258,36 +271,40 @@ function Auth() {
           </h1>
 
           <div className="space-y-3" role="group" aria-label="Sign-in providers">
-            <button
-              type="button"
-              onClick={() => onOAuth("apple")}
-              disabled={!!pending}
-              aria-busy={pending === "apple"}
-              aria-describedby={errors.apple ? "apple-err" : undefined}
-              aria-label={
-                lastProvider === "apple"
-                  ? "Continue with Apple — previously used"
-                  : "Continue with Apple"
-              }
-              className="relative w-full bg-silver text-obsidian py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:bg-white active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
-            >
-              {pending === "apple" ? <Spinner className="text-obsidian" /> : <AppleIcon />}
-              <span className="truncate">
-                {pending === "apple" ? "Connecting to Apple…" : "Continue with Apple"}
-              </span>
-              {lastProvider === "apple" && !pending && (
-                <LastUsedBadge className="border-obsidian/25 bg-obsidian/10 text-obsidian/70" />
-              )}
-            </button>
-            <ProviderError
-              id="apple-err"
-              msg={errors.apple}
-              onRetry={() => onOAuth("apple")}
-              btnRef={(el) => {
-                retryRefs.current.apple = el;
-              }}
-              providerLabel="Apple sign-in"
-            />
+            {APPLE_SIGN_IN && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onOAuth("apple")}
+                  disabled={!!pending}
+                  aria-busy={pending === "apple"}
+                  aria-describedby={errors.apple ? "apple-err" : undefined}
+                  aria-label={
+                    lastProvider === "apple"
+                      ? "Continue with Apple — previously used"
+                      : "Continue with Apple"
+                  }
+                  className="relative w-full bg-silver text-obsidian py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:bg-white active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+                >
+                  {pending === "apple" ? <Spinner className="text-obsidian" /> : <AppleIcon />}
+                  <span className="truncate">
+                    {pending === "apple" ? "Connecting to Apple…" : "Continue with Apple"}
+                  </span>
+                  {lastProvider === "apple" && !pending && (
+                    <LastUsedBadge className="border-obsidian/25 bg-obsidian/10 text-obsidian/70" />
+                  )}
+                </button>
+                <ProviderError
+                  id="apple-err"
+                  msg={errors.apple}
+                  onRetry={() => onOAuth("apple")}
+                  btnRef={(el) => {
+                    retryRefs.current.apple = el;
+                  }}
+                  providerLabel="Apple sign-in"
+                />
+              </>
+            )}
 
             <button
               type="button"
@@ -316,6 +333,35 @@ function Auth() {
                 retryRefs.current.google = el;
               }}
               providerLabel="Google sign-in"
+            />
+
+            <button
+              type="button"
+              onClick={() => onOAuth("github")}
+              disabled={!!pending}
+              aria-busy={pending === "github"}
+              aria-describedby={errors.github ? "github-err" : undefined}
+              aria-label={
+                lastProvider === "github"
+                  ? "Continue with GitHub — previously used"
+                  : "Continue with GitHub"
+              }
+              className="relative w-full bg-white/5 border border-white/15 text-silver py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:bg-white/10 hover:border-white/25 active:scale-[0.99] transition-all duration-200 ease-[var(--ease-ritual)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+            >
+              {pending === "github" ? <Spinner /> : <GitHubIcon />}
+              <span className="truncate">
+                {pending === "github" ? "Connecting to GitHub…" : "Continue with GitHub"}
+              </span>
+              {lastProvider === "github" && !pending && <LastUsedBadge />}
+            </button>
+            <ProviderError
+              id="github-err"
+              msg={errors.github}
+              onRetry={() => onOAuth("github")}
+              btnRef={(el) => {
+                retryRefs.current.github = el;
+              }}
+              providerLabel="GitHub sign-in"
             />
           </div>
 
@@ -787,6 +833,14 @@ function FieldHint({
     <p id={id} role="alert" className="mt-1.5 font-mono text-[10px] tracking-wide text-breach">
       {children}
     </p>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
   );
 }
 
