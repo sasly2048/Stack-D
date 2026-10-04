@@ -10,7 +10,7 @@ import java.security.SecureRandom
 
 /**
  * Google sign-in via Credential Manager, mirroring the web's "Continue with
- * Google" (which goes through Lovable's OAuth broker — different transport,
+ * Google" (which goes through Supabase's OAuth redirect — different transport,
  * same Supabase user).
  *
  * The ID token this yields is exchanged for a Supabase session by

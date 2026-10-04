@@ -24,7 +24,7 @@ import kotlinx.serialization.json.Json
 /**
  * Client for the web app's public AI routes under {WEB_BASE_URL}/api/public/ai.
  *
- * The LLM these features use needs a server-side key (LOVABLE_API_KEY) that must
+ * The LLM these features use needs a server-side key (GEMINI_API_KEY) that must
  * never ship in the APK, so — exactly like [app.stackd.data.auth.AuthRepository]
  * with auth-guard — Android calls a public web route that holds the key and
  * returns JSON. The caller's Supabase access token is the only credential sent;

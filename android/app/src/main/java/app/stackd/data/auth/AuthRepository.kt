@@ -89,7 +89,7 @@ sealed interface AuthOutcome {
  *  - No Turnstile CAPTCHA. There is no native widget, and a signed APK is a
  *    weaker bot target than an open web form. Every other guard check stands.
  *  - Google arrives as an ID token from Credential Manager rather than through
- *    Lovable's OAuth broker. Different mechanism, same Supabase user. Apple is
+ *    the web's Supabase OAuth redirect. Different mechanism, same Supabase user. Apple is
  *    not offered on Android at all.
  */
 class AuthRepository(
@@ -212,7 +212,7 @@ class AuthRepository(
 
     /**
      * Exchanges a Google ID token from Credential Manager for a Supabase
-     * session. The web reaches the same user through Lovable's OAuth broker;
+     * session. The web reaches the same user through Supabase's OAuth redirect;
      * only the transport differs.
      */
     suspend fun signInWithGoogle(idToken: String, rawNonce: String?): AuthOutcome {

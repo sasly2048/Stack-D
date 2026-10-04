@@ -371,7 +371,7 @@ private fun TodayHero(state: DashboardUiState, onStart: () -> Unit, onMore: () -
         // Only a meaningful amount; seconds of focus read as "0.0h" (a failure).
         if (yesterdaySec >= 300) {
             val m = (yesterdaySec / 60).toInt()
-            add(if (m >= 60) "${m / 60}h ${m % 60}m yesterday" else "${m}m yesterday")
+            add("${app.stackd.core.formatMinutes(m)} yesterday")
         }
     }
 
@@ -1091,7 +1091,7 @@ private fun shortDate(iso: String?): String {
 }
 
 /** Focus time in Home's units: "18m" under an hour, "1h 20m" above. */
-private fun minutesLabel(m: Int): String = if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m"
+private fun minutesLabel(m: Int): String = app.stackd.core.formatMinutes(m)
 
 /**
  * Atlas's local heuristic explains itself in numbers ("Averaging 18/100 across

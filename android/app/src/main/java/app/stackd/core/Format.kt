@@ -20,6 +20,13 @@ fun formatDuration(totalSeconds: Int): String {
     }
 }
 
+/** "45m", "1h", "2h 10m": whole hours drop the "0m" ("1h 0m" read as a glitch). */
+fun formatMinutes(minutes: Int): String = when {
+    minutes < 60 -> "${minutes}m"
+    minutes % 60 == 0 -> "${minutes / 60}h"
+    else -> "${minutes / 60}h ${minutes % 60}m"
+}
+
 /** One decimal under 10 hours, whole hours at or above — matches `formatHours`. */
 fun formatHours(totalSeconds: Int): String {
     val h = totalSeconds / 3600.0

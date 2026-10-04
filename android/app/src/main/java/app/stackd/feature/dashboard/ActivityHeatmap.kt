@@ -117,7 +117,7 @@ fun WeekBars(history: List<FocusHistoryRow>) {
     // Scrub (Revolut-style): touch/drag across the bars to read a day.
     var picked by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     val view = androidx.compose.ui.platform.LocalView.current
-    fun fmt(m: Int) = if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m"
+    fun fmt(m: Int) = app.stackd.core.formatMinutes(m)
     val dayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
     Row(verticalAlignment = Alignment.Bottom) {

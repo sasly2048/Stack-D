@@ -295,6 +295,8 @@ private fun CircleStrip(circle: List<FriendPresence>, onOpenFriends: () -> Unit,
             )
         }
     }
+    // No one yet: the card's "Invite someone" is the way in; a lone "Add" bubble would repeat it.
+    if (circle.isEmpty()) return
     Spacer(Modifier.height(16.dp))
     val sorted = remember(circle) { circle.sortedBy { it.status.ordinal } }
     Row(
@@ -414,7 +416,8 @@ private fun ActivitySection(
     )
     Spacer(Modifier.height(8.dp))
     groups.forEach { (day, items) ->
-        Text(day, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        // One group needs no label: each row already says when.
+        if (groups.size > 1) Text(day, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
         items.forEachIndexed { i, item ->
             FeedRow(item, now, mine, onOpenProfile)
             if (i < items.lastIndex) app.stackd.core.ui.HairlineDivider()
