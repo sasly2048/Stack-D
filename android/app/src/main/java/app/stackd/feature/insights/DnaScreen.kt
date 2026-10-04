@@ -1,0 +1,235 @@
+package app.stackd.feature.insights
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import app.stackd.core.AppContainer
+import app.stackd.core.stackdViewModel
+import app.stackd.core.theme.MonoLabel
+import app.stackd.core.theme.MonoLabelSmall
+import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.SerifFamily
+import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.AccentButton
+import app.stackd.core.ui.GhostButton
+import app.stackd.core.ui.ResponsiveColumn
+import app.stackd.core.ui.SectionLabel
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import java.time.Instant
+
+data class DnaUiState(
+    val loading: Boolean = true,
+    val error: Boolean = false,
+    /** Null until entitlement resolves; false shows the Pro gate. */
+    val hasAccess: Boolean? = null,
+    val dna: AnalyticsEngine.Dna? = null,
+)
+
+/**
+ * Focus DNA — web's `dna.tsx`. Pro-gated exactly like the web: the server
+ * function calls `requireFeature("focus_dna")`, we resolve the same
+ * entitlement RPC and show the upgrade gate to free-tier users.
+ */
+class DnaViewModel(private val container: AppContainer) : ViewModel() {
+    private val _state = MutableStateFlow(DnaUiState())
+    val state: StateFlow<DnaUiState> = _state
+
+    init {
+        load()
+    }
+
+    private fun cacheKey(userId: String) = "dna:$userId"
+
+    fun load() {
+        val userId = container.auth.currentUserId ?: return
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: DnaUiState? = container.cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
+        viewModelScope.launch {
+            val ent = runCatching { container.premium.myEntitlement() }.getOrNull()
+            if (ent == null) {
+                _state.value = _state.value.copy(loading = false, error = cached == null)
+                return@launch
+            }
+            if (!ent.isPro && !ent.isAdmin) {
+                _state.value = DnaUiState(loading = false, hasAccess = false)
+                return@launch
+            }
+            runCatching {
+                val since = Instant.now().minusSeconds(60L * 24 * 3600).toString()
+                AnalyticsEngine.dna(container.profiles.historySince(userId, since, limit = 500))
+            }.fold(
+                onSuccess = {
+                    val fresh = DnaUiState(loading = false, hasAccess = true, dna = it)
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
+                },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
+            )
+        }
+    }
+}
+
+@Composable
+fun DnaRoute(
+    onBack: () -> Unit,
+    onUpgrade: () -> Unit,
+    modifier: Modifier = Modifier,
+    vm: DnaViewModel = viewModel(factory = stackdViewModel { DnaViewModel(it) }),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    DnaScreen(state = state, onRetry = vm::load, onBack = onBack, onUpgrade = onUpgrade, modifier = modifier)
+}
+
+@Composable
+fun DnaScreen(
+    state: DnaUiState,
+    onRetry: () -> Unit,
+    onBack: () -> Unit,
+    onUpgrade: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = Stackd.colors
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        ResponsiveColumn {
+            app.stackd.core.ui.ScreenHeader("STACK'D / DNA", onBack, title = "Focus DNA")
+            Spacer(Modifier.height(16.dp))
+            SectionLabel("FOCUS DNA")
+            Spacer(Modifier.height(16.dp))
+
+            when {
+                state.loading -> {
+                    // Archetype title, meta line, radar, trait bars.
+                    SkeletonBlock(Modifier.fillMaxWidth(0.6f).height(36.dp))
+                    Spacer(Modifier.height(8.dp))
+                    SkeletonBlock(Modifier.fillMaxWidth(0.8f).height(12.dp))
+                    Spacer(Modifier.height(24.dp))
+                    SkeletonCard(height = 220.dp)
+                    repeat(4) {
+                        SkeletonBlock(Modifier.fillMaxWidth().height(12.dp))
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+                state.error -> {
+                    Text(
+                        "Couldn't read your DNA.",
+                        style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    GhostButton(text = "Retry", onClick = onRetry)
+                }
+                state.hasAccess == false -> {
+                    // The Pro gate — web's <PremiumGate feature="focus_dna">.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.09f), colors.surface)), Radius2Xl)
+                            .padding(20.dp),
+                    ) {
+                        Text("PRO FEATURE", style = MonoLabelSmall, color = colors.accent)
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "Your focus signature, mapped from every session into traits you can act on.",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontFamily = SerifFamily,
+                            fontWeight = FontWeight.Normal,
+                            color = colors.textPrimary,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        AccentButton(text = "See plans", onClick = onUpgrade, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+                state.dna != null -> {
+                    val dna = state.dna
+                    Text(
+                        dna.archetype,
+                        style = MaterialTheme.typography.displaySmall,
+                        fontFamily = SerifFamily,
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.Normal,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "SIGNATURE ${dna.signature} · ${dna.totalSessions} " +
+                            (if (dna.totalSessions == 1) "SESSION" else "SESSIONS") + " · " +
+                            "PEAK ${dna.peakHour}:00 · ${dna.consistencyScore}% CONSISTENT",
+                        style = MonoLabelSmall,
+                        color = colors.textMuted,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    FocusRadar(dna.traits)
+                    Spacer(Modifier.height(24.dp))
+                    dna.traits.forEach { t ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                t.label.uppercase(),
+                                style = MonoLabelSmall,
+                                color = colors.textMuted,
+                                modifier = Modifier.width(110.dp),
+                            )
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height(6.dp)
+                                    .background(colors.textPrimary.copy(alpha = 0.05f), CircleShape),
+                            ) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(t.value / 100f)
+                                        .height(6.dp)
+                                        .background(colors.accent, CircleShape),
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text("${t.value}", style = MonoLabelSmall, color = colors.textPrimary)
+                        }
+                    }
+                }
+                // Access granted but too little history to map yet.
+                else -> app.stackd.feature.profile.FeatureEmptyState(
+                    icon = app.stackd.core.ui.StackdIcons.Fingerprint,
+                    title = "Your DNA is still forming",
+                    body = "After a few Stacks this maps when and how you focus best.",
+                )
+            }
+
+            Spacer(Modifier.height(56.dp))
+        }
+    }
+}

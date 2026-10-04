@@ -1,0 +1,719 @@
+package app.stackd.feature.profile
+
+import app.stackd.core.ui.pageGlow
+
+import app.stackd.core.ui.glassSurface
+
+import android.content.ContentResolver
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import app.stackd.core.theme.SerifFamily
+import app.stackd.core.ui.pressFeedback
+import app.stackd.feature.insights.formatFocus
+import com.composables.icons.lucide.ChevronRight
+import androidx.compose.ui.platform.LocalContext
+import app.stackd.core.ui.Avatar
+import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
+import app.stackd.core.ui.SkeletonBlock
+import app.stackd.core.ui.SkeletonCard
+import androidx.compose.ui.Alignment
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import app.stackd.core.AppContainer
+import app.stackd.core.stackdViewModel
+import app.stackd.core.theme.MonoLabelSmall
+import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.EmberButton
+import app.stackd.core.ui.GhostButton
+import app.stackd.core.ui.ResponsiveColumn
+import app.stackd.core.ui.SectionLabel
+import app.stackd.data.room.ProfileRow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+data class ProfileUiState(
+    val loading: Boolean = true,
+    val error: Boolean = false,
+    val profile: ProfileRow? = null,
+    val tier: String = "free",
+    val saving: Boolean = false,
+    val usernameSaving: Boolean = false,
+    val usernameNotice: String? = null,
+    /** Live availability hint while typing a username. */
+    val usernameStatus: UsernameStatus = UsernameStatus.Idle,
+    /** Lifetime milestones shelf — null until loaded. */
+    val shelf: app.stackd.data.profile.MilestoneShelf? = null,
+    /** Profile photo upload in flight. */
+    val avatarBusy: Boolean = false,
+    val avatarError: String? = null,
+)
+
+/** Live username-availability hint states. */
+sealed interface UsernameStatus {
+    data object Idle : UsernameStatus
+    data object Checking : UsernameStatus
+    data object Available : UsernameStatus
+    data class Unavailable(val message: String) : UsernameStatus
+}
+
+/** Own profile — web's `profile.tsx`: identity card, stats, edit, sign out. */
+class ProfileViewModel(private val container: AppContainer) : ViewModel() {
+    private val _state = MutableStateFlow(ProfileUiState())
+    val state: StateFlow<ProfileUiState> = _state
+
+    init {
+        load()
+    }
+
+    private fun cacheKey(userId: String) = "profile:$userId"
+
+    fun load() {
+        val userId = container.auth.currentUserId ?: return
+        // Stale-while-revalidate: seed from the last cached state so re-entry
+        // shows data instantly instead of a spinner, then revalidate below.
+        val cached: ProfileUiState? = container.cache.get(cacheKey(userId))
+        _state.value = (cached ?: _state.value).copy(loading = cached == null, error = false)
+        viewModelScope.launch {
+            runCatching {
+                val profile = container.profiles.getProfile(userId)
+                val tier = runCatching { container.premium.myEntitlement().tier }.getOrDefault("free")
+                val shelf = runCatching {
+                    container.profiles.getMilestones(userId, userId)
+                }.getOrNull()
+                Triple(profile, tier, shelf)
+            }.fold(
+                onSuccess = { (profile, tier, shelf) ->
+                    val fresh = ProfileUiState(
+                        loading = false, profile = profile, tier = tier, shelf = shelf,
+                    )
+                    _state.value = fresh
+                    container.cache.put(cacheKey(userId), fresh)
+                },
+                onFailure = { _state.value = _state.value.copy(loading = false, error = cached == null) },
+            )
+        }
+    }
+
+    fun save(displayName: String, bio: String) {
+        val userId = container.auth.currentUserId ?: return
+        _state.value = _state.value.copy(saving = true)
+        viewModelScope.launch {
+            runCatching { container.profiles.updateProfile(userId, displayName, bio) }
+            _state.value = _state.value.copy(saving = false)
+            load()
+        }
+    }
+
+    /**
+     * Downscales the picked photo, uploads it and swaps the header avatar in
+     * place. Until the avatars bucket migration ships, the upload fails and the
+     * user gets a plain-language error instead of a stack trace.
+     */
+    fun changeAvatar(resolver: ContentResolver, uri: Uri) {
+        val userId = container.auth.currentUserId ?: return
+        if (_state.value.avatarBusy) return
+        _state.update { it.copy(avatarBusy = true, avatarError = null) }
+        viewModelScope.launch {
+            val result = runCatching {
+                val bytes = withContext(Dispatchers.IO) { downscaleToJpeg(resolver, uri) }
+                container.profiles.uploadAvatar(userId, bytes)
+            }
+            result.fold(
+                onSuccess = { url ->
+                    _state.update {
+                        it.copy(avatarBusy = false, profile = it.profile?.copy(avatarUrl = url))
+                    }
+                    container.cache.put(cacheKey(userId), _state.value)
+                },
+                onFailure = { e ->
+                    val msg = e.message.orEmpty()
+                    val error = when {
+                        msg.contains("bucket", ignoreCase = true) ->
+                            "Photo uploads aren't available yet. Try again later."
+                        e is ImageReadException -> e.message
+                        else -> "Couldn't upload your photo. Check your connection and try again."
+                    }
+                    _state.update { it.copy(avatarBusy = false, avatarError = error) }
+                },
+            )
+        }
+    }
+
+    private var usernameProbe: kotlinx.coroutines.Job? = null
+
+    /**
+     * Debounced live availability probe as the user types (web's Checking… /
+     * Available hint). The current handle is never flagged "taken" against
+     * itself. Purely advisory — [saveUsername] is the real gate.
+     */
+    fun onUsernameInput(input: String) {
+        usernameProbe?.cancel()
+        val trimmed = input.trim()
+        val current = _state.value.profile?.username
+        if (trimmed.isEmpty() || trimmed == current) {
+            _state.value = _state.value.copy(usernameStatus = UsernameStatus.Idle)
+            return
+        }
+        val userId = container.auth.currentUserId ?: return
+        _state.value = _state.value.copy(usernameStatus = UsernameStatus.Checking)
+        usernameProbe = viewModelScope.launch {
+            kotlinx.coroutines.delay(400)
+            val result = runCatching { container.profiles.checkUsername(userId, trimmed) }.getOrNull()
+            _state.value = _state.value.copy(
+                usernameStatus = when (result) {
+                    is app.stackd.data.profile.UsernameResult.Ok -> UsernameStatus.Available
+                    is app.stackd.data.profile.UsernameResult.Rejected ->
+                        UsernameStatus.Unavailable(result.message)
+                    null -> UsernameStatus.Idle
+                },
+            )
+        }
+    }
+
+    fun saveUsername(username: String) {
+        val userId = container.auth.currentUserId ?: return
+        if (username.isBlank() || _state.value.usernameSaving) return
+        _state.value = _state.value.copy(usernameSaving = true, usernameNotice = null)
+        viewModelScope.launch {
+            val result = container.profiles.setMyUsername(userId, username)
+            val notice = when (result) {
+                is app.stackd.data.profile.UsernameResult.Ok -> "Username set to @${result.username}."
+                is app.stackd.data.profile.UsernameResult.Rejected -> result.message
+            }
+            _state.value = _state.value.copy(usernameSaving = false, usernameNotice = notice)
+            if (result is app.stackd.data.profile.UsernameResult.Ok) load()
+        }
+    }
+
+    fun signOut(onDone: () -> Unit) {
+        viewModelScope.launch {
+            container.auth.signOut()
+            // Drop cached screen state so the next user never sees this one's data.
+            container.cache.clear()
+            onDone()
+        }
+    }
+}
+
+@Composable
+fun ProfileRoute(
+    onBack: () -> Unit,
+    onSignedOut: () -> Unit,
+    onOpenPremium: () -> Unit,
+    modifier: Modifier = Modifier,
+    vm: ProfileViewModel = viewModel(factory = stackdViewModel { ProfileViewModel(it) }),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val resolver = LocalContext.current.contentResolver
+    ProfileScreen(
+        state = state,
+        onPickAvatar = { uri -> vm.changeAvatar(resolver, uri) },
+        onSave = vm::save,
+        onSaveUsername = vm::saveUsername,
+        onUsernameInput = vm::onUsernameInput,
+        onSignOut = { vm.signOut(onSignedOut) },
+        onRetry = vm::load,
+        onBack = onBack,
+        onOpenPremium = onOpenPremium,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun ProfileScreen(
+    state: ProfileUiState,
+    onPickAvatar: (Uri) -> Unit = {},
+    onSave: (String, String) -> Unit,
+    onSaveUsername: (String) -> Unit,
+    onUsernameInput: (String) -> Unit = {},
+    onSignOut: () -> Unit,
+    onRetry: () -> Unit,
+    onBack: () -> Unit,
+    onOpenPremium: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = Stackd.colors
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .pageGlow()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        ResponsiveColumn {
+            app.stackd.core.ui.ScreenHeader("STACK'D / PROFILE", onBack)
+            Spacer(Modifier.height(16.dp))
+
+            when {
+                state.loading -> ProfileSkeleton()
+                state.error || state.profile == null -> {
+                    Text(
+                        "Couldn't load your profile.",
+                        style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    GhostButton(text = "Retry", onClick = onRetry)
+                }
+                else -> {
+                    val p = state.profile
+                    // The system photo picker needs no storage permission.
+                    val picker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+                        uri?.let(onPickAvatar)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(url = p.avatarUrl, name = p.displayName, size = 72.dp)
+                        Spacer(Modifier.width(16.dp))
+                        GhostButton(
+                            text = if (state.avatarBusy) "Uploading…" else "Change photo",
+                            onClick = {
+                                picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                            },
+                            enabled = !state.avatarBusy,
+                            busy = state.avatarBusy,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    state.avatarError?.let {
+                        Spacer(Modifier.height(6.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = colors.breach)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        p.displayName?.takeIf { it.isNotBlank() } ?: "Anon",
+                        style = MaterialTheme.typography.displaySmall,
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(state.tier.uppercase(), style = MonoLabelSmall, color = colors.accent)
+                        p.title?.takeIf { it.isNotBlank() }?.let {
+                            Text(it.uppercase(), style = MonoLabelSmall, color = colors.textMuted)
+                        }
+                        p.username?.takeIf { it.isNotBlank() }?.let {
+                            Text("@$it", style = MonoLabelSmall, color = colors.textMuted)
+                        }
+                    }
+                    p.bio?.takeIf { it.isNotBlank() }?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                    // A personal record, not a KPI wall: serif values, small labels, one card.
+                    fun days(n: Int) = "$n ${if (n == 1) "day" else "days"}"
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .glassSurface(Radius2Xl)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            RecordStat("${"%,d".format(p.lifetimeXp)} XP", "Lifetime", Modifier.weight(1f), highlight = true)
+                            RecordStat(
+                                days(p.currentFocusStreak), "Current run", Modifier.weight(1f),
+                                helper = if (p.currentFocusStreak > 0) null else "Your first Stack starts your run",
+                            )
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            RecordStat(days(p.bestStreak), "Best run", Modifier.weight(1f))
+                            RecordStat(formatFocus(p.totalFocusSeconds), "Focused", Modifier.weight(1f))
+                        }
+                    }
+
+                    state.shelf?.let { shelf ->
+                        Spacer(Modifier.height(24.dp))
+                        MilestoneShelfSection(shelf)
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                    SectionLabel("EDIT")
+                    Spacer(Modifier.height(8.dp))
+                    var name by remember(p) { mutableStateOf(p.displayName.orEmpty()) }
+                    var bio by remember(p) { mutableStateOf(p.bio.orEmpty()) }
+                    OutlinedTextField(
+                        value = name, onValueChange = { if (it.length <= 60) name = it },
+                        label = { Text("Display name") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = bio, onValueChange = { if (it.length <= 300) bio = it },
+                        label = { Text("Bio") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    // Primary only once there's something to save; quiet otherwise.
+                    val dirty = name != p.displayName.orEmpty() || bio != p.bio.orEmpty()
+                    if (dirty || state.saving) {
+                        EmberButton(
+                            text = if (state.saving) "Saving…" else "Save",
+                            onClick = { onSave(name, bio) },
+                            enabled = name.isNotBlank(),
+                            busy = state.saving,
+                        )
+                    } else {
+                        GhostButton(text = "Save", onClick = {}, enabled = false)
+                    }
+
+                    // Management actions as one settings list.
+                    Spacer(Modifier.height(32.dp))
+                    Text(
+                        "Settings",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textPrimary,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    var username by remember(p) { mutableStateOf(p.username.orEmpty()) }
+                    var usernameOpen by remember { mutableStateOf(false) }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .glassSurface(Radius2Xl)
+                            .padding(horizontal = 16.dp),
+                    ) {
+                        SettingsRow(
+                            label = "Username",
+                            value = p.username?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: "Set username",
+                            onClick = { usernameOpen = !usernameOpen },
+                        )
+                        if (usernameOpen) {
+                            OutlinedTextField(
+                                value = username,
+                                onValueChange = {
+                                    if (it.length <= 20) {
+                                        username = it
+                                        onUsernameInput(it)
+                                    }
+                                },
+                                label = { Text("Username") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            // Short rules by default; the extra rules only when they apply.
+                            val startsBad = username.isNotEmpty() && !username.first().isLetter()
+                            val (hint, hintColor) = if (startsBad) {
+                                "Must start with a letter" to colors.breach
+                            } else when (val s = state.usernameStatus) {
+                                UsernameStatus.Checking -> "Checking…" to colors.textMuted
+                                UsernameStatus.Available -> "Available" to colors.accent
+                                is UsernameStatus.Unavailable -> s.message to colors.breach
+                                UsernameStatus.Idle ->
+                                    "3–20 characters · letters, numbers, _ and -" to colors.textMuted
+                            }
+                            Text(hint, style = MaterialTheme.typography.bodySmall, color = hintColor)
+                            if (username.isNotBlank() && username != p.username.orEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "You can change it once every 24h",
+                                    style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
+                                )
+                            }
+                            state.usernameNotice?.let {
+                                Spacer(Modifier.height(4.dp))
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            GhostButton(
+                                text = if (state.usernameSaving) "Setting…" else "Set username",
+                                onClick = { onSaveUsername(username) },
+                                enabled = username.isNotBlank() && username != p.username && !startsBad,
+                                busy = state.usernameSaving,
+                            )
+                            Spacer(Modifier.height(16.dp))
+                        }
+                        app.stackd.core.ui.HairlineDivider()
+                        SoundToggle()
+                        app.stackd.core.ui.HairlineDivider()
+                        SettingsRow(label = "Manage plan", value = state.tier.replaceFirstChar { it.uppercase() }, onClick = onOpenPremium)
+                        app.stackd.core.ui.HairlineDivider()
+                        SettingsRow(label = "Sign out", onClick = onSignOut, color = colors.breach, chevron = false)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(56.dp))
+        }
+    }
+}
+
+/** Skeleton in the shape of the loaded profile: name, meta line, stat tiles, edit fields. */
+@Composable
+private fun ProfileSkeleton() {
+    SkeletonBlock(Modifier.fillMaxWidth(0.55f).height(36.dp))
+    Spacer(Modifier.height(8.dp))
+    SkeletonBlock(Modifier.fillMaxWidth(0.35f).height(12.dp))
+    Spacer(Modifier.height(24.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        repeat(4) { SkeletonBlock(Modifier.weight(1f).height(56.dp), Radius2Xl) }
+    }
+    Spacer(Modifier.height(24.dp))
+    SkeletonCard(height = 120.dp)
+    SkeletonBlock(Modifier.fillMaxWidth().height(56.dp))
+    Spacer(Modifier.height(8.dp))
+    SkeletonBlock(Modifier.fillMaxWidth().height(56.dp))
+}
+
+/** Serif value over a small sans label — one line of the personal record. */
+@Composable
+private fun RecordStat(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    highlight: Boolean = false,
+    helper: String? = null,
+) {
+    val colors = Stackd.colors
+    Column(modifier) {
+        Text(
+            value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontFamily = SerifFamily,
+            color = if (highlight) colors.accent else colors.textPrimary,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+        Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        helper?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
+    }
+}
+
+/** A settings-list row: label, optional trailing value, chevron. */
+@Composable
+private fun SettingsRow(
+    label: String,
+    onClick: () -> Unit,
+    value: String? = null,
+    color: androidx.compose.ui.graphics.Color = Stackd.colors.textPrimary,
+    chevron: Boolean = true,
+) {
+    val colors = Stackd.colors
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .pressFeedback(source, pressedScale = 0.99f)
+            .clickable(source, indication = null, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = color, modifier = Modifier.weight(1f))
+        value?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted, maxLines = 1)
+        }
+        if (chevron) {
+            Spacer(Modifier.width(8.dp))
+            androidx.compose.material3.Icon(
+                com.composables.icons.lucide.Lucide.ChevronRight,
+                contentDescription = null,
+                tint = colors.textMuted,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+/** UI sounds on/off — web SoundToggle on the profile page. */
+@Composable
+private fun SoundToggle() {
+    val colors = Stackd.colors
+    val settings = (androidx.compose.ui.platform.LocalContext.current.applicationContext as app.stackd.StackdApplication)
+        .container.settings
+    val on by settings.soundEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Sound effects", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, modifier = Modifier.weight(1f))
+        androidx.compose.material3.Switch(
+            checked = on,
+            onCheckedChange = { next ->
+                scope.launch { settings.setSoundEnabled(next) }
+                if (next) {
+                    app.stackd.core.feedback.Sfx.enabled = true
+                    app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.NOTIFY)
+                }
+            },
+        )
+    }
+}
+
+/**
+ * Lifetime milestones shelf — the Android counterpart to web's MilestoneShelf.
+ * Engraved plates for earned markers, the total hours held, empty copy before
+ * the first, and a progress bar toward the next unearned milestone.
+ */
+@Composable
+private fun MilestoneShelfSection(shelf: app.stackd.data.profile.MilestoneShelf) {
+    val colors = Stackd.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        SectionLabel("LIFETIME MILESTONES")
+        // ponytail: hour thresholds mirror the ms_hours_* plates; read them from defs if they change.
+        val hourTarget = shelf.next?.card?.takeIf { it.metric == "hours" }?.threshold
+            ?: listOf(100, 250, 500, 1000).firstOrNull { it > shelf.totalHours }
+        Text(
+            if (hourTarget != null) "${shelf.totalHours} / ${hourTarget}h held" else "${shelf.totalHours}h held",
+            style = MaterialTheme.typography.bodySmall, color = colors.textMuted,
+        )
+    }
+    Spacer(Modifier.height(12.dp))
+
+    if (shelf.earned.isEmpty()) {
+        FeatureEmptyState(
+            icon = app.stackd.core.ui.StackdIcons.MilitaryTech,
+            title = "No milestones yet",
+            body = "Your first plate is engraved at 100 hours held.",
+        )
+    } else {
+        shelf.earned.forEach { m ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .glassSurface(Radius2Xl)
+                    .padding(16.dp),
+            ) {
+                Text(m.metric.uppercase(), style = MonoLabelSmall, color = colors.accent)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "${m.threshold}",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = colors.textPrimary,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+                if (m.description.isNotBlank()) {
+                    Text(m.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                }
+                m.unlockedAt?.let {
+                    Text(it.take(10), style = MonoLabelSmall, color = colors.textMuted)
+                }
+            }
+        }
+    }
+
+    shelf.next?.let { next ->
+        Spacer(Modifier.height(12.dp))
+        val left = (next.card.threshold - next.current).coerceAtLeast(0)
+        val unit = when (next.card.metric) {
+            "hours" -> if (left == 1) "hour" else "hours"
+            "sessions" -> if (left == 1) "session" else "sessions"
+            else -> if (left == 1) "streak day" else "streak days"
+        }
+        Text(
+            "$left $unit to your next milestone",
+            style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary,
+        )
+        Spacer(Modifier.height(8.dp))
+        val frac = (next.current.toFloat() / next.card.threshold.coerceAtLeast(1)).coerceIn(0f, 1f)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(5.dp)
+                .background(colors.textPrimary.copy(alpha = 0.05f), Radius2Xl),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(frac)
+                    .height(5.dp)
+                    .background(colors.accent.copy(alpha = 0.7f), Radius2Xl),
+            )
+        }
+    }
+}
+
+/** A picked file that couldn't be decoded as an image; its message is user-facing. */
+private class ImageReadException : Exception("Couldn't read that image. Try another photo.")
+
+/**
+ * Decodes [uri] to at most [maxPx] on the long edge and re-encodes it as JPEG
+ * (quality 85), so uploads stay well under the bucket's 2 MB cap. Blocking;
+ * call off the main thread.
+ */
+internal fun downscaleToJpeg(resolver: ContentResolver, uri: Uri, maxPx: Int = 512): ByteArray {
+    fun scaleFor(w: Int, h: Int) = minOf(1f, maxPx.toFloat() / maxOf(w, h, 1))
+    val bitmap: Bitmap = runCatching {
+        if (Build.VERSION.SDK_INT >= 28) {
+            // ImageDecoder also applies the EXIF rotation.
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, info, _ ->
+                val scale = scaleFor(info.size.width, info.size.height)
+                decoder.setTargetSize(
+                    (info.size.width * scale).toInt().coerceAtLeast(1),
+                    (info.size.height * scale).toInt().coerceAtLeast(1),
+                )
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            }
+        } else {
+            // ponytail: API 26-27 ignores EXIF rotation; add ExifInterface if those devices matter.
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxPx) sample *= 2
+            val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+            val decoded = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
+                ?: throw ImageReadException()
+            val scale = scaleFor(decoded.width, decoded.height)
+            if (scale >= 1f) decoded else Bitmap.createScaledBitmap(
+                decoded,
+                (decoded.width * scale).toInt().coerceAtLeast(1),
+                (decoded.height * scale).toInt().coerceAtLeast(1),
+                true,
+            )
+        }
+    }.getOrElse { throw ImageReadException() }
+    return ByteArrayOutputStream().use { out ->
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+        out.toByteArray()
+    }
+}

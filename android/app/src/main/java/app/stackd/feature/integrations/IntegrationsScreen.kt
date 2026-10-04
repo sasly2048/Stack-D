@@ -1,0 +1,172 @@
+package app.stackd.feature.integrations
+
+import app.stackd.core.ui.glassSurface
+
+import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.Role
+import app.stackd.core.ui.pressFeedback
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import app.stackd.BuildConfig
+import app.stackd.core.theme.MonoLabel
+import app.stackd.core.theme.MonoLabelSmall
+import app.stackd.core.theme.Radius2Xl
+import app.stackd.core.theme.Stackd
+import app.stackd.core.ui.GhostButton
+import app.stackd.core.ui.ResponsiveColumn
+import app.stackd.core.ui.SectionLabel
+
+/**
+ * Ecosystem catalog — web's `integrations.tsx`. Purely static content, so no
+ * repository or ViewModel. The three "Live" tiles (Webhooks/SDK/MCP) are
+ * approved-skip dev surfaces with no Android screen, so they open the web app
+ * — the same web-handoff pattern the premium screen uses for checkout.
+ */
+
+private data class Integration(
+    val name: String,
+    val tagline: String,
+    /** One line answering "what happens if I connect this?". */
+    val value: String,
+    /** "live" | "soon" */
+    val status: String,
+    /** Web path for Live tiles; null for Soon. */
+    val webPath: String? = null,
+)
+
+private val INTEGRATIONS = listOf(
+    Integration("Webhooks", "Push every session event to your own endpoint.", "Send session events to your own tools.", "live", "/webhooks"),
+    Integration("TypeScript SDK", "Verify signatures and parse events in five lines.", "Build on your sessions without guessing the format.", "live", "/sdk"),
+    Integration("Agent (MCP)", "Let Claude or Cursor read your focus history.", "Ask your AI how your focus is really going.", "live", "/mcp"),
+    Integration("Calendar", "Auto-block deep-work slots on Google or Apple Calendar.", "Block your focus windows on your calendar.", "soon"),
+    Integration("Notion", "Send session notes and tags straight into a database.", "Archive finished sessions.", "soon"),
+    Integration("Discord", "Announce room openings and streak milestones to a channel.", "Pull your server into the next stack.", "soon"),
+    Integration("Slack", "Focus-mode presence and shared session invites.", "Show you as away while you stack.", "soon"),
+    Integration("Raycast", "Start a session without leaving your keyboard.", "Start focusing in one keystroke.", "soon"),
+)
+
+@Composable
+fun IntegrationsRoute(
+    onBack: () -> Unit,
+    onOpenWebhooks: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    IntegrationsScreen(onBack = onBack, onOpenWebhooks = onOpenWebhooks, modifier = modifier)
+}
+
+@Composable
+fun IntegrationsScreen(
+    onBack: () -> Unit,
+    onOpenWebhooks: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    val colors = Stackd.colors
+    val context = LocalContext.current
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        ResponsiveColumn {
+            app.stackd.core.ui.ScreenHeader("STACK'D / ECOSYSTEM", onBack, title = "Integrations")
+            Spacer(Modifier.height(16.dp))
+            SectionLabel("INTEGRATIONS")
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Connect Stack'd to the rest of your stack.",
+                style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+            )
+            Spacer(Modifier.height(16.dp))
+
+            INTEGRATIONS.forEach { i ->
+                val live = i.status == "live"
+                val tappable = live && i.webPath != null
+                val source = remember { MutableInteractionSource() }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .then(if (tappable) Modifier.pressFeedback(source) else Modifier)
+                        .glassSurface(Radius2Xl)
+                        .then(
+                            if (tappable) {
+                                Modifier.clickable(interactionSource = source, indication = null, role = Role.Button) {
+                                    // Webhooks is native now; SDK/MCP stay approved
+                                    // web hand-offs.
+                                    if (i.webPath == "/webhooks") {
+                                        onOpenWebhooks()
+                                    } else {
+                                        val url = BuildConfig.WEB_BASE_URL + i.webPath
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                                    }
+                                }
+                            } else Modifier,
+                        )
+                        .padding(16.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            i.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textPrimary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            if (live) "LIVE" else "SOON",
+                            style = MonoLabelSmall,
+                            color = if (live) colors.live else colors.textMuted,
+                            modifier = Modifier
+                                .border(
+                                    1.dp,
+                                    if (live) colors.live.copy(alpha = 0.5f) else colors.border,
+                                    CircleShape,
+                                )
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(i.tagline, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                    Spacer(Modifier.height(8.dp))
+                    Text(i.value, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                    if (live) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            if (i.webPath == "/webhooks") "Manage →" else "Opens on the web →",
+                            style = MonoLabelSmall,
+                            color = colors.accent,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(56.dp))
+        }
+    }
+}
