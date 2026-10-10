@@ -41,8 +41,8 @@ import app.stackd.core.ui.SectionLabel
 
 /**
  * Ecosystem catalog — web's `integrations.tsx`. Purely static content, so no
- * repository or ViewModel. The three "Live" tiles (Webhooks/SDK/MCP) are
- * approved-skip dev surfaces with no Android screen, so they open the web app
+ * repository or ViewModel. The "Live" SDK tile is an approved-skip dev
+ * surface with no Android screen, so it opens the web app
  * — the same web-handoff pattern the premium screen uses for checkout.
  */
 
@@ -60,7 +60,6 @@ private data class Integration(
 private val INTEGRATIONS = listOf(
     Integration("Webhooks", "Push every session event to your own endpoint.", "Send session events to your own tools.", "live", "/webhooks"),
     Integration("TypeScript SDK", "Verify signatures and parse events in five lines.", "Build on your sessions without guessing the format.", "live", "/sdk"),
-    Integration("Agent (MCP)", "Let Claude or Cursor read your focus history.", "Ask your AI how your focus is really going.", "live", "/mcp"),
     Integration("Calendar", "Auto-block deep-work slots on Google or Apple Calendar.", "Block your focus windows on your calendar.", "soon"),
     Integration("Notion", "Send session notes and tags straight into a database.", "Archive finished sessions.", "soon"),
     Integration("Discord", "Announce room openings and streak milestones to a channel.", "Pull your server into the next stack.", "soon"),

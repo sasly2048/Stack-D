@@ -58,6 +58,13 @@ class FocusSessionService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var endJob: Job? = null
     private var session: Session? = null
+    private var roomCode: String = ""
+    private var endsAt: Long = 0L
+    private var startedAt: Long = 0L
+
+    /** What the lock-screen notification names: the one thing a face-down user wonders. */
+    private enum class Phase(val line: String) { ARMING("Arming the stack…"), HOLDING("Holding · don't touch it"), BROKEN("Your stack broke · still running for the table") }
+    private var phase = Phase.ARMING
 
     /** Identity of the running session — who to record breaches as, and when it ends. */
     private data class Session(
@@ -76,6 +83,9 @@ class FocusSessionService : Service() {
         val roomCode = intent?.getStringExtra(EXTRA_ROOM_CODE).orEmpty()
         val modeWire = intent?.getStringExtra(EXTRA_MODE).orEmpty()
         running.value = RunningSession(roomCode, endsAtMillis)
+        this.roomCode = roomCode
+        this.endsAt = endsAtMillis
+        if (startedAt == 0L) startedAt = intent?.getLongExtra(EXTRA_STARTED_AT, 0L)?.takeIf { it > 0 } ?: System.currentTimeMillis()
 
         createChannel()
         startForeground(NOTIFICATION_ID, buildNotification(roomCode, endsAtMillis))
@@ -87,6 +97,9 @@ class FocusSessionService : Service() {
             acquireWakeLock(endsAtMillis)
             startDetector(modeWire)
             scheduleEnd()
+            // The progress bar only needs minute resolution; the chronometer
+            // already ticks the seconds on its own.
+            scope.launch { while (true) { delay(60_000L); refreshNotification() } }
         }
 
         // Don't recreate on kill: a session resurrected without its identity
@@ -127,9 +140,16 @@ class FocusSessionService : Service() {
                 // A severe breach disarms this participant (web parity). Stop the
                 // sensors — nothing further can change the outcome — but keep the
                 // service for the end-of-session duties below.
-                if (severity == BreachSeverity.SEVERE) detector?.stop()
+                if (severity == BreachSeverity.SEVERE) {
+                    detector?.stop()
+                    phase = Phase.BROKEN
+                    refreshNotification()
+                }
             }
-            onCalibrated = { calibrated.tryEmit(Unit) }
+            onCalibrated = {
+                calibrated.tryEmit(Unit)
+                if (phase == Phase.ARMING) { phase = Phase.HOLDING; refreshNotification() }
+            }
             onCapability = { cap -> capabilities.tryEmit(cap) }
             start()
         }
@@ -167,6 +187,11 @@ class FocusSessionService : Service() {
         val s = session ?: return
         endJob = scope.launch {
             delay((s.endsAtMillis - System.currentTimeMillis()).coerceAtLeast(0L))
+            notifyResultIfBackground(
+                applicationContext,
+                minutes = ((s.endsAtMillis - s.startedAtMillis) / 60_000L).toInt(),
+                held = phase != Phase.BROKEN,
+            )
             if (s.isHost) {
                 runCatching { container().rooms.completeSession(s.roomId) }
             }
@@ -237,7 +262,9 @@ class FocusSessionService : Service() {
             .setContentTitle(
                 if (roomCode.isBlank()) "Session in progress" else "Room $roomCode",
             )
-            .setContentText("Stack is holding.")
+            .setContentText(phase.line)
+            // Determinate bar: how far through the stack you are, at a glance.
+            .setProgress(100, progressPercent(endsAtMillis), false)
             .setContentIntent(open)
             .setOngoing(true)
             .setSilent(true)
@@ -250,6 +277,16 @@ class FocusSessionService : Service() {
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
+    }
+
+    private fun progressPercent(endsAtMillis: Long): Int {
+        val total = (endsAtMillis - startedAt).coerceAtLeast(1L)
+        return (((System.currentTimeMillis() - startedAt).coerceIn(0L, total) * 100) / total).toInt()
+    }
+
+    private fun refreshNotification() {
+        if (endsAt == 0L) return
+        getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildNotification(roomCode, endsAt))
     }
 
     private fun createChannel() {
@@ -347,6 +384,48 @@ class FocusSessionService : Service() {
             val send = FinalizeQueueWorker.breachSubmitter
             val clear = send != null && outbox.drain(breach.owner) { send(it) }
             if (!clear) FinalizeQueueWorker.flush(context, breach.owner)
+        }
+
+        private const val RESULT_CHANNEL_ID = "session_result"
+        private const val RESULT_NOTIFICATION_ID = 1002
+
+        /**
+         * The stack ended while the user was away (screen off, phone face-down):
+         * one "your stack held" notification that opens straight into the app,
+         * where the ceremony is waiting. Called from both the service and the
+         * room screen at the end; the fixed id means a double call shows once.
+         * Skipped while the app is on screen, since the ceremony is already there.
+         */
+        fun notifyResultIfBackground(context: Context, minutes: Int, held: Boolean) {
+            val info = android.app.ActivityManager.RunningAppProcessInfo()
+            android.app.ActivityManager.getMyMemoryState(info)
+            if (info.importance <= android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) return
+            val manager = context.getSystemService(NotificationManager::class.java) ?: return
+            if (manager.getNotificationChannel(RESULT_CHANNEL_ID) == null) {
+                manager.createNotificationChannel(
+                    NotificationChannel(RESULT_CHANNEL_ID, "Session results", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                        description = "Tells you when a stack you started has finished."
+                    },
+                )
+            }
+            val open = PendingIntent.getActivity(
+                context,
+                1,
+                Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                },
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+            val length = if (minutes % 60 == 0 && minutes > 0) "${minutes / 60} h" else "$minutes min"
+            val n = NotificationCompat.Builder(context, RESULT_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_session)
+                .setContentTitle(if (held) "The stack held" else "Your stack is over")
+                .setContentText("$length · pick up your phone to see how it went")
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
+                .build()
+            runCatching { manager.notify(RESULT_NOTIFICATION_ID, n) }
         }
 
         fun start(

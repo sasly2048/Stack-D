@@ -328,7 +328,7 @@ class MainActivity : ComponentActivity() {
 
                                 // Sits above the floating timer pill so a toast
                                 // isn't drawn behind it.
-                                SnackbarHost(
+                                app.stackd.core.ui.StackdSnackbarHost(
                                     hostState = snackbarHost,
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
@@ -355,9 +355,11 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                                 if (onHome) {
+                                    val lastMinutes by container.settings.lastSessionMinutes.collectAsStateWithLifecycle(initialValue = null)
                                     app.stackd.core.ui.StartPill(
                                         onStart = { navController.navigate(Dest.Start.route) { launchSingleTop = true } },
                                         modifier = Modifier.align(Alignment.BottomCenter),
+                                        defaultMinutes = lastMinutes?.let(app.stackd.feature.start.StartUiState::snap) ?: app.stackd.feature.start.StartUiState.RECOMMENDED_MINUTES,
                                     )
                                 }
                                 if (showTabs) {
@@ -386,9 +388,10 @@ class MainActivity : ComponentActivity() {
                                     suppressed = entry?.destination?.route == Dest.Room.route,
                                 )
                                 if (BuildConfig.DEBUG && debugCeremony.value) {
-                                    app.stackd.feature.room.SessionCeremony(app.stackd.feature.room.sampleSessionSummary()) {
-                                        debugCeremony.value = false
-                                    }
+                                    app.stackd.feature.room.SessionCeremony(
+                                        app.stackd.feature.room.sampleSessionSummary(),
+                                        onContinue = { debugCeremony.value = false },
+                                    )
                                 }
                             }
                         }

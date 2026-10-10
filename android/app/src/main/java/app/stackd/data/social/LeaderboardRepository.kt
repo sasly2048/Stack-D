@@ -13,6 +13,7 @@ data class LeaderboardProfile(
     val id: String,
     @SerialName("display_name") val displayName: String? = null,
     @SerialName("avatar_url") val avatarUrl: String? = null,
+    val username: String? = null,
     @SerialName("lifetime_xp") val lifetimeXp: Long = 0,
     @SerialName("current_focus_streak") val currentFocusStreak: Int = 0,
 )
@@ -26,6 +27,22 @@ data class LeaderboardGroup(
 ) {
     var memberCount: Int = 0
 }
+
+/** One member of the caller's weekly league group (my_league RPC). */
+@Serializable
+data class LeagueRow(
+    @SerialName("user_id") val userId: String,
+    @SerialName("display_name") val displayName: String? = null,
+    val username: String? = null,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
+    @SerialName("weekly_xp") val weeklyXp: Long = 0,
+    val rank: Int = 0,
+    /** "promote" | "safe" | "demote" */
+    val zone: String = "safe",
+    val tier: Int = 1,
+    @SerialName("week_ends_at") val weekEndsAt: String? = null,
+    @SerialName("is_me") val isMe: Boolean = false,
+)
 
 @Serializable
 internal data class GroupMemberRef(@SerialName("group_id") val groupId: String)
@@ -41,13 +58,17 @@ class LeaderboardRepository(private val client: SupabaseClient) {
         client.postgrest.from("public_profiles")
             .select(
                 Columns.list(
-                    "id", "display_name", "avatar_url", "lifetime_xp", "current_focus_streak",
+                    "id", "display_name", "avatar_url", "username", "lifetime_xp", "current_focus_streak",
                 ),
             ) {
                 order("lifetime_xp", Order.DESCENDING)
                 limit(100)
             }
             .decodeList()
+
+    /** This week's league board; empty until the caller's first stack of the week. */
+    suspend fun myLeague(): List<LeagueRow> =
+        client.postgrest.rpc("my_league").decodeList()
 
     suspend fun topGroups(): List<LeaderboardGroup> {
         val groups = client.postgrest.from("focus_groups")

@@ -51,6 +51,8 @@ data class RoomUiState(
     val participants: List<ParticipantRow> = emptyList(),
     val breaks: List<BreakRow> = emptyList(),
     val meId: String? = null,
+    /** "What are you stacking for?" from the lobby, asked back in the ceremony. */
+    val intention: String = "",
     val countdown: Int? = null,
     /** Recomputed each tick from the server start — never a local accumulator. */
     val remainingSeconds: Long = 0,
@@ -469,6 +471,13 @@ class RoomViewModel(
             startForegroundTimer(next)
         }
         if (next.statusEnum == RoomStatus.COMPLETE || next.statusEnum == RoomStatus.ABORTED) {
+            if (next.statusEnum == RoomStatus.COMPLETE && foregroundTimerRunning) {
+                FocusSessionService.notifyResultIfBackground(
+                    container.appContextForWork,
+                    minutes = (next.targetDurationSeconds / 60).toInt(),
+                    held = !_state.value.iBreached,
+                )
+            }
             _state.value = _state.value.copy(armed = false)
             stopForegroundTimer()
             maybeFinalize()
@@ -989,6 +998,27 @@ class RoomViewModel(
     /** User tapped Continue on the ceremony overlay. */
     fun dismissCeremony() {
         _state.value = _state.value.copy(ceremonyDismissed = true)
+    }
+
+    fun setIntention(text: String) {
+        _state.value = _state.value.copy(intention = text.take(80))
+    }
+
+    // The ceremony's two answers (how it felt, did the intention land) share
+    // one notes+tags write, so neither overwrites the other. Notes carry the
+    // intention text itself, which Timeline then shows on the session.
+    private var ceremonyMood: String? = null
+    private var intentionResult: String? = null
+
+    fun reflectMood(mood: String) { ceremonyMood = mood; saveCeremonyMeta() }
+
+    fun answerIntention(result: String) { intentionResult = "intention: ${result.lowercase()}"; saveCeremonyMeta() }
+
+    private fun saveCeremonyMeta() {
+        val historyId = _state.value.historyId ?: return
+        val notes = _state.value.intention.trim().let { if (it.isEmpty()) "" else "Stacking for: $it" }
+        val tags = listOfNotNull(ceremonyMood, intentionResult)
+        viewModelScope.launch { runCatching { rooms.updateSessionMeta(historyId, notes, tags) } }
     }
 
     /** Attaches notes + tags to the just-finished session (Ended phase). */

@@ -3,6 +3,10 @@ package app.stackd.feature.dashboard
 import app.stackd.core.ui.glassSurface
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
+import app.stackd.core.ui.fillSweep
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,15 +74,38 @@ fun TodayStrip(
     }
 }
 
+/**
+ * Unclaimed daily reward, shown at the top of Home so the XP lands as a small
+ * moment rather than a chore at the bottom: tapping floods it with ember
+ * (fill-to-fire), a firm haptic confirms, then Home folds it away.
+ */
+@Composable
+fun RewardCallout(reward: RewardStatus, claiming: Boolean, onClaim: () -> Unit, modifier: Modifier = Modifier) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    RewardChip(
+        reward,
+        claiming,
+        onClaim = {
+            if (android.os.Build.VERSION.SDK_INT >= 30) view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+            onClaim()
+        },
+        modifier = modifier,
+        fireFill = true,
+    )
+}
+
 @Composable
 private fun RewardChip(
     reward: RewardStatus,
     claiming: Boolean,
     onClaim: () -> Unit,
     modifier: Modifier,
+    fireFill: Boolean = false,
 ) {
     val colors = Stackd.colors
     val claimable = !reward.claimedToday && !claiming
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val (fill, fire) = app.stackd.core.ui.rememberFillClick(source, onClaim)
     // nextDayOfStreak is today's day in the 7-day cycle (the one claimed, or
     // the one waiting); nextRewardXp is that day's reward.
     val day = reward.nextDayOfStreak
@@ -86,10 +113,21 @@ private fun RewardChip(
     val tomorrowXp = DAILY_REWARDS[day % DAILY_REWARDS.size]
     Row(
         modifier = modifier
-            .tappable(enabled = claimable, onClick = onClaim)
-            .background(
-                if (claimable) colors.accent.copy(alpha = 0.10f) else colors.textPrimary.copy(alpha = 0.03f),
-                RadiusMd,
+            .then(
+                if (fireFill) {
+                    Modifier
+                        .clip(RadiusMd)
+                        .background(colors.accent.copy(alpha = 0.10f))
+                        .fillSweep(fill, SolidColor(colors.accent.copy(alpha = 0.32f)))
+                        .clickable(interactionSource = source, indication = null, enabled = claimable, onClick = fire)
+                } else {
+                    Modifier
+                        .tappable(enabled = claimable, onClick = onClaim)
+                        .background(
+                            if (claimable) colors.accent.copy(alpha = 0.10f) else colors.textPrimary.copy(alpha = 0.03f),
+                            RadiusMd,
+                        )
+                },
             )
             .heightIn(min = 56.dp)
             .padding(horizontal = 16.dp, vertical = 12.dp),

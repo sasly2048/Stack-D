@@ -291,6 +291,10 @@ fun InsightsScreen(
                     Spacer(Modifier.height(24.dp))
                     EmberButton(text = "Start your first session", onClick = onStart)
                 }
+                // Under three stacks the dashboard would be a wall of zeros and
+                // empty charts. Show the progress already made toward the point
+                // where the patterns mean something, never a bar starting at 0.
+                state.totals.sessions < PATTERN_SESSIONS -> EarlyProgress(state.totals.sessions, onStart)
                 else -> {
                     val t = state.totals
                     var i = 0
@@ -392,6 +396,37 @@ fun InsightsScreen(
 
             Spacer(Modifier.height(56.dp))
         }
+    }
+}
+
+/** Stacks needed before the radar, rhythm and forecast say anything real. */
+private const val PATTERN_SESSIONS = 3
+
+@Composable
+private fun EarlyProgress(sessions: Int, onStart: () -> Unit) {
+    val colors = Stackd.colors
+    val left = PATTERN_SESSIONS - sessions
+    Column(Modifier.fillMaxWidth().glassSurface(Radius2Xl).padding(24.dp)) {
+        Text(
+            "$sessions of $PATTERN_SESSIONS stacks",
+            style = MaterialTheme.typography.bodyMedium, color = colors.accent, fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(10.dp))
+        Box(Modifier.fillMaxWidth().height(6.dp).background(colors.textPrimary.copy(alpha = 0.10f), CircleShape)) {
+            Box(Modifier.fillMaxWidth(sessions / PATTERN_SESSIONS.toFloat()).height(6.dp).background(colors.accent, CircleShape))
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            if (left == 1) "One more stack and your patterns appear" else "$left more stacks and your patterns appear",
+            style = MaterialTheme.typography.titleLarge, fontFamily = SerifFamily, color = colors.textPrimary,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "When you focus best, how clean your holds are, and where your hours are heading.",
+            style = MaterialTheme.typography.bodyMedium, color = colors.textMuted,
+        )
+        Spacer(Modifier.height(24.dp))
+        EmberButton(text = "Start a Stack", onClick = onStart)
     }
 }
 

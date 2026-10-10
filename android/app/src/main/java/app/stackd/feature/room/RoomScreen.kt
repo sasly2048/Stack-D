@@ -1,5 +1,7 @@
 package app.stackd.feature.room
 
+import kotlinx.coroutines.launch
+
 import app.stackd.core.ui.glassSurface
 
 import androidx.compose.foundation.clickable
@@ -80,6 +82,7 @@ import app.stackd.feature.room.session.FocusScore
 fun RoomRoute(
     code: String,
     onExit: () -> Unit,
+    onOpenPremium: () -> Unit = {},
     vm: RoomViewModel = viewModel(
         factory = stackdViewModel { RoomViewModel(it, code) },
     ),
@@ -175,11 +178,24 @@ fun RoomRoute(
             onInteraction = vm::onInteraction,
             onRequestJoin = vm::requestJoin,
             onRegenerateRecap = vm::regenerateRecap,
+            onSetIntention = vm::setIntention,
         )
-        SnackbarHost(
+        app.stackd.core.ui.StackdSnackbarHost(
             hostState = snackbarHost,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp),
         )
+
+        // Win-mapped Premium offer: decided once per ceremony, rationed by
+        // SettingsStore, and never shown to existing members.
+        val container = (androidx.compose.ui.platform.LocalContext.current.applicationContext as app.stackd.StackdApplication).container
+        var premiumAsk by remember { androidx.compose.runtime.mutableStateOf(false) }
+        androidx.compose.runtime.LaunchedEffect(state.ceremony) {
+            val s = state.ceremony ?: return@LaunchedEffect
+            if (s.breaches != 0) return@LaunchedEffect
+            val ent = runCatching { container.premium.myEntitlement() }.getOrNull() ?: return@LaunchedEffect
+            if (!ent.isPremium && !ent.isPro && container.settings.premiumAskAfterCleanStack()) premiumAsk = true
+        }
+        val askScope = androidx.compose.runtime.rememberCoroutineScope()
 
         // Cinematic post-session ceremony over everything, once the rich summary
         // has loaded and until the user taps Continue.
@@ -189,8 +205,18 @@ fun RoomRoute(
                     summary = summary,
                     // Mood rides the existing notes/tags RPC as one tag; the Ended
                     // form's "Mark it" later replaces notes + tags wholesale.
-                    onReflect = { mood -> vm.saveSessionMeta("", mood) },
+                    onReflect = vm::reflectMood,
                     onContinue = vm::dismissCeremony,
+                    intention = state.intention,
+                    onIntention = vm::answerIntention,
+                    premiumAsk = if (premiumAsk) {
+                        PremiumAsk(
+                            onOpen = { vm.dismissCeremony(); onOpenPremium() },
+                            onDismiss = { premiumAsk = false; askScope.launch { container.settings.dismissPremiumAsk() } },
+                        )
+                    } else {
+                        null
+                    },
                 )
             }
         }
@@ -265,6 +291,7 @@ fun RoomScreen(
     onInteraction: () -> Unit = {},
     onRequestJoin: (String) -> Unit = {},
     onRegenerateRecap: () -> Unit = {},
+    onSetIntention: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
@@ -295,7 +322,7 @@ fun RoomScreen(
             }
             RoomPhase.LOBBY -> Lobby(
                 state, onStart, onAbort, onExit, onToggleReady, onRespondJoin,
-                onSaveMeta, onAddSchedule,
+                onSaveMeta, onAddSchedule, onSetIntention,
             )
             RoomPhase.COUNTDOWN -> Countdown(state)
             RoomPhase.PLACING -> Placing(onAbort, state.startingSession)
@@ -388,6 +415,7 @@ private fun Lobby(
     onRespondJoin: (String, Boolean) -> Unit,
     onSaveMeta: (String, String, String, Int, String) -> Unit,
     onAddSchedule: (String, String, Int) -> Unit,
+    onSetIntention: (String) -> Unit,
 ) {
     val colors = Stackd.colors
     SectionLabel("LOBBY")
@@ -408,6 +436,15 @@ private fun Lobby(
     Spacer(Modifier.height(24.dp))
     InviteRow(state.code)
     Spacer(Modifier.height(24.dp))
+    // One line of intent, asked back in the ceremony. It replaces the in-session
+    // workspace, which a face-down phone could never use without breaking.
+    app.stackd.core.ui.StackdField(
+        label = "What are you stacking for?",
+        value = state.intention,
+        onValueChange = onSetIntention,
+        placeholder = "finish chapter 3",
+    )
+    Spacer(Modifier.height(16.dp))
     // The one decision this screen exists for sits above the fold; setup
     // panels below are optional detail.
     if (state.isHost) {
@@ -662,13 +699,6 @@ private fun Active(
     Spacer(Modifier.height(16.dp))
     LiveActivityRail(state)
     Spacer(Modifier.height(16.dp))
-    WorkspacePanel(
-        items = state.workspace,
-        onAdd = onAddWorkspace,
-        onToggle = onToggleWorkspace,
-        onDelete = onDeleteWorkspace,
-    )
-    Spacer(Modifier.height(16.dp))
     if (state.milestones.isNotEmpty()) {
         MilestoneTimeline(state.milestones)
         Spacer(Modifier.height(16.dp))
@@ -683,12 +713,14 @@ private fun Active(
     AmbientPlayer()
 
     // End/Abort live OUTSIDE the guarded column so the host can finish cleanly
-    // without the tap registering as a stack-breaking interaction.
+    // without the tap registering as a stack-breaking interaction. Both are
+    // quiet hold-to-confirm controls: ending a stack is the one thing the
+    // screen should never invite, and a stray tap must not do it.
     if (state.isHost) {
-        Spacer(Modifier.height(16.dp))
-        EmberButton(text = "End Now", onClick = onEnd)
-        Spacer(Modifier.height(12.dp))
-        GhostButton(text = "Abort", onClick = onAbort)
+        Spacer(Modifier.height(24.dp))
+        app.stackd.core.ui.HoldButton(text = "Hold to end early", onConfirm = onEnd, tint = colors.textMuted)
+        Spacer(Modifier.height(10.dp))
+        app.stackd.core.ui.HoldButton(text = "Hold to abort", onConfirm = onAbort, tint = colors.breach)
     }
 }
 

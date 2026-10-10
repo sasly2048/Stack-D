@@ -8,7 +8,10 @@ import android.os.VibratorManager
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
@@ -38,6 +41,9 @@ fun GlobalRealtimeToasts(
     host: SnackbarHostState,
 ) {
     val context = LocalContext.current
+    LaunchedEffect(host) {
+        CeremonyGate.showing.collect { if (it) host.currentSnackbarData?.dismiss() }
+    }
     LaunchedEffect(userId) {
         val uid = userId ?: return@LaunchedEffect
         val channel = client.realtime.channel("activity:$uid")
@@ -48,6 +54,14 @@ fun GlobalRealtimeToasts(
         runCatching { channel.subscribe() }
         try {
             flow.collect { action ->
+                // The ceremony already shows this session's own results; a toast on
+                // top of it repeats them under a different name.
+                // The event can land a moment before the ceremony opens, so own
+                // results wait briefly and re-check.
+                if (action.record["kind"]?.jsonPrimitive?.content in CeremonyKinds) {
+                    kotlinx.coroutines.delay(2500)
+                    if (CeremonyGate.showing.value) return@collect
+                }
                 val message = messageFor(action.record) ?: return@collect
                 app.stackd.core.feedback.Sfx.play(
                     when (action.record["kind"]?.jsonPrimitive?.content) {
@@ -77,14 +91,40 @@ private fun messageFor(record: JsonObject): String? {
     val payload = record["payload"] as? JsonObject
     fun p(key: String): String? = payload?.get(key)?.jsonPrimitive?.content
     return when (kind) {
-        "achievement_unlock" -> "🏅 Achievement unlocked" + (p("id")?.let { " · ${app.stackd.core.humanizeKey(it)}" } ?: "")
+        "achievement_unlock" -> "Achievement unlocked" + ((p("name") ?: p("id")?.let { app.stackd.core.humanizeKey(it) })?.let { " · $it" } ?: "")
         "challenge_complete" ->
-            "🎯 Challenge complete" +
+            "Challenge complete" +
                 (p("name")?.let { " · $it" } ?: "") +
                 (p("xp")?.let { " · +$it XP" } ?: "")
-        "friend_add" -> "🤝 New connection"
-        "session_complete" -> "✅ Session complete" + (p("xp")?.let { " · +$it XP" } ?: "")
+        "friend_add" -> "New connection"
+        "session_complete" -> "Session complete" + (p("xp")?.let { " · +$it XP" } ?: "")
         else -> null
+    }
+}
+
+/** True while a post-session ceremony is on screen. */
+object CeremonyGate {
+    val showing = kotlinx.coroutines.flow.MutableStateFlow(false)
+}
+
+private val CeremonyKinds = setOf("achievement_unlock", "challenge_complete", "session_complete")
+
+/** App snackbar on the Stack'd surface tokens (Material's default is a pale inverse surface). */
+@Composable
+fun StackdSnackbarHost(hostState: SnackbarHostState, modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier) {
+    val colors = app.stackd.core.theme.Stackd.colors
+    androidx.compose.material3.SnackbarHost(hostState, modifier) { data ->
+        androidx.compose.material3.Snackbar(
+            snackbarData = data,
+            modifier = androidx.compose.ui.Modifier
+                .padding(horizontal = 16.dp)
+                .border(1.dp, colors.border, app.stackd.core.theme.RadiusLg),
+            shape = app.stackd.core.theme.RadiusLg,
+            containerColor = colors.surfaceRaised,
+            contentColor = colors.textPrimary,
+            actionColor = colors.accent,
+            dismissActionContentColor = colors.textMuted,
+        )
     }
 }
 

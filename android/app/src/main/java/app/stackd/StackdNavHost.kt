@@ -189,6 +189,7 @@ fun StackdNavHost(
             CompositionLocalProvider(LocalOpenProfile provides openProfile) {
                 RoomRoute(
                     code = code,
+                    onOpenPremium = { navController.navigate(Dest.Premium.route) { launchSingleTop = true } },
                     onExit = {
                         navController.navigate(Dest.Dashboard.route) {
                             popUpTo(Dest.Dashboard.route) { inclusive = true }

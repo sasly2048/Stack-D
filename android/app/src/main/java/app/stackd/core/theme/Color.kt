@@ -8,9 +8,12 @@ import androidx.compose.ui.graphics.Color
 // (Not src/lib/design-tokens.ts — that file is a legacy blue-HSL palette from
 // an earlier design and is not what ships.)
 
-val Obsidian = Color(0xFF0A0A0A)
-val Obsidian2 = Color(0xFF111111)
-val Obsidian3 = Color(0xFF181818)
+// Warm, ember-biased near-blacks rather than neutral greys: a hint of the
+// accent hue in the ground reads as chosen, and each raised layer steps a
+// little lighter so depth shows without shadows on dark.
+val Obsidian = Color(0xFF0E0C0A)
+val Obsidian2 = Color(0xFF15120F)
+val Obsidian3 = Color(0xFF1D1915)
 
 // Warm ivory, not stark white: the primary fill (buttons, Start pill) and the
 // body-text tone. Name kept so every caller picks it up.

@@ -54,6 +54,14 @@ val MonoLabel = TextStyle(
 )
 
 val MonoLabelSmall = MonoLabel.copy(fontSize = 11.5.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.05.em)
+/**
+ * Tabular figures on the number-carrying styles (display, headline, title):
+ * digits share one advance width, so a ticking timer or count-up never shifts
+ * sideways. Not on body/label text: Inter's tnum also widens the hyphen,
+ * which spaced out words like "deep-work" and "45-min".
+ */
+private fun TextStyle.tnum() = copy(fontFeatureSettings = "tnum")
+
 val StackdTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = DisplayFamily,
@@ -61,14 +69,14 @@ val StackdTypography = Typography(
         fontSize = 48.sp,
         lineHeight = 50.sp,
         letterSpacing = (-0.02).em,
-    ),
+    ).tnum(),
     displayMedium = TextStyle(
         fontFamily = DisplayFamily,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 36.sp,
         lineHeight = 40.sp,
         letterSpacing = (-0.02).em,
-    ),
+    ).tnum(),
     // ExtraBold rather than Bold: 700 isn't among the bundled weights, so Bold
     // would be synthesised. The web's headings use font-extrabold anyway.
     headlineLarge = TextStyle(
@@ -77,25 +85,25 @@ val StackdTypography = Typography(
         fontSize = 28.sp,
         lineHeight = 34.sp,
         letterSpacing = (-0.01).em,
-    ),
+    ).tnum(),
     headlineMedium = TextStyle(
         fontFamily = DisplayFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
-    ),
+    ).tnum(),
     titleLarge = TextStyle(
         fontFamily = DisplayFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
-    ),
+    ).tnum(),
     titleMedium = TextStyle(
         fontFamily = DisplayFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
         lineHeight = 22.sp,
-    ),
+    ).tnum(),
     bodyLarge = TextStyle(
         fontFamily = DisplayFamily,
         fontWeight = FontWeight.Normal,

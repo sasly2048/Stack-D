@@ -164,23 +164,6 @@ private fun TabCell(item: TabItem, selected: Boolean, onSelect: (String) -> Unit
     }
 }
 
-@Composable
-private fun StartButton(onStart: () -> Unit) {
-    val source = remember { MutableInteractionSource() }
-    Box(
-        Modifier
-            .size(50.dp)
-            .pressFeedback(source, pressedScale = 0.9f, sound = app.stackd.core.feedback.Sfx.Kind.OPEN)
-            .clip(CircleShape)
-            .background(Silver)
-            .clickable(interactionSource = source, indication = null, role = Role.Button, onClick = onStart)
-            .semantics { contentDescription = "Start a focus session" },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(app.stackd.core.ui.StackdIcons.Add, contentDescription = null, tint = Obsidian, modifier = Modifier.size(28.dp))
-    }
-}
-
 /** Height the pinned Start pill adds above the tab bar (pill + gap). */
 val StartPillSpace = 76.dp
 
@@ -191,7 +174,7 @@ val StartPillSpace = 76.dp
  * `.btn-ember`) and Start fires when the fill completes.
  */
 @Composable
-fun StartPill(onStart: () -> Unit, modifier: Modifier = Modifier) {
+fun StartPill(onStart: () -> Unit, modifier: Modifier = Modifier, defaultMinutes: Int? = null) {
     val source = remember { MutableInteractionSource() }
     // Press: ember floods the pill from the left; Start fires once it's full.
     val (fill, click) = rememberFillClick(source, onStart)
@@ -217,8 +200,13 @@ fun StartPill(onStart: () -> Unit, modifier: Modifier = Modifier) {
                 .padding(start = 26.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Names what one tap will set up, so the button carries information.
             Text(
-                "Start a Stack",
+                when {
+                    defaultMinutes == null -> "Start a Stack"
+                    defaultMinutes % 60 == 0 -> "Start a ${defaultMinutes / 60}-hour Stack"
+                    else -> "Start a $defaultMinutes-min Stack"
+                },
                 color = androidx.compose.ui.graphics.lerp(app.stackd.core.theme.IvoryInk, Obsidian, p),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,

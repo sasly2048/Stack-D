@@ -1,5 +1,6 @@
 package app.stackd.feature.dashboard
 
+import androidx.compose.animation.core.animateFloat
 import app.stackd.core.ui.pageGlow
 
 import app.stackd.core.ui.glassSurface
@@ -199,6 +200,20 @@ fun DashboardScreen(
     ) {
         ResponsiveColumn(maxContentWidth = WIDE_MAX_CONTENT_WIDTH) {
             HomeHeroV3(state = state, onStart = onStart, onMore = { showMenu = true })
+            // Unclaimed reward rides at the top: claiming it is a small win worth
+            // seeing first. Once claimed it folds away and lives in the tail.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !state.loading && state.reward?.claimedToday == false,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(),
+            ) {
+                state.reward?.let {
+                    Column {
+                        Spacer(Modifier.height(16.dp))
+                        RewardCallout(it, state.claiming, onClaimReward, Modifier.fillMaxWidth())
+                    }
+                }
+            }
             Spacer(Modifier.height(16.dp))
             RitualChips(onQuickStart)
 
@@ -306,7 +321,7 @@ fun DashboardScreen(
             // Quiet long-term tail: reward cycle, prestige, then the upsell.
             if (!state.loading) {
                 TodayStrip(
-                    reward = state.reward,
+                    reward = state.reward?.takeIf { it.claimedToday },
                     claiming = state.claiming,
                     notice = state.claimNotice,
                     challengeProgress = state.greeting.challengeProgress,
@@ -585,21 +600,20 @@ private fun SuggestedSession(
                     modifier = Modifier.size(18.dp),
                 )
             }
+            // The refresh glyph itself turns while loading: a 16dp spinner caught
+            // mid-sweep read as a stray dot on the card.
+            val spin = androidx.compose.animation.core.rememberInfiniteTransition(label = "spin").animateFloat(
+                0f, 360f,
+                androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1100, easing = androidx.compose.animation.core.LinearEasing)),
+                label = "deg",
+            )
             IconButton(onClick = if (error) onRetry else onRegenerate, enabled = !loading) {
-                if (loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = colors.textMuted,
-                    )
-                } else {
-                    Icon(
-                        app.stackd.core.ui.StackdIcons.Refresh,
-                        contentDescription = "New suggestion",
-                        tint = colors.textMuted,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+                Icon(
+                    app.stackd.core.ui.StackdIcons.Refresh,
+                    contentDescription = if (loading) "Loading suggestion" else "New suggestion",
+                    tint = colors.textMuted,
+                    modifier = Modifier.size(18.dp).graphicsLayer { if (loading) rotationZ = spin.value },
+                )
             }
         }
     }

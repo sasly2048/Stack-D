@@ -48,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -183,13 +185,55 @@ private fun BlockLabel(text: String) {
     )
 }
 
-/** The headline choice: a big serif number, its consequence, and the controls. */
+/** What a length is for, in the words the line under the number uses. */
+private fun meaningOf(minutes: Int): String = when (minutes) {
+    15 -> "A quick reset"
+    25 -> "One classic focus block"
+    30 -> "A steady half hour"
+    45 -> "A proper deep-work block"
+    60 -> "A full hour of deep work"
+    90 -> "One full deep-work cycle"
+    120 -> "A long haul"
+    StartUiState.MAX_MINUTES -> "The deep end"
+    else -> "Your own length"
+}
+
+/**
+ * The headline choice: a big serif number, what it means, and the controls.
+ * The slider snaps to the same stops as the chips beneath it, so the two can
+ * never disagree. Each snap is a light tick; reaching the longest stack is a
+ * firmer one plus an ember halo behind the number and thumb.
+ */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
     val colors = Stackd.colors
+    val view = androidx.compose.ui.platform.LocalView.current
+    val stops = StartUiState.QUICK_DURATIONS
     val ends = remember(state.duration) {
         LocalTime.now().plusMinutes(state.duration.toLong()).format(DateTimeFormatter.ofPattern("h:mm a"))
+    }
+    val atMax = !state.durationLocked && state.duration == StartUiState.MAX_MINUTES
+    // Bloom once on arrival at max, then hold a faint glow while it stays there.
+    val halo = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(atMax) {
+        if (atMax) {
+            halo.animateTo(1f, androidx.compose.animation.core.tween(420, easing = app.stackd.core.theme.EaseRitual))
+            halo.animateTo(0.45f, androidx.compose.animation.core.tween(900, easing = app.stackd.core.theme.EaseRitual))
+        } else {
+            halo.animateTo(0f, androidx.compose.animation.core.tween(300))
+        }
+    }
+    fun pick(minutes: Int) {
+        if (minutes == state.duration || state.durationLocked) return
+        view.performHapticFeedback(
+            if (minutes == StartUiState.MAX_MINUTES && android.os.Build.VERSION.SDK_INT >= 30) {
+                android.view.HapticFeedbackConstants.CONFIRM
+            } else {
+                android.view.HapticFeedbackConstants.CLOCK_TICK
+            },
+        )
+        onDurationChange(minutes)
     }
     Column(
         Modifier
@@ -203,52 +247,73 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
     ) {
         Text("FOCUS FOR", style = MonoLabelSmall, color = colors.textMuted)
         Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
-            AnimatedContent(
-                targetState = state.duration,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "duration",
-            ) { d ->
+        Box(contentAlignment = Alignment.Center) {
+            // Ember halo behind the number at the longest stack.
+            Box(
+                Modifier
+                    .size(width = 220.dp, height = 120.dp)
+                    .graphicsLayer { alpha = halo.value }
+                    .background(
+                        Brush.radialGradient(listOf(colors.accentGlow.copy(alpha = 0.55f), colors.accent.copy(alpha = 0.18f), Color.Transparent)),
+                    ),
+            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                AnimatedContent(
+                    targetState = state.duration,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "duration",
+                ) { d ->
+                    Text(
+                        if (d >= 60 && d % 60 == 0) "${d / 60}" else "$d",
+                        style = MaterialTheme.typography.displayLarge.copy(fontFamily = SerifFamily),
+                        color = colors.textPrimary,
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    if (d >= 60 && d % 60 == 0) "${d / 60}" else "$d",
-                    style = MaterialTheme.typography.displayLarge.copy(fontFamily = SerifFamily),
-                    color = colors.textPrimary,
+                    if (state.duration >= 60 && state.duration % 60 == 0) {
+                        if (state.duration == 60) "hour" else "hours"
+                    } else {
+                        "min"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textMuted,
+                    modifier = Modifier.padding(bottom = 12.dp),
                 )
             }
-            Spacer(Modifier.width(6.dp))
-            Text(
-                if (state.duration >= 60 && state.duration % 60 == 0) {
-                    if (state.duration == 60) "hour" else "hours"
-                } else {
-                    "min"
-                },
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textMuted,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
         }
-        Text(
-            if (state.durationLocked) "Set by template" else "Ends around $ends",
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.accent,
-        )
+        AnimatedContent(
+            targetState = if (state.durationLocked) "Set by template" else "${meaningOf(state.duration)} · ends $ends",
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "meaning",
+        ) { line ->
+            Text(line, style = MaterialTheme.typography.bodySmall, color = colors.accent)
+        }
         Spacer(Modifier.height(16.dp))
+        val index = stops.indexOf(state.duration).takeIf { it >= 0 }
+            ?: stops.indexOf(StartUiState.snap(state.duration))
         Slider(
-            value = state.duration.toFloat(),
-            onValueChange = {
-                val stepped = (it / StartUiState.STEP_MINUTES).toInt() * StartUiState.STEP_MINUTES
-                onDurationChange(stepped.coerceAtLeast(StartUiState.MIN_MINUTES))
-            },
-            valueRange = StartUiState.MIN_MINUTES.toFloat()..StartUiState.MAX_MINUTES.toFloat(),
+            value = index.toFloat(),
+            onValueChange = { pick(stops[it.roundToInt().coerceIn(0, stops.lastIndex)]) },
+            valueRange = 0f..stops.lastIndex.toFloat(),
+            steps = stops.size - 2,
             enabled = !state.durationLocked,
             // Own thumb + track: M3's default draws a detached bar thumb and a
             // stop dot that read as a broken control at the low end.
             thumb = {
-                Box(
-                    Modifier
-                        .size(26.dp)
-                        .background(if (state.durationLocked) colors.textMuted else colors.textPrimary, CircleShape),
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .graphicsLayer { alpha = halo.value }
+                            .background(Brush.radialGradient(listOf(colors.accentGlow.copy(alpha = 0.7f), Color.Transparent)), CircleShape),
+                    )
+                    Box(
+                        Modifier
+                            .size(26.dp)
+                            .background(if (state.durationLocked) colors.textMuted else colors.textPrimary, CircleShape),
+                    )
+                }
             },
             track = { s ->
                 val frac = ((s.value - s.valueRange.start) / (s.valueRange.endInclusive - s.valueRange.start)).coerceIn(0f, 1f)
@@ -273,23 +338,18 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            StartUiState.QUICK_DURATIONS.forEach { m ->
+            stops.forEach { m ->
                 Pill(
                     label = if (m >= 60 && m % 60 == 0) "${m / 60}h" else "${m}m",
-                    badge = when {
-                        m == StartUiState.RECOMMENDED_MINUTES -> "rec"
-                        state.lastMinutes == m -> "last"
-                        else -> null
-                    },
+                    badge = if (state.lastMinutes == m && state.duration != m) "last" else null,
                     selected = state.duration == m,
                     enabled = !state.durationLocked,
-                    onClick = { onDurationChange(m) },
+                    onClick = { pick(m) },
                 )
             }
         }
     }
 }
-
 /** Silver when chosen (the web's primary), quiet glass otherwise. */
 @Composable
 private fun Pill(label: String, badge: String?, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
@@ -495,7 +555,12 @@ private fun CreateBar(state: StartUiState, onCreate: () -> Unit, modifier: Modif
                 Spacer(Modifier.height(12.dp))
             }
             EmberButton(
-                text = if (state.busy) "Creating stack…" else "Create Stack",
+                text = when {
+                    state.busy -> "Creating stack…"
+                    state.durationLocked -> "Create Stack"
+                    state.duration % 60 == 0 -> "Create ${state.duration / 60}-hour Stack"
+                    else -> "Create ${state.duration}-min Stack"
+                },
                 onClick = onCreate,
                 enabled = !state.busy,
                 busy = state.busy,

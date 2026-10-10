@@ -137,6 +137,10 @@ data class ProfileRow(
     val username: String? = null,
     @SerialName("best_streak") val bestStreak: Int = 0,
     @SerialName("total_focus_seconds") val totalFocusSeconds: Long = 0,
+    /** Held streak freezes (0..1); own profile only. */
+    @SerialName("streak_freezes") val streakFreezes: Int = 0,
+    /** Last local day with a clean stack (ISO date); own profile only. */
+    @SerialName("streak_last_day") val streakLastDay: String? = null,
 )
 
 /**

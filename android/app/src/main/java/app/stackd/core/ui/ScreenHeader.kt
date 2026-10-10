@@ -75,8 +75,16 @@ fun ScreenHeader(
                 }
             }
         }
+        // "STACK'D / LEADERBOARD" above a "Leaderboard" title said the same thing
+        // twice in system-path voice: drop the brand prefix, and the whole crumb
+        // when a title follows. Room codes stay; they're real, shareable data.
+        val label = when {
+            path.startsWith("ROOM") -> path
+            title != null -> ""
+            else -> path.substringAfter("STACK'D / ")
+        }
         Text(
-            path,
+            label,
             style = TechLabel,
             color = colors.textMuted,
             // Pulled over the 48dp target's padding: chevron stroke on the content

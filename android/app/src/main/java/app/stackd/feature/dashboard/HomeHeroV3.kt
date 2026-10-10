@@ -84,7 +84,7 @@ internal fun HomeHeroV3(state: DashboardUiState, onStart: () -> Unit, onMore: ()
             // Whole stack visible beside the greeting (no edge crop), below the menu button.
             modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = 122.dp),
         )
-        app.stackd.core.ui.MenuButton(onClick = onMore, modifier = Modifier.align(Alignment.TopEnd).padding(end = 8.dp))
+        app.stackd.core.ui.MenuButton(onClick = onMore, modifier = Modifier.align(Alignment.TopEnd).padding(end = 20.dp))
         Column(
             Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.SpaceBetween,
@@ -114,12 +114,23 @@ internal fun HomeHeroV3(state: DashboardUiState, onStart: () -> Unit, onMore: ()
                     Icon(
                         app.stackd.core.ui.StackdIcons.LocalFireDepartment,
                         contentDescription = null,
-                        tint = if (state.streak > 0) colors.accent else colors.accent.copy(alpha = 0.45f),
+                        tint = when {
+                            state.streakAtRisk && java.time.LocalTime.now().hour >= 17 -> colors.breach
+                            state.streak > 0 -> colors.accent
+                            else -> colors.accent.copy(alpha = 0.45f)
+                        },
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        if (state.streak > 0) "${state.streak}-day streak" else "Day one",
+                        when {
+                            // Evening, alive, nothing clean today: say what's at stake.
+                            state.streakAtRisk && java.time.LocalTime.now().hour >= 17 ->
+                                "${state.streak}-day streak ends at midnight"
+                            state.streak > 0 && state.streakFreezes > 0 -> "${state.streak}-day streak · 1 freeze"
+                            state.streak > 0 -> "${state.streak}-day streak"
+                            else -> "Day one"
+                        },
                         style = MaterialTheme.typography.bodyLarge,
                         color = colors.textMuted,
                     )

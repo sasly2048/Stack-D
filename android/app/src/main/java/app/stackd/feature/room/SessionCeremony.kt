@@ -104,6 +104,10 @@ fun SessionCeremony(
     summary: SessionSummary,
     onReflect: ((String) -> Unit)? = null,
     onContinue: () -> Unit,
+    /** What the user said in the lobby they were stacking for; asked back here. */
+    intention: String? = null,
+    onIntention: ((String) -> Unit)? = null,
+    premiumAsk: PremiumAsk? = null,
 ) {
     val colors = Stackd.colors
     val view = LocalView.current
@@ -111,6 +115,10 @@ fun SessionCeremony(
     val extras = remember(summary) { extrasFor(summary) }
     val sweepIndex = remember(extras) { extras.indexOfFirst { it.award } }
     val friends = summary.friendsFinished
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        app.stackd.core.ui.CeremonyGate.showing.value = true
+        onDispose { app.stackd.core.ui.CeremonyGate.showing.value = false }
+    }
 
     val fade = remember(summary) { Animatable(0f) }
     val title = remember(summary) { Animatable(0f) }
@@ -180,7 +188,7 @@ fun SessionCeremony(
                 contentAlignment = Alignment.TopCenter,
             ) {
                 Column(
-                    Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 56.dp, bottom = 120.dp),
+                    Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 56.dp, bottom = 176.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // The table: the stack, then everyone picks their phone back up.
@@ -262,9 +270,39 @@ fun SessionCeremony(
                         }
                     }
 
+                    if (!intention.isNullOrBlank() && onIntention != null) {
+                        Spacer(Modifier.height(32.dp))
+                        ReflectChips(
+                            onIntention,
+                            Modifier.rise(tail.value),
+                            title = "You said: ${intention.trim()}",
+                            options = listOf("Done", "Partly", "Not yet"),
+                        )
+                    }
                     if (onReflect != null) {
                         Spacer(Modifier.height(32.dp))
                         ReflectChips(onReflect, Modifier.rise(tail.value))
+                    }
+
+                    // The ending points somewhere instead of just stopping.
+                    Spacer(Modifier.height(28.dp))
+                    Text(
+                        if (summary.streak > 0) "Come back tomorrow to make it ${summary.streak + 1} days."
+                        else "Stack again tomorrow to start a streak.",
+                        style = body,
+                        color = colors.textMuted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.rise(tail.value),
+                    )
+                    premiumAsk?.let { ask ->
+                        Spacer(Modifier.height(20.dp))
+                        Row(
+                            Modifier.rise(tail.value),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            app.stackd.core.ui.LinkButton("See what Premium adds", onClick = ask.onOpen, color = colors.accent)
+                            app.stackd.core.ui.LinkButton("Not now", onClick = ask.onDismiss)
+                        }
                     }
                 }
             }
@@ -279,7 +317,32 @@ fun SessionCeremony(
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Box(Modifier.widthIn(max = 420.dp).graphicsLayer { alpha = tail.value }) {
+                Column(
+                    Modifier.widthIn(max = 420.dp).graphicsLayer { alpha = tail.value },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    app.stackd.core.ui.LinkButton(
+                        text = "Share this stack",
+                        enabled = ctaOn,
+                        color = colors.accent,
+                        onClick = {
+                            val clean = summary.breaches == 0
+                            SessionShareCard.share(
+                                context,
+                                SessionShareCard.Content(
+                                    headline = if (clean) "The stack held." else "Held, with breaks.",
+                                    line = buildList {
+                                        add("$mins ${if (mins == 1) "minute" else "minutes"}")
+                                        if (clean) add("no breaks")
+                                        if (summary.streak > 0) add("${summary.streak}-day streak")
+                                    }.joinToString(" · "),
+                                    score = "${summary.score} · ${tierTitle(summary.tier).removeSuffix(".")}",
+                                ),
+                            )
+                        },
+                    )
+                    Spacer(Modifier.height(4.dp))
                     EmberButton(text = "Continue", onClick = onContinue, enabled = ctaOn)
                 }
             }
@@ -407,17 +470,22 @@ private fun ExtraRow(e: Extra, sweep: Float, modifier: Modifier) {
 /** "How did it feel?" — one tap, last pick wins, ember when selected. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReflectChips(onReflect: (String) -> Unit, modifier: Modifier) {
+private fun ReflectChips(
+    onReflect: (String) -> Unit,
+    modifier: Modifier,
+    title: String = "How did it feel?",
+    options: List<String> = listOf("Deep flow", "Distracted", "Low energy"),
+) {
     val colors = Stackd.colors
     var picked by remember { mutableStateOf<String?>(null) }
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("How did it feel?", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+        Text(title, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
         Spacer(Modifier.height(16.dp))
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            listOf("Deep flow", "Distracted", "Low energy").forEach { label ->
+            options.forEach { label ->
                 val on = picked == label
                 val source = remember { MutableInteractionSource() }
                 Text(
@@ -448,3 +516,6 @@ internal fun sampleSessionSummary() = SessionSummary(
     milestones = emptyList(), rankNow = 12, rankBefore = 15, personality = null,
     friendsFinished = listOf(FriendFinish("a", "Maya Chen", null, 420), FriendFinish("b", "Theo Park", null, 300)),
 )
+
+/** The rationed post-session Premium offer; null when it shouldn't show. */
+class PremiumAsk(val onOpen: () -> Unit, val onDismiss: () -> Unit)

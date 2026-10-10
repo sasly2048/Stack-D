@@ -40,10 +40,16 @@ data class StartUiState(
 
     companion object {
         const val RECOMMENDED_MINUTES = 30
-        val QUICK_DURATIONS = listOf(15, 25, 30, 45, 60, 90)
-        const val MIN_MINUTES = 5
-        const val MAX_MINUTES = 240
-        const val STEP_MINUTES = 5
+        /**
+         * The only lengths on offer. The slider snaps to exactly these, so the
+         * slider and the chips under it always name the same value.
+         */
+        val QUICK_DURATIONS = listOf(15, 25, 30, 45, 60, 90, 120, 180)
+        val MIN_MINUTES = QUICK_DURATIONS.first()
+        val MAX_MINUTES = QUICK_DURATIONS.last()
+
+        /** Nearest offered length, for remembered or preset values from before. */
+        fun snap(minutes: Int): Int = QUICK_DURATIONS.minBy { kotlin.math.abs(it - minutes) }
     }
 }
 
@@ -71,8 +77,7 @@ class StartViewModel(
                 lastMinutes = last,
                 // Restore the last-used length as the starting duration, exactly
                 // as the web does — the number you keep picking is the default.
-                duration = presetMinutes?.coerceIn(StartUiState.MIN_MINUTES, StartUiState.MAX_MINUTES)
-                    ?: last ?: _state.value.duration,
+                duration = StartUiState.snap(presetMinutes ?: last ?: _state.value.duration),
                 title = presetTitle?.take(80) ?: _state.value.title,
                 showIntro = !completed && !introDismissed,
             )
@@ -104,7 +109,7 @@ class StartViewModel(
     fun onDurationChange(minutes: Int) {
         if (_state.value.durationLocked) return
         _state.value = _state.value.copy(
-            duration = minutes.coerceIn(StartUiState.MIN_MINUTES, StartUiState.MAX_MINUTES),
+            duration = StartUiState.snap(minutes),
         )
     }
 

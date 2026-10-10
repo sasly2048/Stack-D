@@ -24,7 +24,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +39,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -189,6 +194,55 @@ fun GhostButton(
             Spacer(Modifier.width(12.dp))
         }
         Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, letterSpacing = pressedTracking(source))
+    }
+}
+
+/**
+ * Hold-to-confirm for consequential, irreversible actions (ending or aborting a
+ * live stack). Unlike [rememberFillClick] a quick tap does nothing: the fill
+ * only advances while the finger stays down, retracts on early release, and
+ * [onConfirm] fires once when it reaches the end, with a haptic. Screen-reader
+ * users get a plain activation through semantics instead of a hold.
+ */
+@Composable
+fun HoldButton(
+    text: String,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color = Stackd.colors.textPrimary,
+    holdMs: Int = 1100,
+) {
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val fill = remember { androidx.compose.animation.core.Animatable(0f) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val latest by androidx.compose.runtime.rememberUpdatedState(onConfirm)
+    LaunchedEffect(pressed) {
+        if (pressed) {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+            fill.animateTo(1f, androidx.compose.animation.core.tween(((1f - fill.value) * holdMs).toInt(), easing = androidx.compose.animation.core.LinearEasing))
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            latest()
+        } else {
+            fill.animateTo(0f, androidx.compose.animation.core.tween(240))
+        }
+    }
+    val shape = app.stackd.core.theme.RadiusLg
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(shape)
+            .border(1.dp, tint.copy(alpha = 0.22f), shape)
+            .fillSweep({ fill.value }, SolidColor(tint.copy(alpha = 0.20f)))
+            .clickable(interactionSource = source, indication = null, onClick = {})
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                onClick(label = text) { latest(); true }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = tint)
     }
 }
 

@@ -32,6 +32,8 @@ data class DashboardUiState(
     val name: String = "You",
     val lifetimeXp: Long = 0,
     val streak: Int = 0,
+    val streakFreezes: Int = 0,
+    val streakAtRisk: Boolean = false,
     val history: List<FocusHistoryRow> = emptyList(),
     val live: List<RoomRow> = emptyList(),
     /** The caller's recent rooms — a listed path back to a lobby/active room. */
@@ -304,6 +306,10 @@ class DashboardViewModel(
                             ?: auth.currentEmail?.substringBefore("@") ?: "You",
                         lifetimeXp = profile?.lifetimeXp ?: 0,
                         streak = profile?.currentFocusStreak ?: 0,
+                        streakFreezes = profile?.streakFreezes ?: 0,
+                        // Streak alive but nothing clean today yet: it ends at local midnight.
+                        streakAtRisk = (profile?.currentFocusStreak ?: 0) > 0 &&
+                            profile?.streakLastDay == java.time.LocalDate.now().minusDays(1).toString(),
                         history = history,
                         live = live,
                         reward = reward,
