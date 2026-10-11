@@ -117,7 +117,9 @@ fun PresenceRoster(state: RoomUiState, onToggleReady: () -> Unit) {
             }
         }
         // Ready toggle only in the lobby.
-        if (state.room?.statusEnum?.wire == "lobby") {
+        // Guests signal readiness; the host's "ready" is pressing Start, so a
+        // second big button there would only compete with it.
+        if (state.room?.statusEnum?.wire == "lobby" && !state.isHost) {
             Spacer(Modifier.height(12.dp))
             if (state.iAmReady) {
                 GhostButton(text = "Ready ✓", onClick = onToggleReady)

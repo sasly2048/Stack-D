@@ -45,6 +45,9 @@ data class StartUiState(
          * slider and the chips under it always name the same value.
          */
         val QUICK_DURATIONS = listOf(15, 25, 30, 45, 60, 90, 120, 180)
+
+        /** The few shortcuts shown as chips; the slider reaches every length. */
+        val CHIP_DURATIONS = listOf(25, 45, 90)
         val MIN_MINUTES = QUICK_DURATIONS.first()
         val MAX_MINUTES = QUICK_DURATIONS.last()
 
@@ -107,8 +110,10 @@ class StartViewModel(
     }
 
     fun onDurationChange(minutes: Int) {
-        if (_state.value.durationLocked) return
+        // Picking a length on the slider means "my own length": a template that
+        // pinned it gives way to Custom instead of blocking the control.
         _state.value = _state.value.copy(
+            tplKey = "",
             duration = StartUiState.snap(minutes),
         )
     }

@@ -339,30 +339,48 @@ class MainActivity : ComponentActivity() {
                                 // content dissolves into the background instead of
                                 // running hard into the controls. barSpace is untouched,
                                 // so the last item still scrolls clear of the pill.
-                                if (showTabs) {
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = showTabs,
+                                    modifier = Modifier.align(Alignment.BottomCenter),
+                                    enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(420)),
+                                    exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(320)),
+                                ) {
                                     Box(
                                         Modifier
-                                            .align(Alignment.BottomCenter)
                                             .fillMaxWidth()
-                                            .height(barSpace + 24.dp)
+                                            .height(barSpace + 40.dp)
                                             .background(
+                                                // Short soft edge, then solid: content scrolls
+                                                // cleanly under the controls instead of
+                                                // half-showing through them.
                                                 Brush.verticalGradient(
                                                     0f to Color.Transparent,
-                                                    0.35f to Obsidian.copy(alpha = 0.7f),
-                                                    1f to Obsidian.copy(alpha = 0.9f),
+                                                    0.07f to Obsidian,
+                                                    1f to Obsidian,
                                                 ),
                                             ),
                                     )
                                 }
-                                if (onHome) {
-                                    val lastMinutes by container.settings.lastSessionMinutes.collectAsStateWithLifecycle(initialValue = null)
+                                // Fade the pinned controls with the page instead of
+                                // snapping, so leaving Home dissolves as one piece.
+                                val lastMinutes by container.settings.lastSessionMinutes.collectAsStateWithLifecycle(initialValue = null)
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = onHome,
+                                    modifier = Modifier.align(Alignment.BottomCenter),
+                                    enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(420)),
+                                    exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(320)),
+                                ) {
                                     app.stackd.core.ui.StartPill(
                                         onStart = { navController.navigate(Dest.Start.route) { launchSingleTop = true } },
-                                        modifier = Modifier.align(Alignment.BottomCenter),
                                         defaultMinutes = lastMinutes?.let(app.stackd.feature.start.StartUiState::snap) ?: app.stackd.feature.start.StartUiState.RECOMMENDED_MINUTES,
                                     )
                                 }
-                                if (showTabs) {
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = showTabs,
+                                    modifier = Modifier.align(Alignment.BottomCenter),
+                                    enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(420)),
+                                    exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(320)),
+                                ) {
                                     app.stackd.core.ui.TabBar(
                                         currentRoute = route,
                                         onSelect = { target ->
@@ -378,7 +396,6 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onStart = { navController.navigate(Dest.Start.route) { launchSingleTop = true } },
                                         hazeState = hazeState,
-                                        modifier = Modifier.align(Alignment.BottomCenter),
                                     )
                                 }
 

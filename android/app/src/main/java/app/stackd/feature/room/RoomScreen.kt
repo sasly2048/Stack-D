@@ -17,6 +17,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import app.stackd.core.ui.sessionShared
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -295,10 +299,10 @@ fun RoomScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = Stackd.colors
+    Box(modifier.fillMaxSize().background(colors.background)) {
     androidx.compose.foundation.layout.Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)
             .verticalScroll(rememberScrollState()),
     ) {
       app.stackd.core.ui.ResponsiveColumn(
@@ -313,7 +317,19 @@ fun RoomScreen(
         }
         Spacer(Modifier.height(24.dp))
 
-        when (state.phase) {
+        // Phases ease into each other (lobby -> countdown -> placing -> live ->
+        // ended) instead of snapping: the room is one place changing state.
+        androidx.compose.animation.AnimatedContent(
+            targetState = state.phase,
+            transitionSpec = {
+                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(480, delayMillis = 120, easing = app.stackd.core.theme.EaseRitual)) +
+                    androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(560, easing = app.stackd.core.theme.EaseRitual)) { it / 14 })
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(220)))
+            },
+            label = "phase",
+        ) { phase ->
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        when (phase) {
             RoomPhase.LOADING -> Loading()
             RoomPhase.ERROR -> if (state.joinGate != null) {
                 JoinGate(state.joinGate, onRequestJoin, onExit)
@@ -333,7 +349,23 @@ fun RoomScreen(
             )
             RoomPhase.ENDED -> Ended(state, onExit, onSaveSessionMeta, onRegenerateRecap)
         }
+        }
+        }
       }
+    }
+    // The lobby's one decision stays under the thumb while setup scrolls.
+    if (state.phase == RoomPhase.LOBBY && state.isHost) {
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to androidx.compose.ui.graphics.Color.Transparent, 0.25f to colors.background))
+                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
+                .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 16.dp),
+        ) {
+            EmberButton(text = "Start the stack", onClick = onStart)
+        }
+    }
     }
 }
 
@@ -400,9 +432,14 @@ private fun ConnectionBadge(connection: ConnectionState) {
 
 @Composable
 private fun Loading() {
-    SectionLabel("ENTERING")
-    Spacer(Modifier.height(12.dp))
-    Text("Claiming your seat…", style = MaterialTheme.typography.bodyMedium, color = Stackd.colors.textMuted)
+    // Same stack, same place as the lobby's, so the one arriving from Home
+    // lands here and simply stays while the seat is claimed.
+    Box(Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.sessionShared("stack")) {
+            app.stackd.core.ui.StackArt(size = 200.dp, phones = 1, dropIn = false)
+        }
+    }
+    Text("Claiming your seat…", style = MaterialTheme.typography.bodyLarge, color = Stackd.colors.textMuted)
 }
 
 @Composable
@@ -418,59 +455,65 @@ private fun Lobby(
     onSetIntention: (String) -> Unit,
 ) {
     val colors = Stackd.colors
-    SectionLabel("LOBBY")
-    Spacer(Modifier.height(12.dp))
+    // The table first: who's here, as phones in the stack, under the room's
+    // name. Everything else is optional setup further down.
+    val seats = state.present.size
+    Box(Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.sessionShared("stack")) {
+            app.stackd.core.ui.StackArt(size = 200.dp, phones = seats.coerceIn(1, 6), dropIn = false)
+        }
+    }
     Text(
-        state.room?.title?.takeIf { it.isNotBlank() } ?: "Waiting to begin",
+        state.room?.title?.takeIf { it.isNotBlank() } ?: "The table",
         style = MaterialTheme.typography.displaySmall.copy(fontFamily = app.stackd.core.theme.SerifFamily),
         color = colors.textPrimary,
         textAlign = TextAlign.Center,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        "${(state.room?.targetDurationSeconds ?: 0) / 60} min · ${state.present.size} in the room",
-        style = MonoLabelSmall,
+        "${(state.room?.targetDurationSeconds ?: 0) / 60} min · " +
+            if (seats == 1) "just you so far" else "$seats at the table",
+        style = MaterialTheme.typography.bodyLarge,
         color = colors.textMuted,
+        modifier = Modifier.sessionShared("duration", morph = true),
     )
-    // Rhythm: 8dp inside a group, 16dp between cards, 24dp between groups.
-    Spacer(Modifier.height(24.dp))
-    InviteRow(state.code)
-    Spacer(Modifier.height(24.dp))
-    // One line of intent, asked back in the ceremony. It replaces the in-session
-    // workspace, which a face-down phone could never use without breaking.
-    app.stackd.core.ui.StackdField(
-        label = "What are you stacking for?",
-        value = state.intention,
-        onValueChange = onSetIntention,
-        placeholder = "finish chapter 3",
-    )
-    Spacer(Modifier.height(16.dp))
-    // The one decision this screen exists for sits above the fold; setup
-    // panels below are optional detail.
-    if (state.isHost) {
-        EmberButton(text = "Start Session", onClick = onStart)
-    } else {
-        NoticeBanner("Waiting for the host to start the session.")
+    if (!state.isHost) {
+        Spacer(Modifier.height(16.dp))
+        NoticeBanner("Waiting for the host to start the stack.")
     }
-    Spacer(Modifier.height(24.dp))
-    RoomHeaderPanel(state, onSaveMeta)
+    Spacer(Modifier.height(28.dp))
+    InviteRow(state.code)
+    Spacer(Modifier.height(28.dp))
+    PresenceRoster(state, onToggleReady)
     Spacer(Modifier.height(16.dp))
-    // Only when there's something to show — the empty panel still added its
-    // spacer, leaving a doubled gap above the roster.
     if (state.isModerator && state.joinRequests.isNotEmpty()) {
         JoinRequestsPanel(state.joinRequests, onRespondJoin)
         Spacer(Modifier.height(16.dp))
     }
-    PresenceRoster(state, onToggleReady)
+    RoomHeaderPanel(state, onSaveMeta)
     Spacer(Modifier.height(16.dp))
     SchedulePanel(state, onAddSchedule)
     if (state.milestones.isNotEmpty()) {
         Spacer(Modifier.height(16.dp))
         MilestoneTimeline(state.milestones)
     }
-    Spacer(Modifier.height(24.dp))
-
+    Spacer(Modifier.height(20.dp))
+    // Optional, private, and asked back at the end; never the screen's lead.
+    var noteOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(state.intention.isNotBlank()) }
+    if (noteOpen) {
+        app.stackd.core.ui.StackdField(
+            label = "Note for yourself",
+            value = state.intention,
+            onValueChange = onSetIntention,
+            placeholder = "finish chapter 3",
+        )
+    } else {
+        app.stackd.core.ui.LinkButton("+ Add a note for yourself", onClick = { noteOpen = true }, color = colors.textMuted)
+    }
+    Spacer(Modifier.height(20.dp))
     GhostButton(text = if (state.isHost) "Abort Room" else "Leave", onClick = if (state.isHost) onAbort else onExit)
+    // Room for the pinned Start bar.
+    if (state.isHost) Spacer(Modifier.height(112.dp))
 }
 
 /**
@@ -648,8 +691,19 @@ private fun Active(
         modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
+        // Ember glow behind the ring, the room's one light source.
+        Box(
+            Modifier.fillMaxSize().background(
+                androidx.compose.ui.graphics.Brush.radialGradient(
+                    listOf(
+                        (if (state.iBreached) colors.breach else colors.accent).copy(alpha = 0.14f),
+                        androidx.compose.ui.graphics.Color.Transparent,
+                    ),
+                ),
+            ),
+        )
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            val stroke = 14.dp.toPx()
+            val stroke = 6.dp.toPx()
             val inset = stroke / 2
             val arc = Size(size.width - stroke, size.height - stroke)
             drawArc(
@@ -665,23 +719,40 @@ private fun Active(
                 size = arc, style = Stroke(stroke),
             )
         }
-        Column(
-            modifier = Modifier.breathing(enabled = !state.iBreached && !state.calibrating),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                formatDuration(state.remainingSeconds.toInt()),
-                style = MaterialTheme.typography.displayMedium,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                if (state.calibrating) "ARMING…" else if (state.iBreached) "BREACHED" else "HOLDING",
-                style = MonoLabelSmall,
-                color = if (state.iBreached) colors.breach else colors.textMuted,
-            )
+        // The stack itself is the focal point, breathing slowly; the timer is
+        // secondary, under the ring (focus screens: one living element).
+        Box(Modifier.breathing(enabled = !state.iBreached && !state.calibrating)) {
+            app.stackd.core.ui.StackArt(size = 150.dp, phones = state.present.size.coerceIn(1, 6), dropIn = false)
         }
     }
+    Text(
+        formatDuration(state.remainingSeconds.toInt()),
+        style = MaterialTheme.typography.displayMedium.copy(fontFamily = app.stackd.core.theme.SerifFamily),
+        color = colors.textPrimary,
+        fontWeight = FontWeight.Normal,
+    )
+    Spacer(Modifier.height(4.dp))
+    Text(
+        when {
+            state.calibrating -> "Arming the stack…"
+            state.iBreached -> "Your stack broke"
+            else -> "Holding"
+        },
+        style = MaterialTheme.typography.bodyLarge,
+        color = if (state.iBreached) colors.breach else colors.textMuted,
+    )
+    Spacer(Modifier.height(16.dp))
+    // Who's at the table, in one line: the stake, not a roster to manage.
+    val others = state.present.filter { it.userId != state.meId }
+    Text(
+        when (others.size) {
+            0 -> "Just you at the table"
+            1 -> "With ${others[0].displayName?.substringBefore(' ') ?: "one other"}"
+            else -> "With ${others[0].displayName?.substringBefore(' ') ?: "someone"} and ${others.size - 1} more"
+        } + if (state.breaks.any { it.isSevere }) " · ${state.breaks.count { it.isSevere }} broke" else "",
+        style = MaterialTheme.typography.bodyMedium,
+        color = colors.textMuted,
+    )
 
     state.sensorWarning?.let {
         Spacer(Modifier.height(12.dp))
@@ -692,18 +763,10 @@ private fun Active(
         ErrorBanner("Your stack broke. You're out for this session, but it's still running for the others.")
     }
 
-    Spacer(Modifier.height(20.dp))
-    SharedGoalBar(state)
-    if (state.goalHours > 0) Spacer(Modifier.height(16.dp))
-    PresenceRoster(state, onToggleReady)
-    Spacer(Modifier.height(16.dp))
-    LiveActivityRail(state)
-    Spacer(Modifier.height(16.dp))
-    if (state.milestones.isNotEmpty()) {
-        MilestoneTimeline(state.milestones)
-        Spacer(Modifier.height(16.dp))
+    if (state.goalHours > 0) {
+        Spacer(Modifier.height(20.dp))
+        SharedGoalBar(state)
     }
-    LiveBreachFeed(state.breaks)
     } // end interaction-guarded content column
 
     // Ambient soundscapes sit OUTSIDE the guarded column, like End/Abort:

@@ -1,7 +1,10 @@
 package app.stackd.core.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -27,6 +30,14 @@ import app.stackd.core.theme.TechLabel
 import app.stackd.core.theme.Stackd
 
 /**
+ * Sibling screens merged under one Explore entry ("People", "Your story"): the
+ * header draws them as a tab row under the title so switching is one tap.
+ */
+class HubTabs(val labels: List<String>, val selected: Int, val onSelect: (Int) -> Unit)
+
+val LocalHubTabs = androidx.compose.runtime.compositionLocalOf<HubTabs?> { null }
+
+/**
  * Top-of-screen breadcrumb + back affordance shared by every sub-screen.
  *
  * Back sits top-left in a 48dp target (where both Android and iOS users reach
@@ -41,6 +52,8 @@ fun ScreenHeader(
     modifier: Modifier = Modifier,
     /** Large serif page title under the breadcrumb (web pages' ont-serif h1). */
     title: String? = null,
+    /** Callers with a [trailing] slot pass false so the row always renders. */
+    hideEmptyRow: Boolean = true,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = Stackd.colors
@@ -49,7 +62,17 @@ fun ScreenHeader(
     // Fixed 48dp row: the room screen shows/hides back by phase, and a header
     // that changed height made the content below jump.
     androidx.compose.foundation.layout.Column(modifier.fillMaxWidth()) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+    // "STACK'D / LEADERBOARD" above a "Leaderboard" title said the same thing
+    // twice in system-path voice: drop the brand prefix, and the whole crumb
+    // when a title follows. Room codes stay; they're real, shareable data.
+    val label = when {
+        path.startsWith("ROOM") -> path
+        title != null -> ""
+        else -> path.substringAfter("STACK'D / ")
+    }
+    // A tab root with no crumb has nothing for this row to hold; skipping it
+    // lets the title start at the same height as Home's greeting.
+    if (back != null || label.isNotEmpty() || !hideEmptyRow) {    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
         if (back != null) {
             Box(
                 Modifier
@@ -75,14 +98,7 @@ fun ScreenHeader(
                 }
             }
         }
-        // "STACK'D / LEADERBOARD" above a "Leaderboard" title said the same thing
-        // twice in system-path voice: drop the brand prefix, and the whole crumb
-        // when a title follows. Room codes stay; they're real, shareable data.
-        val label = when {
-            path.startsWith("ROOM") -> path
-            title != null -> ""
-            else -> path.substringAfter("STACK'D / ")
-        }
+
         Text(
             label,
             style = TechLabel,
@@ -94,6 +110,7 @@ fun ScreenHeader(
                 .offset(x = if (back != null) (-32).dp else 0.dp),
         )
         trailing()
+    }
     }
     // Large title: one clear 'you are here' per screen, in the web's serif, so a
     // page reads as a destination rather than a stack of small labels.
@@ -108,6 +125,35 @@ fun ScreenHeader(
         )
         androidx.compose.foundation.layout.Spacer(Modifier.heightIn(min = 4.dp))
     }
+    LocalHubTabs.current?.let { hub -> HubTabRow(hub) }
+    }
+}
+
+@Composable
+private fun HubTabRow(hub: HubTabs) {
+    val colors = Stackd.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+            .padding(top = 12.dp, bottom = 4.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+    ) {
+        hub.labels.forEachIndexed { i, label ->
+            val on = i == hub.selected
+            Text(
+                label,
+                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                fontWeight = if (on) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal,
+                color = if (on) colors.background else colors.textPrimary,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (on) colors.textPrimary else colors.textPrimary.copy(alpha = 0.06f))
+                    .clickable(role = Role.Tab) { if (!on) hub.onSelect(i) }
+                    .heightIn(min = 40.dp)
+                    .padding(horizontal = 16.dp, vertical = 9.dp),
+            )
+        }
     }
 }
 

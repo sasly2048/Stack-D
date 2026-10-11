@@ -70,6 +70,7 @@ import app.stackd.core.ui.EmberButton
 import app.stackd.core.ui.ErrorBanner
 import app.stackd.core.ui.GhostButton
 import app.stackd.core.ui.StackdField
+import app.stackd.core.ui.sessionShared
 import com.composables.icons.lucide.ChevronRight
 import app.stackd.core.ui.pressFeedback
 import java.time.LocalTime
@@ -213,7 +214,7 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
     val ends = remember(state.duration) {
         LocalTime.now().plusMinutes(state.duration.toLong()).format(DateTimeFormatter.ofPattern("h:mm a"))
     }
-    val atMax = !state.durationLocked && state.duration == StartUiState.MAX_MINUTES
+    val atMax = state.duration == StartUiState.MAX_MINUTES
     // Bloom once on arrival at max, then hold a faint glow while it stays there.
     val halo = remember { androidx.compose.animation.core.Animatable(0f) }
     LaunchedEffect(atMax) {
@@ -225,7 +226,9 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
         }
     }
     fun pick(minutes: Int) {
-        if (minutes == state.duration || state.durationLocked) return
+        if (minutes == state.duration && !state.durationLocked) return
+        // Arriving at the longest stack is its own small moment, every time.
+        if (minutes == StartUiState.MAX_MINUTES) app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.OPEN)
         view.performHapticFeedback(
             if (minutes == StartUiState.MAX_MINUTES && android.os.Build.VERSION.SDK_INT >= 30) {
                 android.view.HapticFeedbackConstants.CONFIRM
@@ -257,7 +260,7 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
                         Brush.radialGradient(listOf(colors.accentGlow.copy(alpha = 0.55f), colors.accent.copy(alpha = 0.18f), Color.Transparent)),
                     ),
             )
-            Row(verticalAlignment = Alignment.Bottom) {
+            Row(Modifier.sessionShared("duration", morph = true), verticalAlignment = Alignment.Bottom) {
                 AnimatedContent(
                     targetState = state.duration,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -283,7 +286,7 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
             }
         }
         AnimatedContent(
-            targetState = if (state.durationLocked) "Set by template" else "${meaningOf(state.duration)} · ends $ends",
+            targetState = "${meaningOf(state.duration)} · ends $ends",
             transitionSpec = { fadeIn() togetherWith fadeOut() },
             label = "meaning",
         ) { line ->
@@ -297,7 +300,6 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
             onValueChange = { pick(stops[it.roundToInt().coerceIn(0, stops.lastIndex)]) },
             valueRange = 0f..stops.lastIndex.toFloat(),
             steps = stops.size - 2,
-            enabled = !state.durationLocked,
             // Own thumb + track: M3's default draws a detached bar thumb and a
             // stop dot that read as a broken control at the low end.
             thumb = {
@@ -311,7 +313,7 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
                     Box(
                         Modifier
                             .size(26.dp)
-                            .background(if (state.durationLocked) colors.textMuted else colors.textPrimary, CircleShape),
+                            .background(colors.textPrimary, CircleShape),
                     )
                 }
             },
@@ -327,7 +329,7 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
                         Modifier
                             .fillMaxWidth(frac)
                             .height(6.dp)
-                            .background(if (state.durationLocked) colors.textMuted else colors.accent, CircleShape),
+                            .background(colors.accent, CircleShape),
                     )
                 }
             },
@@ -338,12 +340,12 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            stops.forEach { m ->
+            StartUiState.CHIP_DURATIONS.forEach { m ->
                 Pill(
                     label = if (m >= 60 && m % 60 == 0) "${m / 60}h" else "${m}m",
                     badge = if (state.lastMinutes == m && state.duration != m) "last" else null,
                     selected = state.duration == m,
-                    enabled = !state.durationLocked,
+                    enabled = true,
                     onClick = { pick(m) },
                 )
             }

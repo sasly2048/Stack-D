@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import app.stackd.core.ui.fillSweep
+import app.stackd.core.ui.pressFeedback
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -81,19 +82,45 @@ fun TodayStrip(
  */
 @Composable
 fun RewardCallout(reward: RewardStatus, claiming: Boolean, onClaim: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = Stackd.colors
     val view = androidx.compose.ui.platform.LocalView.current
-    RewardChip(
-        reward,
-        claiming,
-        onClaim = {
-            if (android.os.Build.VERSION.SDK_INT >= 30) view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-            onClaim()
-        },
-        modifier = modifier,
-        fireFill = true,
-    )
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val (fill, fire) = app.stackd.core.ui.rememberFillClick(source) {
+        if (android.os.Build.VERSION.SDK_INT >= 30) view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+        app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.XP)
+        onClaim()
+    }
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+    // A slim solid-ember pill: reads as one tap, not a card to study. The
+    // glow sweeping across while pressed is the claim landing.
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .pressFeedback(source, pressedScale = 0.98f, sound = null)
+            .clip(shape)
+            .background(colors.accent)
+            .fillSweep(fill, SolidColor(app.stackd.core.theme.EmberGlow))
+            .clickable(interactionSource = source, indication = null, enabled = !claiming, onClick = fire)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(app.stackd.core.ui.StackdIcons.CardGiftcard, contentDescription = null, tint = app.stackd.core.theme.IvoryInk, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            if (claiming) "Claiming…" else "Claim today's +${reward.nextRewardXp} XP",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = app.stackd.core.theme.IvoryInk,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            "Day ${reward.nextDayOfStreak} of ${DAILY_REWARDS.size}",
+            style = MaterialTheme.typography.bodySmall,
+            color = app.stackd.core.theme.IvoryInk.copy(alpha = 0.7f),
+        )
+    }
 }
-
 @Composable
 private fun RewardChip(
     reward: RewardStatus,

@@ -66,23 +66,25 @@ import com.composables.icons.lucide.Search
 
 /** Groups in the order people look for them; unknown labels fall into "More". */
 private val GROUPS: List<Pair<String, List<String>>> = listOf(
-    "Focus" to listOf("Atlas", "Challenges", "Seasons", "Timeline", "Replay"),
-    "Progress" to listOf("Achievements", "Leaderboard", "Focus DNA", "Wrapped"),
-    "Social" to listOf("Friends", "Circles", "Groups", "Partners"),
+    "Focus" to listOf("Atlas", "Challenges", "Seasons", "Your story"),
+    "Progress" to listOf("Achievements", "Leaderboard"),
+    "Social" to listOf("People"),
     "Vault" to listOf("Memory Vault", "Time Capsule"),
     "Account" to listOf("Premium", "Trust & Safety", "Integrations"),
 )
 
 /** Hero cards at the top; falls back to the first two entries if these are absent. */
-private val FEATURED = listOf("Atlas", "Leaderboard")
+private val FEATURED = listOf("Atlas", "Achievements")
 
 /** Already one tap away in the tab bar — listing them again is noise. */
-private val ON_TAB_BAR = setOf("Feed", "Insights", "Profile")
+private val ON_TAB_BAR = setOf("Feed", "Insights", "Profile", "Leaderboard")
 
 private fun iconFor(label: String): ImageVector = when (label) {
     "Atlas" -> StackdIcons.Atlas
     "Challenges" -> StackdIcons.Target
     "Seasons" -> StackdIcons.CalendarRange
+    "Your story" -> StackdIcons.History
+    "People" -> StackdIcons.Orbit
     "Timeline" -> StackdIcons.History
     "Replay" -> StackdIcons.Rewind
     "Achievements" -> StackdIcons.EmojiEvents
@@ -112,6 +114,8 @@ private fun descriptionFor(label: String): String? = when (label) {
     "Atlas" -> "Your AI focus coach"
     "Challenges" -> "Weekly goals worth XP"
     "Seasons" -> "Compete each season"
+    "Your story" -> "Timeline, replays, Wrapped and your focus DNA"
+    "People" -> "Activity, friends, circles, partners and groups"
     "Timeline" -> "Every session you've held"
     "Replay" -> "Relive a session"
     "Achievements" -> "Badges you've collected"

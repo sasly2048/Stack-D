@@ -68,7 +68,9 @@ data class TabItem(val route: String, val label: String, val icon: ImageVector, 
 val StackdTabs = listOf(
     TabItem("dashboard", "Home", app.stackd.core.ui.StackdIcons.Home, app.stackd.core.ui.StackdIcons.Home),
     TabItem("insights", "Progress", app.stackd.core.ui.StackdIcons.Insights, app.stackd.core.ui.StackdIcons.Insights),
-    TabItem("feed", "Social", app.stackd.core.ui.StackdIcons.People, app.stackd.core.ui.StackdIcons.People),
+    // The weekly league is the social pull worth a tab; the activity feed
+    // lives in Explore > People.
+    TabItem("leaderboard", "Leaderboard", app.stackd.core.ui.StackdIcons.Leaderboard, app.stackd.core.ui.StackdIcons.Leaderboard),
     TabItem("profile", "Profile", app.stackd.core.ui.StackdIcons.Person, app.stackd.core.ui.StackdIcons.Person),
 )
 

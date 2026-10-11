@@ -47,15 +47,15 @@ object Sfx {
         ),
         Kind.SELECT to Patch(
             listOf(Note(1174.66, 0.0, 0.16, Voice.PLUCK, 1.0), Note(5200.0, 0.0, 0.008, Voice.CLICK, 0.35)),
-            wet = 0.06, peak = 0.22,
+            wet = 0.06, peak = 0.12,
         ),
         Kind.OPEN to Patch(
             listOf(Note(783.99, 0.0, 0.22, Voice.BELL, 0.8), Note(1174.66, 0.055, 0.28, Voice.BELL, 1.0)),
-            wet = 0.12, peak = 0.22,
+            wet = 0.12, peak = 0.12,
         ),
         Kind.CLOSE to Patch(
             listOf(Note(1174.66, 0.0, 0.2, Voice.BELL, 0.9), Note(783.99, 0.055, 0.26, Voice.BELL, 0.8)),
-            wet = 0.1, peak = 0.2,
+            wet = 0.1, peak = 0.11,
         ),
         // --- Kept moments: soft, pure, short. One to three notes, no reverb. ---
         Kind.SUCCESS to Patch(
@@ -121,9 +121,11 @@ object Sfx {
         worker.execute { (listOf(Kind.STARTUP, Kind.TAP) + Kind.entries).forEach { k -> cache.getOrPut(k) { render(PATCHES.getValue(k)) } } }
     }
 
-    /** Play a UI sound. Silent if sound is off or audio fails. */
-    /** Routine interactions stay silent — sound is reserved for moments that matter. */
-    private val QUIET = setOf(Kind.TAP, Kind.SELECT, Kind.OPEN, Kind.CLOSE, Kind.XP)
+    /**
+     * Plain taps stay silent (they fire constantly); selections, sheets and XP
+     * keep their sound, just softer than the moments that matter.
+     */
+    private val QUIET = setOf(Kind.TAP)
 
     fun play(kind: Kind) {
         if (!enabled || kind in QUIET) return

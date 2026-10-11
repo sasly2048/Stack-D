@@ -75,21 +75,25 @@ fun StackdNavHost(
         modifier = modifier,
         enterTransition = {
             if (isTabSwap(initialState, targetState)) androidx.compose.animation.EnterTransition.None else
+            if (isSessionLoop(initialState, targetState)) loopIn else
             androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 4 } +
                 androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(320, easing = ease))
         },
         exitTransition = {
             if (isTabSwap(initialState, targetState)) androidx.compose.animation.ExitTransition.None else
+            if (isSessionLoop(initialState, targetState)) loopOut else
             androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { -it / 10 } +
                 androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160))
         },
         popEnterTransition = {
             if (isTabSwap(initialState, targetState)) androidx.compose.animation.EnterTransition.None else
+            if (isSessionLoop(initialState, targetState)) loopIn else
             androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { -it / 10 } +
                 androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(320, easing = ease))
         },
         popExitTransition = {
             if (isTabSwap(initialState, targetState)) androidx.compose.animation.ExitTransition.None else
+            if (isSessionLoop(initialState, targetState)) loopOut else
             androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 4 } +
                 androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160))
         },
@@ -111,7 +115,7 @@ fun StackdNavHost(
         placeholder(Dest.Philosophy, "Philosophy")
 
         // Core session loop
-        composable(Dest.Dashboard.route) {
+        composable(Dest.Dashboard.route) { CompositionLocalProvider(app.stackd.core.ui.LocalNavAnimatedScope provides this) {
             DashboardRoute(
                 onStart = { navController.navigate(Dest.Start.route) },
                 onQuickStart = { minutes, title -> navController.navigate(Dest.StartPreset.of(minutes, title)) },
@@ -122,21 +126,15 @@ fun StackdNavHost(
                     "Atlas" to Dest.Companion,
                     "Premium" to Dest.Premium,
                     "Feed" to Dest.Feed,
-                    "Timeline" to Dest.Timeline,
-                    "Circles" to Dest.Circles,
-                    "Groups" to Dest.Groups,
+                    "Your story" to Dest.Timeline,
+                    "People" to Dest.Feed,
                     "Leaderboard" to Dest.Leaderboard,
                     "Achievements" to Dest.Achievements,
                     "Insights" to Dest.Insights,
-                    "Focus DNA" to Dest.Dna,
-                    "Wrapped" to Dest.Wrapped,
-                    "Replay" to Dest.Replay,
                     "Challenges" to Dest.Challenges,
                     "Seasons" to Dest.Seasons,
                     "Memory Vault" to Dest.Vault,
                     "Time Capsule" to Dest.Capsule,
-                    "Friends" to Dest.Friends,
-                    "Partners" to Dest.Partners,
                     "Trust & Safety" to Dest.Trust,
                     "Integrations" to Dest.Integrations,
                     "Profile" to Dest.Profile,
@@ -146,8 +144,8 @@ fun StackdNavHost(
                     label to { navController.navigate(dest.route) { launchSingleTop = true }; Unit }
                 },
             )
-        }
-        composable(Dest.Start.route) {
+        } }
+        composable(Dest.Start.route) { CompositionLocalProvider(app.stackd.core.ui.LocalNavAnimatedScope provides this) {
             StartRoute(
                 onBack = { navController.popBackStack() },
                 onJoinRoom = { code -> navController.navigate(Dest.Room.of(code)) },
@@ -160,14 +158,14 @@ fun StackdNavHost(
                     }
                 },
             )
-        }
+        } }
         composable(
             route = Dest.StartPreset.route,
             arguments = listOf(
                 navArgument(Dest.StartPreset.ARG_MINUTES) { type = NavType.IntType; defaultValue = 0 },
                 navArgument(Dest.StartPreset.ARG_TITLE) { type = NavType.StringType; defaultValue = "" },
             ),
-        ) { entry ->
+        ) { entry -> CompositionLocalProvider(app.stackd.core.ui.LocalNavAnimatedScope provides this) {
             StartRoute(
                 presetMinutes = entry.arguments?.getInt(Dest.StartPreset.ARG_MINUTES)?.takeIf { it > 0 },
                 presetTitle = entry.arguments?.getString(Dest.StartPreset.ARG_TITLE)?.takeIf { it.isNotBlank() },
@@ -179,14 +177,14 @@ fun StackdNavHost(
                     }
                 },
             )
-        }
+        } }
         composable(
             route = Dest.Room.route,
             arguments = listOf(navArgument(Dest.Room.ARG_CODE) { type = NavType.StringType }),
             deepLinks = listOf(navDeepLink { uriPattern = "https://stackd.raghav.studio/room/{${Dest.Room.ARG_CODE}}" }),
         ) { entry ->
             val code = entry.arguments?.getString(Dest.Room.ARG_CODE).orEmpty()
-            CompositionLocalProvider(LocalOpenProfile provides openProfile) {
+            CompositionLocalProvider(LocalOpenProfile provides openProfile, app.stackd.core.ui.LocalNavAnimatedScope provides this) {
                 RoomRoute(
                     code = code,
                     onOpenPremium = { navController.navigate(Dest.Premium.route) { launchSingleTop = true } },
@@ -227,10 +225,10 @@ fun StackdNavHost(
             }
         }
         composable(Dest.Friends.route) {
-            FriendsRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile)
+            HubScope(navController, PeopleHub, Dest.Friends.route) { FriendsRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile) }
         }
         composable(Dest.Feed.route) {
-            CompositionLocalProvider(app.stackd.core.ui.LocalIsTabRoot provides true) { FeedRoute(
+            HubScope(navController, PeopleHub, Dest.Feed.route) { FeedRoute(
                 onBack = { navController.popBackStack() },
                 onStart = { navController.navigate(Dest.Start.route) },
                 onOpenFriends = { navController.navigate(Dest.Friends.route) },
@@ -238,15 +236,18 @@ fun StackdNavHost(
             ) }
         }
         composable(Dest.Timeline.route) {
-            TimelineRoute(onBack = { navController.popBackStack() })
+            HubScope(navController, StoryHub, Dest.Timeline.route) { TimelineRoute(onBack = { navController.popBackStack() }) }
         }
         composable(Dest.Partners.route) {
-            PartnersRoute(onBack = { navController.popBackStack() })
+            HubScope(navController, PeopleHub, Dest.Partners.route) { PartnersRoute(onBack = { navController.popBackStack() }) }
         }
 
         // Progression
         composable(Dest.Leaderboard.route) {
-            CompositionLocalProvider(app.stackd.core.ui.LocalNavAnimatedScope provides this) { LeaderboardRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile) }
+            CompositionLocalProvider(
+                app.stackd.core.ui.LocalNavAnimatedScope provides this,
+                app.stackd.core.ui.LocalIsTabRoot provides true,
+            ) { LeaderboardRoute(onBack = { navController.popBackStack() }, onOpenProfile = openProfile) }
         }
         composable(Dest.Achievements.route) {
             AchievementsRoute(onBack = { navController.popBackStack() })
@@ -259,14 +260,14 @@ fun StackdNavHost(
         }
 
         // Groups
-        composable(Dest.Circles.route) {
+        composable(Dest.Circles.route) { HubScope(navController, PeopleHub, Dest.Circles.route) {
             CirclesRoute(
                 onBack = { navController.popBackStack() },
                 onManage = { navController.navigate(Dest.Groups.route) },
                 onOpenProfile = openProfile,
             )
-        }
-        composable(Dest.Groups.route) {
+        } }
+        composable(Dest.Groups.route) { HubScope(navController, PeopleHub, Dest.Groups.route) {
             GroupsRoute(
                 onBack = { navController.popBackStack() },
                 onOpenRoom = { code ->
@@ -278,7 +279,7 @@ fun StackdNavHost(
                     }
                 },
             )
-        }
+        } }
 
         // Analytics & recall
         composable(Dest.Insights.route) {
@@ -287,17 +288,17 @@ fun StackdNavHost(
                 onStart = { navController.navigate(Dest.Start.route) },
             ) }
         }
-        composable(Dest.Dna.route) {
+        composable(Dest.Dna.route) { HubScope(navController, StoryHub, Dest.Dna.route) {
             DnaRoute(
                 onBack = { navController.popBackStack() },
                 onUpgrade = { navController.navigate(Dest.Premium.route) },
             )
-        }
+        } }
         composable(Dest.Replay.route) {
-            ReplayRoute(onBack = { navController.popBackStack() })
+            HubScope(navController, StoryHub, Dest.Replay.route) { ReplayRoute(onBack = { navController.popBackStack() }) }
         }
         composable(Dest.Wrapped.route) {
-            WrappedRoute(onBack = { navController.popBackStack() })
+            HubScope(navController, StoryHub, Dest.Wrapped.route) { WrappedRoute(onBack = { navController.popBackStack() }) }
         }
         composable(Dest.Vault.route) {
             VaultRoute(
@@ -353,3 +354,50 @@ private fun androidx.navigation.NavGraphBuilder.placeholder(
     title: String,
     note: String? = null,
 ) = composable(dest.route) { PlaceholderScreen(title = title, note = note) }
+
+/** Explore's merged entries: one menu row each, tabs between the members. */
+private val PeopleHub = listOf(
+    "Feed" to Dest.Feed.route, "Friends" to Dest.Friends.route, "Circles" to Dest.Circles.route,
+    "Partners" to Dest.Partners.route, "Groups" to Dest.Groups.route,
+)
+private val StoryHub = listOf(
+    "Timeline" to Dest.Timeline.route, "Replay" to Dest.Replay.route,
+    "Wrapped" to Dest.Wrapped.route, "Focus DNA" to Dest.Dna.route,
+)
+
+/** Gives [content]'s header the hub tab row; a tab swaps this destination in place. */
+@androidx.compose.runtime.Composable
+private fun HubScope(
+    navController: androidx.navigation.NavController,
+    hub: List<Pair<String, String>>,
+    here: String,
+    content: @androidx.compose.runtime.Composable () -> Unit,
+) {
+    androidx.compose.runtime.CompositionLocalProvider(
+        app.stackd.core.ui.LocalHubTabs provides app.stackd.core.ui.HubTabs(
+            labels = hub.map { it.first },
+            selected = hub.indexOfFirst { it.second == here },
+        ) { i ->
+            navController.navigate(hub[i].second) {
+                popUpTo(here) { inclusive = true }
+                launchSingleTop = true
+            }
+        },
+    ) { content() }
+}
+/**
+ * Home, planner and room are one journey: a slow dissolve with no slide, long
+ * enough for the shared stack and duration to travel (a shared element can only
+ * move while its page transition runs).
+ */
+private fun isSessionLoop(from: androidx.navigation.NavBackStackEntry, to: androidx.navigation.NavBackStackEntry): Boolean {
+    val loop = setOf(Dest.Dashboard.route, Dest.Start.route, Dest.StartPreset.route, Dest.Room.route)
+    return from.destination.route in loop && to.destination.route in loop
+}
+
+private val loopIn = androidx.compose.animation.fadeIn(
+    androidx.compose.animation.core.tween(620, easing = app.stackd.core.theme.EaseRitual),
+)
+private val loopOut = androidx.compose.animation.fadeOut(
+    androidx.compose.animation.core.tween(620, easing = app.stackd.core.theme.EaseRitual),
+)

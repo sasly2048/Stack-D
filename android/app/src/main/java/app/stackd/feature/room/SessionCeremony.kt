@@ -47,6 +47,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
@@ -132,7 +134,16 @@ fun SessionCeremony(
     val tail = remember(summary) { Animatable(0f) }
     var ctaOn by remember(summary) { mutableStateOf(false) }
 
-    LaunchedEffect(summary) {
+    // The user performs the reveal: hold the stack to lift it. Nothing below
+    // plays until then (reduced motion skips the gate).
+    var lifted by remember(summary) { mutableStateOf(reduce) }
+    val holdFill = remember(summary) { Animatable(0f) }
+
+    LaunchedEffect(summary, lifted) {
+        if (!lifted) {
+            fade.animateTo(1f, tween(500, easing = EaseRitual))
+            return@LaunchedEffect
+        }
         fun landed() {
             Sfx.play(Sfx.Kind.SUCCESS)
             view.performHapticFeedback(
@@ -188,21 +199,67 @@ fun SessionCeremony(
                 contentAlignment = Alignment.TopCenter,
             ) {
                 Column(
-                    Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 56.dp, bottom = 176.dp),
+                    Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = if (lifted) 56.dp else 180.dp, bottom = 176.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // The table: the stack, then everyone picks their phone back up.
                     // Once the phones have lifted, the art's space folds away so the
                     // result settles into the upper-middle instead of under a void.
                     val artH = remember { androidx.compose.animation.core.Animatable(if (reduce) 72f else 200f) }
-                    LaunchedEffect(Unit) {
-                        if (!reduce) {
+                    LaunchedEffect(lifted) {
+                        if (lifted && !reduce) {
                             delay(1150)
                             artH.animateTo(72f, tween(800, easing = EaseRitual))
                         }
                     }
-                    Box(Modifier.fillMaxWidth().height(artH.value.dp), contentAlignment = Alignment.Center) {
-                        StackArt(size = 200.dp, phones = 4, liftOff = true, modifier = Modifier.requiredSize(200.dp))
+                    val scope = androidx.compose.runtime.rememberCoroutineScope()
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(artH.value.dp)
+                            .pointerInput(lifted) {
+                                if (lifted) return@pointerInput
+                                detectTapGestures(onPress = {
+                                    val job = scope.launch {
+                                        var lastTick = 0
+                                        holdFill.animateTo(1f, tween(((1f - holdFill.value) * 1100).toInt(), easing = androidx.compose.animation.core.LinearEasing)) {
+                                            val tick = (value * 6).toInt()
+                                            if (tick > lastTick) { lastTick = tick; view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
+                                        }
+                                        lifted = true
+                                    }
+                                    tryAwaitRelease()
+                                    if (!lifted) { job.cancel(); scope.launch { holdFill.animateTo(0f, tween(260)) } }
+                                })
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (!lifted) {
+                            // The ring fills while held; letting go early lets it fall back.
+                            androidx.compose.foundation.Canvas(Modifier.size(230.dp)) {
+                                val w = 3.dp.toPx()
+                                drawArc(
+                                    colors.accent, -90f, 360f * holdFill.value, false,
+                                    topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
+                                    size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(w, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+                                )
+                            }
+                        }
+                        androidx.compose.runtime.key(lifted) {
+                            StackArt(size = 200.dp, phones = 4, liftOff = lifted, dropIn = false, modifier = Modifier.requiredSize(200.dp))
+                        }
+                    }
+                    if (!lifted) {
+                        Spacer(Modifier.height(36.dp))
+                        Text(
+                            "Hold to lift the stack",
+                            style = MaterialTheme.typography.titleLarge.copy(fontFamily = SerifFamily),
+                            fontWeight = FontWeight.Normal,
+                            color = colors.textPrimary,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text("Everyone picks their phone back up.", style = body, color = colors.textMuted)
                     }
 
                     val clean = summary.breaches == 0

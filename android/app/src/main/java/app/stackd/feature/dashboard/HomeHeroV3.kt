@@ -1,5 +1,8 @@
 package app.stackd.feature.dashboard
 
+import app.stackd.core.ui.breathing
+import app.stackd.core.ui.sessionShared
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,83 +73,98 @@ internal fun HomeHeroV3(state: DashboardUiState, onStart: () -> Unit, onMore: ()
     val first = state.name.substringBefore(' ').ifBlank { state.name }
     val pct = (todayMin.toFloat() / DAILY_GOAL_MIN).coerceIn(0f, 1f)
 
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .bleed(20.dp)
-            .height(330.dp),
-    ) {
-        // Backdrop: the stack, big and cropped by the screen edge.
-        StackArt(
-            // ~15% smaller than the first cut so the greeting and today's state lead.
-            size = 200.dp,
-            phones = 4,
-            // Whole stack visible beside the greeting (no edge crop), below the menu button.
-            modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = 122.dp),
-        )
-        app.stackd.core.ui.MenuButton(onClick = onMore, modifier = Modifier.align(Alignment.TopEnd).padding(end = 20.dp))
-        Column(
-            Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column {
-                Text("$dayPart · $clock", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                Spacer(Modifier.height(14.dp))
+    val streakLine = when {
+        // Evening, alive, nothing clean today: say what's at stake.
+        state.streakAtRisk && now.hour >= 17 -> "${state.streak}-day streak ends at midnight"
+        state.streak > 0 && state.streakFreezes > 0 -> "${state.streak}-day streak · 1 freeze"
+        state.streak > 0 -> "${state.streak}-day streak"
+        else -> "Day one"
+    }
+    val ringPct by androidx.compose.animation.core.animateFloatAsState(
+        pct, androidx.compose.animation.core.tween(1200, easing = app.stackd.core.theme.EaseRitual), label = "today",
+    )
+    Column(Modifier.fillMaxWidth()) {
+        // A launcher, not a letter: one short greeting line, then today.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    "$dayPart,\n$first.",
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontFamily = SerifFamily,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 52.sp,
-                        lineHeight = 56.sp,
-                    ),
+                    "$clock · ${today.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "$dayPart, $first.",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontFamily = SerifFamily, fontWeight = FontWeight.Normal),
                     color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "$todayMin of $DAILY_GOAL_MIN min today",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.textPrimary,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Icon(
-                        app.stackd.core.ui.StackdIcons.LocalFireDepartment,
-                        contentDescription = null,
-                        tint = when {
-                            state.streakAtRisk && java.time.LocalTime.now().hour >= 17 -> colors.breach
-                            state.streak > 0 -> colors.accent
-                            else -> colors.accent.copy(alpha = 0.45f)
-                        },
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        when {
-                            // Evening, alive, nothing clean today: say what's at stake.
-                            state.streakAtRisk && java.time.LocalTime.now().hour >= 17 ->
-                                "${state.streak}-day streak ends at midnight"
-                            state.streak > 0 && state.streakFreezes > 0 -> "${state.streak}-day streak · 1 freeze"
-                            state.streak > 0 -> "${state.streak}-day streak"
-                            else -> "Day one"
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.textMuted,
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                Box(
-                    Modifier.fillMaxWidth().height(4.dp).clip(CircleShape)
-                        .background(colors.textPrimary.copy(alpha = 0.08f)),
-                ) {
-                    Box(Modifier.fillMaxWidth(pct).height(4.dp).clip(CircleShape).background(colors.accent))
-                }
+            app.stackd.core.ui.MenuButton(onClick = onMore)
+        }
+        Spacer(Modifier.height(20.dp))
+        // Centrepiece: today's goal as a ring around the stack.
+        Box(Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(250.dp).background(
+                    androidx.compose.ui.graphics.Brush.radialGradient(listOf(colors.accent.copy(alpha = 0.16f), androidx.compose.ui.graphics.Color.Transparent)),
+                ),
+            )
+            androidx.compose.foundation.Canvas(Modifier.size(230.dp)) {
+                val stroke = 5.dp.toPx()
+                val inset = stroke / 2
+                val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+                drawArc(
+                    colors.textPrimary.copy(alpha = 0.08f), -90f, 360f, false,
+                    topLeft = androidx.compose.ui.geometry.Offset(inset, inset), size = arc,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
+                )
+                drawArc(
+                    colors.accent, -90f, 360f * ringPct, false,
+                    topLeft = androidx.compose.ui.geometry.Offset(inset, inset), size = arc,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+                )
+            }
+            // Real count: you, plus friends stacking right now.
+            Box(Modifier.sessionShared("stack").breathing(enabled = true)) {
+                StackArt(size = 150.dp, phones = (1 + state.friendsFocusing.size).coerceAtMost(6))
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Text(
+                "$todayMin",
+                style = MaterialTheme.typography.displayMedium.copy(fontFamily = SerifFamily, fontWeight = FontWeight.Normal),
+                color = colors.textPrimary,
+            )
+            Text(
+                " of $DAILY_GOAL_MIN min today",
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textMuted,
+                modifier = Modifier.padding(bottom = 8.dp).weight(1f),
+            )
+            Row(Modifier.padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    app.stackd.core.ui.StackdIcons.LocalFireDepartment,
+                    contentDescription = null,
+                    tint = when {
+                        state.streakAtRisk && now.hour >= 17 -> colors.breach
+                        state.streak > 0 -> colors.accent
+                        else -> colors.accent.copy(alpha = 0.45f)
+                    },
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    streakLine,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (state.streakAtRisk && now.hour >= 17) colors.breach else colors.textMuted,
+                )
             }
         }
     }
 }
-
 /** Escape the parent's horizontal padding so a scene can run edge to edge. */
 private fun Modifier.bleed(by: androidx.compose.ui.unit.Dp) = layout { m, c ->
     val e = by.roundToPx()
