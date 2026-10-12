@@ -99,6 +99,8 @@ function Dashboard() {
     name: string;
     lifetime_xp: number;
     streak: number;
+    freezes: number;
+    lastDay: string | null;
   } | null>(null);
   const [rec, setRec] = useState<SessionRecommendation | null>(null);
   const [recLoading, setRecLoading] = useState(true);
@@ -133,7 +135,7 @@ function Dashboard() {
     if (!u.user) return;
     const { data: p } = await supabase
       .from("profiles")
-      .select("display_name, lifetime_xp, current_focus_streak")
+      .select("display_name, lifetime_xp, current_focus_streak, streak_freezes, streak_last_day")
       .eq("id", u.user.id)
       .maybeSingle();
     setMe((prev) =>
@@ -143,6 +145,8 @@ function Dashboard() {
             name: p?.display_name ?? prev.name,
             lifetime_xp: p?.lifetime_xp ?? prev.lifetime_xp,
             streak: p?.current_focus_streak ?? prev.streak,
+            freezes: p?.streak_freezes ?? prev.freezes,
+            lastDay: p?.streak_last_day ?? prev.lastDay,
           }
         : prev,
     );
@@ -161,7 +165,9 @@ function Dashboard() {
       const [{ data: p }, { data: hist }, { data: parts }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("display_name, lifetime_xp, current_focus_streak")
+          .select(
+            "display_name, lifetime_xp, current_focus_streak, streak_freezes, streak_last_day",
+          )
           .eq("id", u.user.id)
           .maybeSingle(),
         supabase
@@ -185,6 +191,8 @@ function Dashboard() {
         name: p?.display_name ?? "You",
         lifetime_xp: p?.lifetime_xp ?? 0,
         streak: p?.current_focus_streak ?? 0,
+        freezes: p?.streak_freezes ?? 0,
+        lastDay: p?.streak_last_day ?? null,
       });
       setHistory((hist ?? []) as unknown as HistoryRow[]);
       const liveRows: LiveRow[] = [];
@@ -246,10 +254,17 @@ function Dashboard() {
           </div>
           <div className="hidden shrink-0 items-center gap-3 sm:flex">
             <CsvExportButton />
-            <Button asChild variant="outline" className="font-mono text-xs font-bold uppercase tracking-widest">
+            <Button
+              asChild
+              variant="outline"
+              className="font-mono text-xs font-bold uppercase tracking-widest"
+            >
               <Link to="/leaderboard">Leaderboard</Link>
             </Button>
-            <Button asChild className="bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90">
+            <Button
+              asChild
+              className="bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90"
+            >
               <Link to="/start">New Session</Link>
             </Button>
           </div>
@@ -342,12 +357,17 @@ function Dashboard() {
                       <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-4">
                         CURRENT_STREAK
                       </h3>
-                      <div className="text-4xl font-bold">
+                      <div className="text-4xl font-bold tabular-nums">
                         {me?.streak ?? 0}{" "}
                         <span className="text-base font-mono text-muted-foreground">
-                          {me?.streak === 1 ? "Session" : "Sessions"}
+                          {me?.streak === 1 ? "Day" : "Days"}
                         </span>
                       </div>
+                      <StreakNote
+                        streak={me?.streak ?? 0}
+                        freezes={me?.freezes ?? 0}
+                        lastDay={me?.lastDay ?? null}
+                      />
                     </div>
                     <div className="p-8 border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200 ease-[var(--ease-ritual)]">
                       <div>
@@ -606,5 +626,36 @@ function Dashboard() {
         )}
       </main>
     </div>
+  );
+}
+
+/**
+ * The day after a miss is designed (daily streak, earned freeze): shows a held
+ * freeze, or after 5pm that a live streak ends at midnight if nothing clean
+ * lands today. Mirrors Android's Home streak line.
+ */
+function StreakNote({
+  streak,
+  freezes,
+  lastDay,
+}: {
+  streak: number;
+  freezes: number;
+  lastDay: string | null;
+}) {
+  const now = new Date();
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const ymd = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  const atRisk = streak > 0 && lastDay === ymd && now.getHours() >= 17;
+  if (atRisk)
+    return <p className="mt-3 text-sm text-red-400">Ends at midnight. One clean stack keeps it.</p>;
+  if (streak > 0 && freezes > 0)
+    return (
+      <p className="mt-3 text-sm text-muted-foreground">
+        1 freeze held: a missed day won't break it.
+      </p>
+    );
+  return (
+    <p className="mt-3 text-sm text-muted-foreground">3 clean stacks in a week earn a freeze.</p>
   );
 }

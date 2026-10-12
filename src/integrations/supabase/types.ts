@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.18"
   }
   public: {
     Tables: {
@@ -537,6 +537,33 @@ export type Database = {
           },
         ]
       }
+      league_members: {
+        Row: {
+          group_no: number
+          joined_at: string
+          outcome: string | null
+          tier: number
+          user_id: string
+          week: string
+        }
+        Insert: {
+          group_no: number
+          joined_at?: string
+          outcome?: string | null
+          tier: number
+          user_id: string
+          week: string
+        }
+        Update: {
+          group_no?: number
+          joined_at?: string
+          outcome?: string | null
+          tier?: number
+          user_id?: string
+          week?: string
+        }
+        Relationships: []
+      }
       lifetime_promo: {
         Row: {
           coupon_code: string | null
@@ -863,12 +890,17 @@ export type Database = {
           created_at: string
           current_focus_streak: number
           display_name: string
+          freeze_week: string | null
+          freeze_week_clean: number
           id: string
           last_active_at: string | null
+          league_tier: number
           lifetime_xp: number
           pinned_showcase: Json
           prestige_level: number
           productivity_dna: string | null
+          streak_freezes: number
+          streak_last_day: string | null
           timezone: string
           title: string | null
           total_focus_seconds: number
@@ -886,12 +918,17 @@ export type Database = {
           created_at?: string
           current_focus_streak?: number
           display_name?: string
+          freeze_week?: string | null
+          freeze_week_clean?: number
           id: string
           last_active_at?: string | null
+          league_tier?: number
           lifetime_xp?: number
           pinned_showcase?: Json
           prestige_level?: number
           productivity_dna?: string | null
+          streak_freezes?: number
+          streak_last_day?: string | null
           timezone?: string
           title?: string | null
           total_focus_seconds?: number
@@ -909,12 +946,17 @@ export type Database = {
           created_at?: string
           current_focus_streak?: number
           display_name?: string
+          freeze_week?: string | null
+          freeze_week_clean?: number
           id?: string
           last_active_at?: string | null
+          league_tier?: number
           lifetime_xp?: number
           pinned_showcase?: Json
           prestige_level?: number
           productivity_dna?: string | null
+          streak_freezes?: number
+          streak_last_day?: string | null
           timezone?: string
           title?: string | null
           total_focus_seconds?: number
@@ -1892,6 +1934,7 @@ export type Database = {
         }
       }
       complete_webhook_event: { Args: { _id: string }; Returns: undefined }
+      decay_streaks: { Args: never; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -2025,6 +2068,7 @@ export type Database = {
         Returns: boolean
       }
       join_season: { Args: { _season_id: string }; Returns: undefined }
+      league_week: { Args: { _at?: string }; Returns: string }
       lifetime_promo_status: {
         Args: never
         Returns: {
@@ -2052,6 +2096,21 @@ export type Database = {
           is_premium: boolean
           source: string
           tier: Database["public"]["Enums"]["access_tier"]
+        }[]
+      }
+      my_league: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          display_name: string
+          is_me: boolean
+          rank: number
+          tier: number
+          user_id: string
+          username: string
+          week_ends_at: string
+          weekly_xp: number
+          zone: string
         }[]
       }
       my_season_rank: { Args: { _season_id: string }; Returns: number }
@@ -2128,6 +2187,7 @@ export type Database = {
         }[]
       }
       set_my_timezone: { Args: { _tz: string }; Returns: undefined }
+      settle_league_week: { Args: { _week?: string }; Returns: undefined }
       start_focus_session: { Args: { _room_id: string }; Returns: string }
       tier_rank: {
         Args: { _t: Database["public"]["Enums"]["access_tier"] }
