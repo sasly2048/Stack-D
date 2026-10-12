@@ -12,9 +12,9 @@ import {
   type SessionRecommendation,
   type DashboardInsights,
 } from "@/lib/ai.functions";
-import { DynamicGreeting } from "@/components/home/dynamic-greeting";
 import { CsvExportButton } from "@/components/csv-export-button";
 import { DailyRewardCard } from "@/components/rewards/daily-reward-card";
+import { StackArt, EmberRing } from "@/components/stack-art";
 import { UpgradeCard } from "@/components/premium/upgrade-card";
 import { useXpSync } from "@/lib/xp-sync";
 import { AtlasWhisper } from "@/components/atlas-whisper";
@@ -239,8 +239,15 @@ function Dashboard() {
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-7xl">
+        <Launcher
+          name={me?.name ?? ""}
+          history={history}
+          streak={me?.streak ?? 0}
+          freezes={me?.freezes ?? 0}
+          lastDay={me?.lastDay ?? null}
+        />
         <div className="mb-8">
-          <DynamicGreeting />
+          <DailyRewardCard />
         </div>
         <div className="mb-8">
           <AtlasWhisper context="dashboard" />
@@ -250,23 +257,10 @@ function Dashboard() {
             <div className="ritual-label mb-2 text-muted-foreground">
               ANALYTICS / {me?.name?.toUpperCase()}
             </div>
-            <h1 className="page-title">Your discipline.</h1>
+            <h2 className="font-serif text-3xl text-silver">Your discipline.</h2>
           </div>
           <div className="hidden shrink-0 items-center gap-3 sm:flex">
             <CsvExportButton />
-            <Button
-              asChild
-              variant="outline"
-              className="font-mono text-xs font-bold uppercase tracking-widest"
-            >
-              <Link to="/leaderboard">Leaderboard</Link>
-            </Button>
-            <Button
-              asChild
-              className="bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90"
-            >
-              <Link to="/start">New Session</Link>
-            </Button>
           </div>
         </div>
 
@@ -275,7 +269,6 @@ function Dashboard() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <DailyRewardCard />
           <PrestigeCeremony />
         </div>
 
@@ -657,5 +650,85 @@ function StreakNote({
     );
   return (
     <p className="mt-3 text-sm text-muted-foreground">3 clean stacks in a week earn a freeze.</p>
+  );
+}
+
+const DAILY_GOAL_MIN = 60;
+
+/**
+ * Home as a launcher, not a letter (Android parity): one greeting line,
+ * today's goal as an ember ring around the breathing stack, and the one
+ * action the app exists for.
+ */
+function Launcher({
+  name,
+  history,
+  streak,
+  freezes,
+  lastDay,
+}: {
+  name: string;
+  history: HistoryRow[];
+  streak: number;
+  freezes: number;
+  lastDay: string | null;
+}) {
+  const now = new Date();
+  const h = now.getHours();
+  const part =
+    h < 5 ? "Late night" : h < 12 ? "Morning" : h < 17 ? "Afternoon" : h < 21 ? "Evening" : "Night";
+  const first = name.split(" ")[0] || "you";
+  const todayMin = Math.round(
+    history
+      .filter((r) => new Date(r.created_at).toDateString() === now.toDateString())
+      .reduce((a, r) => a + (r.duration_seconds ?? 0), 0) / 60,
+  );
+  const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yKey = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
+  const atRisk = streak > 0 && lastDay === yKey && h >= 17;
+  const streakLine = atRisk
+    ? `${streak}-day streak ends at midnight`
+    : streak > 0 && freezes > 0
+      ? `${streak}-day streak · 1 freeze`
+      : streak > 0
+        ? `${streak}-day streak`
+        : "Day one";
+  return (
+    <section className="mb-10">
+      <p className="text-sm text-muted-foreground">
+        {now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} ·{" "}
+        {now.toLocaleDateString([], { weekday: "long" })}
+      </p>
+      <h1 className="mt-1 font-serif text-4xl text-silver sm:text-5xl">
+        {part}, {first}.
+      </h1>
+      <div className="relative mx-auto my-8 grid size-[260px] place-items-center">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(240,169,104,0.16), transparent 70%)" }}
+        />
+        <EmberRing progress={todayMin / DAILY_GOAL_MIN} size={240} />
+        <StackArt phones={1} size={130} breathing />
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="text-muted-foreground">
+          <span className="font-serif text-5xl tabular-nums text-silver">{todayMin}</span> of{" "}
+          {DAILY_GOAL_MIN} min today
+        </p>
+        <p className={`pb-2 text-sm ${atRisk ? "text-red-400" : "text-muted-foreground"}`}>
+          {streakLine}
+        </p>
+      </div>
+      <Link
+        to="/start"
+        className="mt-6 flex w-full items-center justify-between rounded-full bg-silver py-3 pl-7 pr-3 text-lg font-semibold text-obsidian transition-transform duration-200 ease-[var(--ease-ritual)] active:scale-[0.98] sm:max-w-md"
+      >
+        Start a Stack
+        <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-[#FFC48A] to-[#F0A968]">
+          ▶
+        </span>
+      </Link>
+    </section>
   );
 }

@@ -10,9 +10,9 @@
    ============================================================ */
 
 @theme inline {
-  --color-obsidian: #0a0a0a;
-  --color-obsidian-2: #111111;
-  --color-obsidian-3: #181818;
+  --color-obsidian: #0e0c0a;
+  --color-obsidian-2: #15120f;
+  --color-obsidian-3: #1d1915;
   --color-silver: #e2e2e2;
   --color-silver-dim: #9a9a9a;
   --color-muted: #404040;
@@ -119,17 +119,17 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #0a0a0a;
+  --background: #0e0c0a;
   --foreground: #e2e2e2;
-  --card: #111111;
+  --card: #15120f;
   --card-foreground: #e2e2e2;
-  --popover: #111111;
+  --popover: #15120f;
   --popover-foreground: #e2e2e2;
   --primary: #e2e2e2;
-  --primary-foreground: #0a0a0a;
-  --secondary: #181818;
+  --primary-foreground: #0e0c0a;
+  --secondary: #1d1915;
   --secondary-foreground: #e2e2e2;
-  --muted-bg: #181818;
+  --muted-bg: #1d1915;
   --muted-foreground: #9a9a9a;
   --accent: #c9874a;
   --accent-foreground: #0a0a0a;

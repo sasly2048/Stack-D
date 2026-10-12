@@ -18,31 +18,27 @@ type NavItem = { to: string; label: string; visibility?: string };
  * and stops the bar from crowding at mid widths.
  */
 const AUTHED_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Analytics", visibility: "hidden lg:inline" },
-  { to: "/groups", label: "Circles", visibility: "hidden lg:inline" },
-  { to: "/leaderboard", label: "Ranks", visibility: "hidden xl:inline" },
-  { to: "/insights", label: "Insights", visibility: "hidden 2xl:inline" },
-  { to: "/timeline", label: "Timeline" },
-  { to: "/challenges", label: "Rites" },
-  { to: "/seasons", label: "Seasons" },
-  { to: "/friends", label: "Friends" },
-  { to: "/feed", label: "Feed" },
-  { to: "/achievements", label: "Marks" },
-  { to: "/wrapped", label: "Wrapped" },
-  { to: "/dna", label: "DNA" },
-  { to: "/replay", label: "Replay" },
-  { to: "/vault", label: "Vault" },
-  { to: "/capsule", label: "Capsule" },
-  { to: "/partners", label: "Partners" },
-  { to: "/companion", label: "Atlas" },
+  // The four destinations shown inline (Android tab-bar parity).
+  { to: "/dashboard", label: "Home", visibility: "hidden lg:inline" },
+  { to: "/insights", label: "Progress", visibility: "hidden lg:inline" },
+  { to: "/leaderboard", label: "Leaderboard", visibility: "hidden lg:inline" },
   { to: "/profile", label: "Profile", visibility: "hidden lg:inline" },
+  // Explore: everything else, with overlapping pages merged into hubs
+  // (People = feed/friends/circles/partners/groups, Your story =
+  // timeline/replay/wrapped/DNA); each hub page has tabs between its members.
+  { to: "/companion", label: "Atlas" },
+  { to: "/challenges", label: "Challenges" },
+  { to: "/seasons", label: "Seasons" },
+  { to: "/timeline", label: "Your story" },
+  { to: "/achievements", label: "Achievements" },
+  { to: "/feed", label: "People" },
+  { to: "/vault", label: "Memory Vault" },
+  { to: "/capsule", label: "Time Capsule" },
 ];
-
 
 /** Shared hover treatment: text + icon ember glow, no background box/border. */
 const NAV_GLOW =
   "px-2 py-1 transition-[color,text-shadow] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[text-shadow:0_0_12px_var(--text-glow-ember)]";
-
 
 const TIER_LABEL: Record<NavTier, string> = {
   starter: "Starter",
@@ -61,7 +57,9 @@ export function Nav() {
   // user "Ctrl" (or the reverse) is worse than showing nothing.
   const [modKeyLabel, setModKeyLabel] = useState("Ctrl ");
   useEffect(() => {
-    setModKeyLabel(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl ");
+    setModKeyLabel(
+      /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl ",
+    );
   }, []);
 
   // Every signed-in user gets the identical menu. Tier is a progression signal,
@@ -71,7 +69,6 @@ export function Nav() {
     to: item.to,
     label: item.label,
   }));
-
 
   const signOut = async () => {
     // Guarded because sign-out is a network call: a second click while the
@@ -92,7 +89,10 @@ export function Nav() {
   return (
     <nav className="fixed top-0 inset-x-0 z-[var(--z-nav)] border-b border-white/5 bg-obsidian/80 backdrop-blur-md safe-top">
       <div className="app-gutter mx-auto grid h-16 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:gap-8">
-        <Link to={user ? "/dashboard" : "/"} className="mr-auto flex min-w-0 items-center gap-2 sm:gap-3">
+        <Link
+          to={user ? "/dashboard" : "/"}
+          className="mr-auto flex min-w-0 items-center gap-2 sm:gap-3"
+        >
           <Logo className="size-7 shrink-0" />
           <span className="whitespace-nowrap font-mono text-xs tracking-[0.3em] uppercase">
             Stack&apos;d{" "}
@@ -114,7 +114,8 @@ export function Nav() {
                     // sighted users only.
                     className={`relative ${NAV_GLOW} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-4 focus-visible:ring-offset-obsidian ${item.visibility}`}
                     activeProps={{
-                      className: "text-ember hover:text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
+                      className:
+                        "text-ember hover:text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
                       "aria-current": "page",
                     }}
                   >
@@ -161,13 +162,18 @@ export function Nav() {
               <Link
                 to="/philosophy"
                 className={`relative hidden sm:inline-flex items-center gap-2 ${NAV_GLOW}`}
-                activeProps={{ className: "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]" }}
+                activeProps={{
+                  className:
+                    "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
+                }}
               >
                 {({ isActive }) => (
                   <>
                     <span
                       className={`size-1 rounded-full transition-[background-color,box-shadow,transform] duration-200 ease-[var(--ease-ritual)] ${
-                        isActive ? "bg-ember [box-shadow:0_0_8px_var(--icon-glow-ember)] scale-100" : "bg-transparent scale-0"
+                        isActive
+                          ? "bg-ember [box-shadow:0_0_8px_var(--icon-glow-ember)] scale-100"
+                          : "bg-transparent scale-0"
                       }`}
                     />
                     Philosophy
@@ -177,7 +183,10 @@ export function Nav() {
               <Link
                 to="/philosophy"
                 className={`sm:hidden ${NAV_GLOW}`}
-                activeProps={{ className: "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]" }}
+                activeProps={{
+                  className:
+                    "!text-ember hover:!text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
+                }}
               >
                 Philosophy
               </Link>

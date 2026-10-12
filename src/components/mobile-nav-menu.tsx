@@ -43,7 +43,7 @@ export function MobileNavMenu({
       >
         <SheetHeader className="text-left">
           <SheetTitle className="font-mono text-xs uppercase tracking-[0.3em] text-silver">
-            Navigate
+            Explore
           </SheetTitle>
           <SheetDescription className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             All sections
@@ -57,12 +57,15 @@ export function MobileNavMenu({
               to={item.to}
               onClick={() => setOpen(false)}
               className="px-3 py-3 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-[color,text-shadow] duration-200 ease-[var(--ease-ritual)] hover:text-silver hover:[text-shadow:0_0_14px_var(--text-glow-ember)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
-              activeProps={{ className: "text-ember hover:text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]", "aria-current": "page" }}
+              activeProps={{
+                className:
+                  "text-ember hover:text-ember [text-shadow:0_0_16px_var(--text-glow-ember-strong)]",
+                "aria-current": "page",
+              }}
             >
               {item.label}
             </Link>
           ))}
-
 
           <button
             type="button"

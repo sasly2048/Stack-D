@@ -26,6 +26,7 @@ import { LiveActivityRail } from "@/components/rooms/live-activity-rail";
 import { PresenceRoster } from "@/components/rooms/presence-roster";
 import { UserHoverCard } from "@/components/profile/user-hover-card";
 import { HoldButton } from "@/components/hold-button";
+import { StackArt, EmberRing } from "@/components/stack-art";
 import { setActiveSession } from "@/components/floating-timer";
 import { haptic } from "@/lib/haptics";
 import { copy } from "@/lib/copy";
@@ -765,63 +766,98 @@ function Room() {
           </span>
         </div>
 
-        <div className="relative aspect-square flex items-center justify-center mb-12">
-          {lobby && <Ripple className="opacity-70" rings={5} />}
-          {active && !myPart?.breached && <LightRays className="opacity-80" />}
-          <div className="absolute inset-0 border border-white/5 rounded-full" />
-          <div className="absolute inset-4 border border-white/10 rounded-full" />
-          <div
-            className={`absolute inset-8 border border-white/5 rounded-full ${active && !myPart?.breached ? "animate-breathing" : ""}`}
-          />
-
-          <div className="text-center px-6">
-            {lobby && (
-              <>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase mb-3">
-                  Target
-                </div>
-                <div className="mb-3 font-mono text-5xl leading-none sm:text-7xl">
-                  {formatDuration(room.target_duration_seconds)}
-                </div>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
-                  Waiting for {isHost ? "you" : "host"}
-                </div>
-              </>
-            )}
-            {active && (
-              <>
-                <div
-                  className={`mb-3 font-mono text-5xl leading-none sm:text-8xl ${myPart?.breached ? "text-breach" : ""}`}
-                >
-                  {formatDuration(remaining)}
-                </div>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
-                  {myPart?.breached ? "You breached. Don't move others." : "Hold the silence"}
-                </div>
-              </>
-            )}
-            {complete && (
-              <>
-                <div className="mb-3 font-mono text-5xl leading-none text-pulse sm:text-8xl">
-                  {formatDuration(elapsed)}
-                </div>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-pulse uppercase">
-                  Protocol Complete · {tableIntegrity}% integrity
-                </div>
-              </>
-            )}
-            {aborted && (
-              <>
-                <div className="mb-3 font-mono text-5xl leading-none text-breach sm:text-6xl">
-                  ABORT
-                </div>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
-                  Session terminated by host
-                </div>
-              </>
+        {/* The table first (lobby) and the breathing stack inside an ember ring
+            (live) — Android parity. Complete/aborted keep the summary circle. */}
+        {lobby && (
+          <div className="mb-10 flex flex-col items-center text-center">
+            <StackArt phones={participants.length || 1} size={170} />
+            <h1 className="mt-6 font-serif text-4xl text-silver">The table</h1>
+            <p className="mt-2 text-muted-foreground">
+              {Math.round(room.target_duration_seconds / 60)} min ·{" "}
+              {participants.length <= 1 ? "just you so far" : `${participants.length} at the table`}
+            </p>
+            {!isHost && (
+              <p className="mt-3 text-sm text-silver-dim">
+                Waiting for the host to start the stack.
+              </p>
             )}
           </div>
-        </div>
+        )}
+        {active && (
+          <div className="mb-10 flex flex-col items-center text-center">
+            <div className="relative grid size-[280px] place-items-center">
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle, ${myPart?.breached ? "rgba(255,59,48,0.14)" : "rgba(240,169,104,0.14)"}, transparent 70%)`,
+                }}
+              />
+              <EmberRing
+                progress={elapsed / (room.target_duration_seconds || 1)}
+                size={260}
+                stroke={3}
+              />
+              <StackArt
+                phones={participants.length || 1}
+                size={140}
+                breathing={!myPart?.breached}
+              />
+            </div>
+            <div
+              className={`mt-6 font-serif text-6xl tabular-nums ${myPart?.breached ? "text-breach" : "text-silver"}`}
+            >
+              {formatDuration(remaining)}
+            </div>
+            <p className={`mt-1 ${myPart?.breached ? "text-breach" : "text-muted-foreground"}`}>
+              {myPart?.breached ? "Your stack broke" : "Holding"}
+            </p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              {(() => {
+                const others = participants.filter((p) => p.user_id !== me?.id);
+                const broke = participants.filter((p) => p.breached).length;
+                const who =
+                  others.length === 0
+                    ? "Just you at the table"
+                    : others.length === 1
+                      ? `With ${others[0].display_name?.split(" ")[0] ?? "one other"}`
+                      : `With ${others[0].display_name?.split(" ")[0] ?? "someone"} and ${others.length - 1} more`;
+                return broke ? `${who} · ${broke} broke` : who;
+              })()}
+            </p>
+          </div>
+        )}
+        {(complete || aborted) && (
+          <div className="relative aspect-square flex items-center justify-center mb-12">
+            <div className="absolute inset-0 border border-white/5 rounded-full" />
+            <div className="absolute inset-4 border border-white/10 rounded-full" />
+            <div className="absolute inset-8 border border-white/5 rounded-full" />
+
+            <div className="text-center px-6">
+              {" "}
+              {complete && (
+                <>
+                  <div className="mb-3 font-mono text-5xl leading-none text-pulse sm:text-8xl">
+                    {formatDuration(elapsed)}
+                  </div>
+                  <div className="text-[10px] font-mono tracking-[0.4em] text-pulse uppercase">
+                    Protocol Complete · {tableIntegrity}% integrity
+                  </div>
+                </>
+              )}
+              {aborted && (
+                <>
+                  <div className="mb-3 font-mono text-5xl leading-none text-breach sm:text-6xl">
+                    ABORT
+                  </div>
+                  <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
+                    Session terminated by host
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {lobby && (
           <>
@@ -902,14 +938,16 @@ function Room() {
           </div>
         )}
 
-        <div className="mb-10 flex gap-3">
+        <div
+          className={`mb-10 flex gap-3 ${lobby && isHost ? "sticky bottom-4 z-10 rounded-xl bg-obsidian/90 p-2 backdrop-blur-md" : ""}`}
+        >
           {lobby && isHost && (
             <button
               onClick={startRitual}
               disabled={participants.length === 0}
               className="flex-1 bg-silver text-obsidian py-4 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40"
             >
-              Begin Session ({participants.length} present)
+              Start the stack
             </button>
           )}
           {lobby && !isHost && (

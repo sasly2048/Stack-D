@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { copy } from "@/lib/copy";
 import { Nav } from "@/components/nav";
 import { QueryBoundary, SkeletonList } from "@/components/query-states";
+import { HubTabs } from "@/components/hub-tabs";
 import {
   listFriends,
   searchPeople,
@@ -19,9 +20,17 @@ export const Route = createFileRoute("/_authenticated/friends")({
   head: () => ({
     meta: [
       { title: "Friends — Stack'd" },
-      { name: "description", content: "Build your Stack'd focus circle: send ties, accept requests and keep each other accountable in real time." },
+      {
+        name: "description",
+        content:
+          "Build your Stack'd focus circle: send ties, accept requests and keep each other accountable in real time.",
+      },
       { property: "og:title", content: "Friends — Stack'd" },
-      { property: "og:description", content: "Build your Stack'd focus circle: send ties, accept requests and keep each other accountable in real time." },
+      {
+        property: "og:description",
+        content:
+          "Build your Stack'd focus circle: send ties, accept requests and keep each other accountable in real time.",
+      },
     ],
   }),
   component: FriendsPage,
@@ -64,7 +73,8 @@ function FriendsPage() {
   // In flight covers both the debounce window (typed but not yet dispatched)
   // and the request itself, so the indicator never blinks out mid-search.
   const searching = q.trim().length > 0 && (q.trim() !== debouncedQ || searchQuery.isFetching);
-  const noResults = !searching && debouncedQ.length > 0 && searchQuery.isSuccess && results.length === 0;
+  const noResults =
+    !searching && debouncedQ.length > 0 && searchQuery.isSuccess && results.length === 0;
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["friends"] });
 
@@ -78,7 +88,8 @@ function FriendsPage() {
   });
 
   const respondMutation = useMutation({
-    mutationFn: ({ id, accept }: { id: string; accept: boolean }) => respond({ data: { id, accept } }),
+    mutationFn: ({ id, accept }: { id: string; accept: boolean }) =>
+      respond({ data: { id, accept } }),
     onSuccess: (_r, { accept }) => {
       toast.success(accept ? "Tie accepted" : "Request declined");
       invalidate();
@@ -117,6 +128,7 @@ function FriendsPage() {
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-4xl space-y-12">
+        <HubTabs />
         <header className="page-heading">
           <p className="ritual-label text-ember">Circle · 01</p>
           <h1 className="page-title font-serif">Friends</h1>
@@ -174,8 +186,7 @@ function FriendsPage() {
           </p>
           {noResults && (
             <p className="border border-white/10 rounded-md px-4 py-6 text-sm text-silver-dim/60">
-              No one matches “{debouncedQ}”. Check the spelling, or ask them for their display
-              name.
+              No one matches “{debouncedQ}”. Check the spelling, or ask them for their display name.
             </p>
           )}
           {results.length > 0 && (

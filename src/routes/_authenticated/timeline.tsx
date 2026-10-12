@@ -8,6 +8,7 @@ import { listTimeline, type TimelineSession } from "@/lib/session-interactions.f
 import { SessionReactionBar } from "@/components/session-reaction-bar";
 import { getProactiveInsights, type ProactiveInsight } from "@/lib/proactive-ai.functions";
 import { Button } from "@/components/ui/button";
+import { HubTabs } from "@/components/hub-tabs";
 
 export const Route = createFileRoute("/_authenticated/timeline")({
   head: () => ({
@@ -121,10 +122,9 @@ function TimelinePage() {
     <div className="min-h-screen bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-3xl space-y-8">
+        <HubTabs />
         <div className="page-heading">
-          <div className="ritual-label text-muted-foreground">
-            RECORD / SESSIONS
-          </div>
+          <div className="ritual-label text-muted-foreground">RECORD / SESSIONS</div>
           <h1 className="page-title">Timeline</h1>
         </div>
 
@@ -214,7 +214,6 @@ function TimelinePage() {
                 </div>
               </div>
             )}
-
           />
         )}
 
