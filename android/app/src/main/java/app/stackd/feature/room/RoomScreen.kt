@@ -317,6 +317,17 @@ fun RoomScreen(
         }
         Spacer(Modifier.height(24.dp))
 
+        // The stack stays put across lobby -> countdown -> placing -> live; only
+        // its ring and scale change. It fades out before the result takes over.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = state.phase != RoomPhase.ENDED && state.phase != RoomPhase.ERROR,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(480)),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(420)) +
+                androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(520, delayMillis = 200, easing = app.stackd.core.theme.EaseRitual)),
+        ) {
+            RoomHero(state, Modifier.then(touchGuard(state, onInteraction)))
+        }
+
         // Phases ease into each other (lobby -> countdown -> placing -> live ->
         // ended) instead of snapping: the room is one place changing state.
         androidx.compose.animation.AnimatedContent(
@@ -432,13 +443,7 @@ private fun ConnectionBadge(connection: ConnectionState) {
 
 @Composable
 private fun Loading() {
-    // Same stack, same place as the lobby's, so the one arriving from Home
-    // lands here and simply stays while the seat is claimed.
-    Box(Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
-        Box(Modifier.sessionShared("stack")) {
-            app.stackd.core.ui.StackArt(size = 200.dp, phones = 1, dropIn = false)
-        }
-    }
+    // The stack arriving from Home is RoomHero's, above; it simply stays.
     Text("Claiming your seat…", style = MaterialTheme.typography.bodyLarge, color = Stackd.colors.textMuted)
 }
 
@@ -455,14 +460,9 @@ private fun Lobby(
     onSetIntention: (String) -> Unit,
 ) {
     val colors = Stackd.colors
-    // The table first: who's here, as phones in the stack, under the room's
+    // The table first: who's here (RoomHero's stack, above), under the room's
     // name. Everything else is optional setup further down.
     val seats = state.present.size
-    Box(Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
-        Box(Modifier.sessionShared("stack")) {
-            app.stackd.core.ui.StackArt(size = 200.dp, phones = seats.coerceIn(1, 6), dropIn = false)
-        }
-    }
     Text(
         state.room?.title?.takeIf { it.isNotBlank() } ?: "The table",
         style = MaterialTheme.typography.displaySmall.copy(fontFamily = app.stackd.core.theme.SerifFamily),
@@ -548,16 +548,103 @@ private fun InviteRow(code: String) {
     }
 }
 
-/** Full-height centered stage for the countdown/placement beats (web: fixed inset, centered). */
+/**
+ * Touch-breach: while armed, ANY touch on the live stack breaks it — a stacked
+ * phone is meant to be untouched. The listener sits on the Initial pointer
+ * pass so it fires before children (scroll, checkboxes, roster) can consume
+ * the event. End/Abort and ambient sit outside it, so a clean finish never
+ * trips it. Gated on `!calibrating` so the taps that place the phone during
+ * ARMING don't count; it activates the moment calibration completes.
+ */
+private fun touchGuard(state: RoomUiState, onInteraction: () -> Unit): Modifier =
+    if (state.phase == RoomPhase.ACTIVE && state.armed && !state.calibrating && !state.iBreached) {
+        Modifier.pointerInput(state.armed, state.calibrating) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    onInteraction()
+                }
+            }
+        }
+    } else {
+        Modifier
+    }
+
+/**
+ * The room's one object, held across every phase. The stack sits at the table
+ * in the lobby; a ring gathers around it for the countdown and breathes while
+ * waiting for placement; once live the ring opens to full width and the ember
+ * arc fills. Only scale, ring and glow animate — the stack never leaves, so
+ * lobby -> live reads as one thing settling in, not three screens.
+ */
 @Composable
-private fun Stage(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    val h = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
-    Column(
-        Modifier.fillMaxWidth().heightIn(min = (h * 0.68f).dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        content = content,
-    )
+private fun RoomHero(state: RoomUiState, modifier: Modifier = Modifier) {
+    val colors = Stackd.colors
+    val phase = state.phase
+    val live = phase == RoomPhase.ACTIVE
+    val placing = phase == RoomPhase.PLACING
+    val ringed = live || placing || phase == RoomPhase.COUNTDOWN
+    val ease = app.stackd.core.theme.EaseRitual
+    val move = androidx.compose.animation.core.tween<androidx.compose.ui.unit.Dp>(620, easing = ease)
+    val fade = androidx.compose.animation.core.tween<Float>(620, easing = ease)
+
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
+        val liveRing = (maxWidth - 48.dp).coerceAtMost(420.dp)
+        val ring by androidx.compose.animation.core.animateDpAsState(if (live) liveRing else 250.dp, move, label = "ring")
+        val height by androidx.compose.animation.core.animateDpAsState(
+            when { live -> liveRing + 48.dp; ringed -> 280.dp; else -> 220.dp }, move, label = "heroH",
+        )
+        val scale by androidx.compose.animation.core.animateFloatAsState(
+            when { live -> 0.75f; ringed -> 0.85f; else -> 1f }, fade, label = "stackScale",
+        )
+        val ringAlpha by androidx.compose.animation.core.animateFloatAsState(if (ringed) 1f else 0f, fade, label = "ringA")
+        val hue by androidx.compose.animation.animateColorAsState(
+            if (state.iBreached) colors.breach else colors.accent, androidx.compose.animation.core.tween(400), label = "hue",
+        )
+        val target = state.room?.targetDurationSeconds ?: 0
+        val progress = if (live && target > 0) (state.elapsedSeconds.toFloat() / target).coerceIn(0f, 1f) else 0f
+        // Ticks once a second; ease each step so the arc flows instead of stepping.
+        val sweep by androidx.compose.animation.core.animateFloatAsState(
+            progress, androidx.compose.animation.core.tween(900), label = "sweep",
+        )
+        val wait = androidx.compose.animation.core.rememberInfiniteTransition(label = "wait")
+        val b by wait.animateFloat(
+            0f, 1f,
+            androidx.compose.animation.core.infiniteRepeatable(
+                androidx.compose.animation.core.tween(1800, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                androidx.compose.animation.core.RepeatMode.Reverse,
+            ),
+            label = "b",
+        )
+
+        Box(Modifier.fillMaxWidth().height(height), contentAlignment = Alignment.Center) {
+            // Ember glow, the room's one light source.
+            Box(
+                Modifier.size(ring).graphicsLayer { alpha = ringAlpha }.background(
+                    androidx.compose.ui.graphics.Brush.radialGradient(listOf(hue.copy(alpha = 0.14f), Color.Transparent)),
+                ),
+            )
+            androidx.compose.foundation.Canvas(
+                Modifier.size(ring).graphicsLayer { alpha = ringAlpha * (if (placing) 0.45f + 0.55f * b else 1f) },
+            ) {
+                val stroke = 6.dp.toPx()
+                val inset = stroke / 2
+                val arc = Size(size.width - stroke, size.height - stroke)
+                val at = androidx.compose.ui.geometry.Offset(inset, inset)
+                drawArc(colors.border, -90f, 360f, false, at, arc, style = Stroke(stroke))
+                if (sweep > 0f) drawArc(hue, -90f, 360f * sweep, false, at, arc, style = Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            }
+            Box(Modifier.sessionShared("stack")) {
+                Box(
+                    Modifier
+                        .graphicsLayer { scaleX = scale; scaleY = scale }
+                        .breathing(enabled = (live || placing) && !state.iBreached && !state.calibrating),
+                ) {
+                    app.stackd.core.ui.StackArt(size = 200.dp, phones = state.present.size.coerceIn(1, 6), dropIn = false)
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -570,19 +657,17 @@ private fun Countdown(state: RoomUiState) {
         pop.snapTo(1.3f)
         pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f))
     }
-    Stage {
-        SectionLabel("STARTING", modifier = Modifier.breathing())
-        Spacer(Modifier.height(16.dp))
-        Text(
-            state.countdown?.toString() ?: "…",
-            style = MaterialTheme.typography.displayLarge.copy(fontSize = 128.sp, lineHeight = 136.sp),
-            color = colors.accent,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value },
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Stack your phones face-down.", style = MaterialTheme.typography.bodyLarge, color = colors.textMuted)
-    }
+    SectionLabel("STARTING", modifier = Modifier.breathing())
+    Spacer(Modifier.height(4.dp))
+    Text(
+        state.countdown?.toString() ?: "…",
+        style = MaterialTheme.typography.displayLarge.copy(fontSize = 96.sp, lineHeight = 104.sp),
+        color = colors.accent,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+    )
+    Spacer(Modifier.height(8.dp))
+    Text("Stack your phones face-down.", style = MaterialTheme.typography.bodyLarge, color = colors.textMuted)
 }
 
 /**
@@ -601,25 +686,10 @@ private fun Countdown(state: RoomUiState) {
 @Composable
 private fun Placing(onAbort: () -> Unit, starting: Boolean = false) {
     val colors = Stackd.colors
-    val breathe = androidx.compose.animation.core.rememberInfiniteTransition(label = "breathe")
-    val b by breathe.animateFloat(
-        0f, 1f,
-        androidx.compose.animation.core.infiniteRepeatable(
-            androidx.compose.animation.core.tween(1800, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            androidx.compose.animation.core.RepeatMode.Reverse,
-        ),
-        label = "b",
-    )
-    Stage {
+    // RoomHero's ring breathes above: "waiting for you at the table".
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         SectionLabel(if (starting) "STARTING THE CLOCK" else "PLACE TO BEGIN")
-        Spacer(Modifier.height(28.dp))
-        androidx.compose.foundation.Canvas(Modifier.size(120.dp)) {
-            val r = size.minDimension / 2
-            drawCircle(colors.accent.copy(alpha = 0.10f + 0.10f * b), radius = r * (0.70f + 0.30f * b))
-            drawCircle(colors.accent.copy(alpha = 0.55f), radius = r * 0.62f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
-            drawCircle(colors.accent, radius = r * 0.10f)
-        }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             "Phone face-down to start.",
             style = MaterialTheme.typography.headlineMedium,
@@ -657,74 +727,12 @@ private fun Active(
         if (state.iBreached) app.stackd.core.feedback.Sfx.play(app.stackd.core.feedback.Sfx.Kind.ERROR)
     }
 
-    // Progress ring + remaining time.
-    val progress = if ((state.room?.targetDurationSeconds ?: 0) > 0) {
-        (state.elapsedSeconds.toFloat() / state.room!!.targetDurationSeconds).coerceIn(0f, 1f)
-    } else 0f
-
-    // Touch-breach: while armed, ANY touch inside this content column breaks the
-    // stack — a stacked phone is meant to be untouched. The listener sits on the
-    // Initial pointer pass so it fires before children (scroll, workspace
-    // checkboxes, roster) can consume the event. The host's End/Abort controls
-    // are rendered OUTSIDE this column, so a clean finish never trips the breach.
-    // Gated on `!calibrating` so the taps that place the phone face-down during
-    // the ARMING window don't themselves trip the breach; the guard activates
-    // the moment calibration completes and the stack is being watched.
-    val interactionGuard = if (state.armed && !state.calibrating && !state.iBreached) {
-        Modifier.pointerInput(state.armed, state.calibrating) {
-            awaitPointerEventScope {
-                while (true) {
-                    awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                    onInteraction()
-                }
-            }
-        }
-    } else {
-        Modifier
-    }
-
+    // The ring and stack are RoomHero's, above; this column is the timer and
+    // the table line, under the same touch guard.
     Column(
-        modifier = Modifier.fillMaxWidth().then(interactionGuard),
+        modifier = Modifier.fillMaxWidth().then(touchGuard(state, onInteraction)),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-    Box(
-        modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Ember glow behind the ring, the room's one light source.
-        Box(
-            Modifier.fillMaxSize().background(
-                androidx.compose.ui.graphics.Brush.radialGradient(
-                    listOf(
-                        (if (state.iBreached) colors.breach else colors.accent).copy(alpha = 0.14f),
-                        androidx.compose.ui.graphics.Color.Transparent,
-                    ),
-                ),
-            ),
-        )
-        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            val stroke = 6.dp.toPx()
-            val inset = stroke / 2
-            val arc = Size(size.width - stroke, size.height - stroke)
-            drawArc(
-                color = colors.border,
-                startAngle = -90f, sweepAngle = 360f, useCenter = false,
-                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-                size = arc, style = Stroke(stroke),
-            )
-            drawArc(
-                color = if (state.iBreached) colors.breach else colors.accent,
-                startAngle = -90f, sweepAngle = 360f * progress, useCenter = false,
-                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-                size = arc, style = Stroke(stroke),
-            )
-        }
-        // The stack itself is the focal point, breathing slowly; the timer is
-        // secondary, under the ring (focus screens: one living element).
-        Box(Modifier.breathing(enabled = !state.iBreached && !state.calibrating)) {
-            app.stackd.core.ui.StackArt(size = 150.dp, phones = state.present.size.coerceIn(1, 6), dropIn = false)
-        }
-    }
     Text(
         formatDuration(state.remainingSeconds.toInt()),
         style = MaterialTheme.typography.displayMedium.copy(fontFamily = app.stackd.core.theme.SerifFamily),
