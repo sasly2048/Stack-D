@@ -1,17 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/nav";
 import { MyRoomsPanel } from "@/components/my-rooms-panel";
 import { formatDuration, formatHours } from "@/lib/room";
 import { tierForScore, TIERS, type Tier } from "@/lib/focus-score";
-import {
-  recommendNextSession,
-  generateDashboardInsights,
-  type SessionRecommendation,
-  type DashboardInsights,
-} from "@/lib/ai.functions";
 import { CsvExportButton } from "@/components/csv-export-button";
 import { DailyRewardCard } from "@/components/rewards/daily-reward-card";
 import { StackArt, EmberRing } from "@/components/stack-art";
@@ -102,34 +95,6 @@ function Dashboard() {
     freezes: number;
     lastDay: string | null;
   } | null>(null);
-  const [rec, setRec] = useState<SessionRecommendation | null>(null);
-  const [recLoading, setRecLoading] = useState(true);
-  const [recError, setRecError] = useState(false);
-  const fetchRec = useServerFn(recommendNextSession);
-
-  const [insights, setInsights] = useState<DashboardInsights | null>(null);
-  const [insightsLoading, setInsightsLoading] = useState(true);
-  const [insightsError, setInsightsError] = useState(false);
-  const fetchInsights = useServerFn(generateDashboardInsights);
-
-  const loadRec = () => {
-    setRecLoading(true);
-    setRecError(false);
-    fetchRec({ data: undefined })
-      .then((r) => setRec(r))
-      .catch(() => setRecError(true))
-      .finally(() => setRecLoading(false));
-  };
-
-  const loadInsights = () => {
-    setInsightsLoading(true);
-    setInsightsError(false);
-    fetchInsights({ data: undefined })
-      .then((r) => setInsights(r))
-      .catch(() => setInsightsError(true))
-      .finally(() => setInsightsLoading(false));
-  };
-
   const refreshProgress = async () => {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
@@ -218,8 +183,6 @@ function Dashboard() {
       setLive(liveRows);
       setLoading(false);
     })();
-    loadRec();
-    loadInsights();
 
     return () => {
       mounted = false;
@@ -236,7 +199,7 @@ function Dashboard() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-7xl">
         <Launcher
@@ -386,139 +349,6 @@ function Dashboard() {
                 </>
               )}
 
-              {/* AI-recommended next session — based on focus_history */}
-              <div className="md:col-span-6 lg:col-span-3 relative p-8 border border-ember/25 rounded-2xl bg-gradient-to-br from-ember/[0.06] via-transparent to-transparent overflow-hidden">
-                <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="size-1.5 rounded-full bg-ember animate-pulse" />
-                    <h3 className="font-mono text-[10px] tracking-[0.3em] text-ember uppercase">
-                      AI / NEXT_SESSION
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={loadRec}
-                    disabled={recLoading}
-                    className="font-mono text-[10px] uppercase tracking-widest text-silver-dim hover:text-ember transition-colors disabled:opacity-50"
-                    aria-label="Regenerate recommendation"
-                  >
-                    {recLoading ? "Thinking…" : "Regenerate →"}
-                  </button>
-                </div>
-
-                {recLoading && !rec ? (
-                  <div className="space-y-4">
-                    <div className="h-16 w-32 bg-white/5 rounded animate-pulse" />
-                    <div className="h-4 bg-white/5 rounded animate-pulse" />
-                    <div className="h-10 w-36 bg-white/5 rounded animate-pulse" />
-                  </div>
-                ) : recError ? (
-                  <div className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
-                    Signal lost.{" "}
-                    <button type="button" onClick={loadRec} className="underline hover:text-ember">
-                      Retry
-                    </button>
-                  </div>
-                ) : rec ? (
-                  <div className="space-y-5">
-                    <div>
-                      <div className="text-6xl md:text-7xl font-extrabold tracking-tighter text-silver leading-none">
-                        {rec.durationMinutes}
-                        <span className="text-2xl font-mono text-muted-foreground ml-2 tracking-normal font-normal">
-                          min
-                        </span>
-                      </div>
-                      <div className="font-mono text-[10px] tracking-[0.3em] text-ember mt-3 uppercase">
-                        {rec.topic}
-                      </div>
-                    </div>
-                    <p className="text-sm text-silver-dim leading-relaxed text-balance">
-                      {rec.rationale}
-                    </p>
-                    <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
-                      <span>
-                        Confidence · <span className="text-silver">{rec.confidence}</span>
-                      </span>
-                      <span className="text-muted-foreground/40">|</span>
-                      <span>
-                        Basis ·{" "}
-                        <span className="text-silver">
-                          {rec.basedOnSessions} {rec.basedOnSessions === 1 ? "session" : "sessions"}
-                        </span>
-                      </span>
-                    </div>
-                    <Link
-                      to="/start"
-                      className="btn-ember inline-flex items-center justify-center px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold border border-ember/50 text-silver hover:text-ember whitespace-nowrap"
-                    >
-                      Start {rec.durationMinutes}m →
-                    </Link>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* AI-written personalized insights — sits beside the recommendation card */}
-              <div className="md:col-span-6 lg:col-span-3 relative p-8 border border-white/10 rounded-2xl bg-white/[0.02] overflow-hidden">
-                <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="size-1.5 rounded-full bg-silver animate-pulse" />
-                    <h3 className="font-mono text-[10px] tracking-[0.3em] text-silver uppercase">
-                      AI / LEDGER_READING
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={loadInsights}
-                    disabled={insightsLoading}
-                    className="font-mono text-[10px] uppercase tracking-widest text-silver-dim hover:text-silver transition-colors disabled:opacity-50"
-                    aria-label="Regenerate insights"
-                  >
-                    {insightsLoading ? "Reading…" : "Regenerate →"}
-                  </button>
-                </div>
-
-                {insightsLoading && !insights ? (
-                  <div className="space-y-3">
-                    <div className="h-4 w-3/4 bg-white/5 rounded animate-pulse" />
-                    <div className="h-3 bg-white/5 rounded animate-pulse" />
-                    <div className="h-3 bg-white/5 rounded animate-pulse" />
-                    <div className="h-3 w-5/6 bg-white/5 rounded animate-pulse" />
-                    <div className="h-3 bg-white/5 rounded animate-pulse" />
-                  </div>
-                ) : insightsError ? (
-                  <div className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
-                    Signal lost.{" "}
-                    <button
-                      type="button"
-                      onClick={loadInsights}
-                      className="underline hover:text-silver"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : insights ? (
-                  <div className="space-y-4">
-                    <p className="text-xl font-bold tracking-tight text-silver text-balance">
-                      {insights.headline}
-                    </p>
-                    <div className="space-y-3">
-                      {insights.paragraphs.map((p, i) => (
-                        <p key={i} className="text-sm text-silver-dim leading-relaxed text-balance">
-                          {p}
-                        </p>
-                      ))}
-                    </div>
-                    <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 pt-2 border-t border-white/5">
-                      Basis ·{" "}
-                      <span className="text-silver">
-                        {insights.basedOnSessions}{" "}
-                        {insights.basedOnSessions === 1 ? "session" : "sessions"}
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
               {live.length > 0 && (
                 <div className="md:col-span-6 p-8 bg-white/2 border border-white/10 rounded-2xl">
                   <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-6">
@@ -534,7 +364,7 @@ function Dashboard() {
 
               <MyRoomsPanel />
 
-              <div className="md:col-span-6 p-8 bg-white/2 border border-white/5 rounded-2xl">
+              <div className="md:col-span-6 p-5 sm:p-8 bg-white/2 border border-white/5 rounded-2xl">
                 <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-8">
                   SESSION_HISTORY
                 </h3>
@@ -547,7 +377,7 @@ function Dashboard() {
                   </p>
                 ) : (
                   <div className="space-y-0.5">
-                    <div className="grid grid-cols-6 py-4 border-b border-white/5 text-[11px] font-mono text-muted-foreground uppercase tracking-widest">
+                    <div className="hidden sm:grid grid-cols-6 py-4 border-b border-white/5 text-[11px] font-mono text-muted-foreground uppercase tracking-widest">
                       <span>Date</span>
                       <span>Code</span>
                       <span>Duration</span>
@@ -566,12 +396,14 @@ function Dashboard() {
                           <span className="text-sm">
                             {new Date(h.created_at).toLocaleDateString()}
                           </span>
-                          <span className="text-sm font-mono text-muted-foreground">{code}</span>
+                          <span className="text-sm font-mono text-muted-foreground max-sm:text-right">
+                            {code}
+                          </span>
                           <span className="text-sm font-mono tabular-nums">
                             {formatDuration(h.duration_seconds)}
                           </span>
                           <span
-                            className="text-sm font-mono tabular-nums"
+                            className="text-sm font-mono tabular-nums max-sm:text-right"
                             style={{ color: tier.hex }}
                           >
                             {h.score}
@@ -601,12 +433,15 @@ function Dashboard() {
                           to="/room/$code"
                           params={{ code: h.room.code }}
                           key={h.id}
-                          className="grid grid-cols-6 py-4 items-center hover:bg-white/5 rounded transition-colors"
+                          className="grid grid-cols-2 gap-y-1 border-b border-white/5 py-3 items-center last:border-0 sm:grid-cols-6 sm:gap-y-0 sm:border-0 sm:py-4 hover:bg-white/5 rounded transition-colors"
                         >
                           {inner}
                         </Link>
                       ) : (
-                        <div key={h.id} className="grid grid-cols-6 py-4 items-center">
+                        <div
+                          key={h.id}
+                          className="grid grid-cols-2 gap-y-1 border-b border-white/5 py-3 items-center last:border-0 sm:grid-cols-6 sm:gap-y-0 sm:border-0 sm:py-4"
+                        >
                           {inner}
                         </div>
                       );

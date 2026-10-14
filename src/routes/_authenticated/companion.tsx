@@ -9,9 +9,17 @@ export const Route = createFileRoute("/_authenticated/companion")({
   head: () => ({
     meta: [
       { title: "Study Companion — Stack'd" },
-      { name: "description", content: "A private, always-on focus coach trained on your own Stack'd protocol, sessions and streak history." },
+      {
+        name: "description",
+        content:
+          "A private, always-on focus coach trained on your own Stack'd protocol, sessions and streak history.",
+      },
       { property: "og:title", content: "Study Companion — Stack'd" },
-      { property: "og:description", content: "A private, always-on focus coach trained on your own Stack'd protocol, sessions and streak history." },
+      {
+        property: "og:description",
+        content:
+          "A private, always-on focus coach trained on your own Stack'd protocol, sessions and streak history.",
+      },
     ],
   }),
   component: CompanionPage,
@@ -62,7 +70,7 @@ function CompanionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver flex flex-col">
+    <div className="min-h-dvh bg-obsidian text-silver flex flex-col">
       <Nav />
       <main className="app-page flex max-w-3xl flex-1 flex-col !pb-6">
         <div className="mb-4">

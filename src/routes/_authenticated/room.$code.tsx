@@ -700,7 +700,7 @@ function Room() {
 
   return (
     <div
-      className={`min-h-screen ${oledMode ? "bg-black" : "bg-obsidian"} text-silver transition-colors`}
+      className={`min-h-dvh ${oledMode ? "bg-black" : "bg-obsidian"} text-silver transition-colors`}
     >
       <Nav />
       <main className="app-page max-w-2xl">
@@ -939,7 +939,7 @@ function Room() {
         )}
 
         <div
-          className={`mb-10 flex gap-3 ${lobby && isHost ? "sticky bottom-4 z-10 rounded-xl bg-obsidian/90 p-2 backdrop-blur-md" : ""}`}
+          className={`mb-10 flex gap-3 ${lobby && isHost ? "sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 rounded-xl bg-obsidian/90 p-2 backdrop-blur-md" : ""}`}
         >
           {lobby && isHost && (
             <button
@@ -1028,8 +1028,8 @@ function Room() {
                       <div className="flex items-center gap-3">
                         <div className="w-20 sm:w-24 h-1 bg-white/10 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-silver transition-all"
-                            style={{ width: `${livePct}%` }}
+                            className="h-full w-full origin-left bg-silver transition-transform duration-1000 ease-linear"
+                            style={{ transform: `scaleX(${livePct / 100})` }}
                           />
                         </div>
                         <span className="font-mono text-[10px] text-silver w-8 text-right">
@@ -1087,7 +1087,7 @@ function Room() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-2xl">{children}</main>
     </div>

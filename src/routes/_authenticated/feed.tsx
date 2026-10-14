@@ -71,7 +71,7 @@ function FeedPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page grid max-w-5xl gap-10 md:grid-cols-[minmax(0,1fr)_260px]">
         <HubTabs className="md:col-span-2" />
@@ -194,6 +194,8 @@ function FeedRow({ r }: { r: FeedItem }) {
   const name = r.display_name ?? "Anonymous";
   const initial = name.slice(0, 1).toUpperCase();
   const line = describe(r);
+  // A row with nothing to say is noise, not signal.
+  if (!line) return null;
   const time = new Date(r.created_at);
   const rel = timeAgo(time);
   return (
@@ -241,6 +243,14 @@ function describe(r: FeedItem) {
       return `finished the ${r.payload.name ?? "challenge"} rite`;
     case "friend_add":
       return "formed a new tie";
+    case "milestone_unlock":
+      return `passed ${r.payload.name ? String(r.payload.name) : "a lifetime milestone"}`;
+    case "prestige":
+      return "ascended to a new prestige";
+    case "season_join":
+      return `joined ${r.payload.name ? String(r.payload.name) : "the season"}`;
+    default:
+      return null;
   }
 }
 function timeAgo(d: Date) {

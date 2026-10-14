@@ -93,7 +93,7 @@ export function EmberRing({
         strokeLinecap="round"
         strokeDasharray={c}
         strokeDashoffset={c * (1 - Math.max(0, Math.min(1, progress)))}
-        style={{ transition: "stroke-dashoffset 1.2s var(--ease-ritual)" }}
+        style={{ transition: "stroke-dashoffset 1s linear" }}
       />
     </svg>
   );

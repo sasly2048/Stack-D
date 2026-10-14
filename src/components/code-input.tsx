@@ -134,7 +134,7 @@ export function CodeInput({
           syncSelection();
         }}
         onBlur={() => setFocused(false)}
-        className="absolute inset-0 h-full w-full cursor-text caret-transparent opacity-0"
+        className="absolute inset-0 h-full w-full cursor-text caret-transparent text-base opacity-0"
       />
 
       <div

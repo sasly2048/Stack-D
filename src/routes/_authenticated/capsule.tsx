@@ -77,7 +77,7 @@ function CapsulePage() {
   const sealed = rows.filter((c) => new Date(c.open_at).getTime() > now);
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-3xl space-y-12">
         <header>

@@ -16,9 +16,17 @@ export const Route = createFileRoute("/_authenticated/seasons")({
   head: () => ({
     meta: [
       { title: "Seasons — Stack'd" },
-      { name: "description", content: "Compete in the current Stack'd focus season, climb the standings and earn the seasonal reward title." },
+      {
+        name: "description",
+        content:
+          "Compete in the current Stack'd focus season, climb the standings and earn the seasonal reward title.",
+      },
       { property: "og:title", content: "Seasons — Stack'd" },
-      { property: "og:description", content: "Compete in the current Stack'd focus season, climb the standings and earn the seasonal reward title." },
+      {
+        property: "og:description",
+        content:
+          "Compete in the current Stack'd focus season, climb the standings and earn the seasonal reward title.",
+      },
     ],
   }),
   component: SeasonsPage,
@@ -86,12 +94,10 @@ function SeasonsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <div className="app-page max-w-4xl">
-        <div className="ritual-label text-muted-foreground">
-          Seasons
-        </div>
+        <div className="ritual-label text-muted-foreground">Seasons</div>
         <h1 className="page-title mt-2 mb-8 font-serif sm:mb-12">Compete in cycles.</h1>
 
         {loading ? (

@@ -26,7 +26,12 @@ export function HubTabs({ className = "" }: { className?: string }) {
   const hub = HUBS.find((h) => h.some((t) => t.to === path));
   if (!hub) return null;
   return (
-    <div role="tablist" className={`-mt-2 mb-8 flex gap-2 overflow-x-auto pb-1 ${className}`}>
+    // Phones: the row runs past the edge, so it fades there (says "more this
+    // way") and pads its end so the last tab can scroll clear of the fade.
+    <div
+      role="tablist"
+      className={`-mt-2 mb-8 flex gap-2 overflow-x-auto overscroll-x-contain pb-1 max-sm:pr-10 max-sm:[mask-image:linear-gradient(to_right,#000_82%,transparent)] ${className}`}
+    >
       {hub.map((t) => {
         const on = t.to === path;
         return (

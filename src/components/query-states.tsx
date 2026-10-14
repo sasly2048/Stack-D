@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,17 @@ import { Button } from "@/components/ui/button";
  */
 
 /** Shimmering placeholder block. Decorative — never announced. */
-export function Skeleton({ className = "" }: { className?: string }) {
+export function Skeleton({ className = "", style }: { className?: string; style?: CSSProperties }) {
+  // The shimmer is a highlight sweeping across a still block. On the block
+  // itself, translateX slid the whole placeholder off to the side.
   return (
     <div
       aria-hidden="true"
-      className={`rounded-lg bg-white/[0.04] animate-[skeleton-shimmer_2.4s_ease-in-out_infinite] ${className}`}
-    />
+      style={style}
+      className={`relative overflow-hidden rounded-lg bg-white/[0.04] ${className}`}
+    >
+      <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent animate-[skeleton-shimmer_2.4s_ease-in-out_infinite]" />
+    </div>
   );
 }
 
@@ -32,7 +37,7 @@ export function SkeletonList({ rows = 4, className = "" }: { rows?: number; clas
           key={i}
           className="h-16 w-full"
           // Slight downward fade so a long list doesn't read as a solid block.
-          {...{ style: { opacity: Math.max(0.25, 1 - i * 0.14) } }}
+          style={{ opacity: Math.max(0.25, 1 - i * 0.14) }}
         />
       ))}
     </div>
@@ -40,7 +45,13 @@ export function SkeletonList({ rows = 4, className = "" }: { rows?: number; clas
 }
 
 /** Stand-in for a stat/card grid. */
-export function SkeletonCards({ count = 3, className = "" }: { count?: number; className?: string }) {
+export function SkeletonCards({
+  count = 3,
+  className = "",
+}: {
+  count?: number;
+  className?: string;
+}) {
   return (
     <div className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ${className}`} aria-hidden="true">
       {Array.from({ length: count }).map((_, i) => (
@@ -85,11 +96,15 @@ export function ErrorPanel({
       role="alert"
       className={`glass mx-auto w-full rounded-lg border border-breach/20 px-5 py-8 text-center sm:p-8 ${className}`}
     >
-      <div className="ritual-label text-breach">
-        Signal lost
-      </div>
-      <p className="mx-auto mt-3 max-w-md text-sm font-medium leading-relaxed text-silver">{title}</p>
-      {message && <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">{message}</p>}
+      <div className="ritual-label text-breach">Signal lost</div>
+      <p className="mx-auto mt-3 max-w-md text-sm font-medium leading-relaxed text-silver">
+        {title}
+      </p>
+      {message && (
+        <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">
+          {message}
+        </p>
+      )}
       {onRetry && (
         <Button
           type="button"

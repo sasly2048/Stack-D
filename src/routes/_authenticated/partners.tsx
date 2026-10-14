@@ -112,7 +112,7 @@ function PartnersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-3xl space-y-10">
         <HubTabs />

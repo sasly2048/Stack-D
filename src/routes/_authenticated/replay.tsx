@@ -87,7 +87,7 @@ function ReplayPage() {
   const progress = events.length ? (cursor / events.length) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main ref={swipeRef} className="app-page max-w-3xl">
         <HubTabs />
@@ -129,8 +129,8 @@ function ReplayPage() {
 
         <div className="h-1 bg-white/5 rounded-full overflow-hidden mb-4">
           <div
-            className="h-full bg-ember transition-all duration-500"
-            style={{ width: `${progress}%` }}
+            className="h-full w-full origin-left bg-ember transition-transform duration-500 ease-[var(--ease-ritual)]"
+            style={{ transform: `scaleX(${progress / 100})` }}
           />
         </div>
 

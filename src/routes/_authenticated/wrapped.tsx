@@ -180,7 +180,7 @@ function WrappedPage() {
   }, [stats]);
 
   return (
-    <div className="min-h-screen bg-obsidian">
+    <div className="min-h-dvh bg-obsidian">
       <Nav />
       <main className="app-page max-w-4xl text-silver">
         <HubTabs />

@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/timeline")({
 function TimelineError({ reset }: { reset: () => void }) {
   const r = useRouter();
   return (
-    <div className="min-h-screen bg-obsidian text-silver flex items-center justify-center">
+    <div className="min-h-dvh bg-obsidian text-silver flex items-center justify-center">
       <div className="text-center space-y-4">
         <p className="text-sm text-muted-foreground">Couldn&rsquo;t load timeline.</p>
         <Button
@@ -119,7 +119,7 @@ function TimelinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-3xl space-y-8">
         <HubTabs />

@@ -25,22 +25,40 @@ export function HoldButton({
   const raf = useRef(0);
   const start = useRef<number | null>(null);
   const fired = useRef(false);
+  const shown = useRef(0);
   const latest = useRef(onConfirm);
   latest.current = onConfirm;
 
+  const show = (p: number) => {
+    shown.current = p;
+    setProgress(p);
+  };
+
+  // Early release eases the fill back from where it is (200ms ease-out),
+  // never a snap to empty.
   const stop = () => {
     cancelAnimationFrame(raf.current);
     start.current = null;
-    if (!fired.current) setProgress(0);
+    if (fired.current || shown.current === 0) return;
+    const from = shown.current;
+    const t0 = performance.now();
+    const back = (t: number) => {
+      const k = Math.min(1, (t - t0) / 200);
+      show(from * Math.pow(1 - k, 3));
+      if (k < 1) raf.current = requestAnimationFrame(back);
+    };
+    raf.current = requestAnimationFrame(back);
   };
 
   const begin = () => {
     if (start.current !== null || fired.current) return;
+    cancelAnimationFrame(raf.current);
     haptic("tap");
-    start.current = performance.now();
+    // Re-grabbed mid-retreat: carry on from the fill on screen, not from zero.
+    start.current = performance.now() - shown.current * holdMs;
     const tick = (t: number) => {
       const p = Math.min(1, (t - (start.current ?? t)) / holdMs);
-      setProgress(p);
+      show(p);
       if (p >= 1) {
         fired.current = true;
         haptic("success");
@@ -76,8 +94,8 @@ export function HoldButton({
     >
       <span
         aria-hidden="true"
-        className={`absolute inset-y-0 left-0 ${fill}`}
-        style={{ width: `${progress * 100}%` }}
+        className={`absolute inset-0 origin-left ${fill}`}
+        style={{ transform: `scaleX(${progress})` }}
       />
       <span className="relative">{label}</span>
     </button>

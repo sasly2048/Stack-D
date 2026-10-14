@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 function AuthPending() {
   return (
     <div
-      className="flex min-h-screen items-center justify-center bg-obsidian"
+      className="flex min-h-dvh items-center justify-center bg-obsidian"
       role="status"
       aria-live="polite"
     >

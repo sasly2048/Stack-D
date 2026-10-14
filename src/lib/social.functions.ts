@@ -8,10 +8,25 @@ export type FeedItem = {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
-  kind: "session_complete" | "achievement_unlock" | "challenge_complete" | "friend_add";
+  kind: (typeof FEED_KINDS)[number];
   payload: Record<string, string | number | boolean | null>;
   created_at: string;
 };
+
+/**
+ * activity_events also carries product telemetry (session.started,
+ * low_power.toggled, integration.viewed…). Only these social moments belong
+ * in someone's feed — the rest rendered as name-only rows.
+ */
+const FEED_KINDS = [
+  "session_complete",
+  "achievement_unlock",
+  "challenge_complete",
+  "friend_add",
+  "milestone_unlock",
+  "prestige",
+  "season_join",
+] as const;
 
 export const listFeed = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -21,6 +36,7 @@ export const listFeed = createServerFn({ method: "GET" })
     const { data: events, error } = await supabase
       .from("activity_events")
       .select("id, user_id, kind, payload, created_at")
+      .in("kind", [...FEED_KINDS])
       .order("created_at", { ascending: false })
       .limit(data.limit);
     if (error) throw new Error(error.message);

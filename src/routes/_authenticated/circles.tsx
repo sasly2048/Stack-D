@@ -54,7 +54,7 @@ function CirclesPage() {
   const detail: CircleDetail | null = detailQuery.data ?? null;
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-6xl">
         <HubTabs />

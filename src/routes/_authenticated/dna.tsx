@@ -100,7 +100,7 @@ function DnaPage() {
   const dna = dnaQuery.data;
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-4xl">
         <HubTabs />
@@ -162,8 +162,8 @@ function DnaPage() {
                         </div>
                         <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-ember transition-all duration-700"
-                            style={{ width: `${t.value}%` }}
+                            className="h-full w-full origin-left bg-ember transition-transform duration-700 ease-[var(--ease-ritual)]"
+                            style={{ transform: `scaleX(${t.value / 100})` }}
                           />
                         </div>
                       </div>

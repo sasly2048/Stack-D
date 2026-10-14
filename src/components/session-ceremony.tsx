@@ -311,7 +311,7 @@ export function SessionCeremony() {
 
         {/* 2. XP */}
         <div
-          className={`mt-8 transition-all duration-500 ${visible("xp") ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+          className={`mt-8 transition-[opacity,transform] duration-500 ease-[var(--ease-ritual)] ${visible("xp") ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
         >
           <div className="flex items-baseline justify-center gap-2">
             <span className="font-serif text-6xl text-ember tabular-nums">
@@ -324,7 +324,7 @@ export function SessionCeremony() {
         {/* 3. Level / Prestige */}
         {summary && (
           <div
-            className={`mt-8 transition-all duration-500 ${visible("level") ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+            className={`mt-8 transition-[opacity,transform] duration-500 ease-[var(--ease-ritual)] ${visible("level") ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
           >
             <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.25em] uppercase text-silver-dim">
               <span>
@@ -347,7 +347,7 @@ export function SessionCeremony() {
         {/* 4. Achievements */}
         {summary && summary.achievements.length > 0 && (
           <div
-            className={`mt-8 space-y-1 transition-all duration-500 ${visible("achievements") ? "opacity-100" : "opacity-0"}`}
+            className={`mt-8 space-y-1 transition-[opacity,transform] duration-500 ease-[var(--ease-ritual)] ${visible("achievements") ? "opacity-100" : "opacity-0"}`}
           >
             {summary.achievements.map((a) => (
               <p
@@ -364,7 +364,7 @@ export function SessionCeremony() {
         {/* 4b. Lifetime milestones */}
         {summary && summary.milestones.length > 0 && (
           <div
-            className={`mt-6 space-y-2 transition-all duration-500 ${visible("milestones") ? "opacity-100" : "opacity-0"}`}
+            className={`mt-6 space-y-2 transition-[opacity,transform] duration-500 ease-[var(--ease-ritual)] ${visible("milestones") ? "opacity-100" : "opacity-0"}`}
           >
             {summary.milestones.map((m) => (
               <div
@@ -384,7 +384,7 @@ export function SessionCeremony() {
         {/* 5. Rank change */}
         {summary && rankDelta !== 0 && (
           <p
-            className={`mt-8 font-mono text-[11px] tracking-[0.3em] uppercase transition-all duration-500 ${visible("rank") ? "opacity-100" : "opacity-0"} ${rankDelta > 0 ? "text-ember" : "text-silver-dim"}`}
+            className={`mt-8 font-mono text-[11px] tracking-[0.3em] uppercase transition-[opacity,transform] duration-500 ease-[var(--ease-ritual)] ${visible("rank") ? "opacity-100" : "opacity-0"} ${rankDelta > 0 ? "text-ember" : "text-silver-dim"}`}
           >
             {rankDelta > 0 ? "▲" : "▼"} {Math.abs(rankDelta)} · Rank #{summary.rankNow}
           </p>
@@ -393,7 +393,7 @@ export function SessionCeremony() {
         {/* 6. Friends finished */}
         {summary && summary.friendsFinished.length > 0 && (
           <div
-            className={`mt-8 transition-all duration-500 ${visible("friends") ? "opacity-100" : "opacity-0"}`}
+            className={`mt-8 transition-[opacity,transform] duration-500 ease-[var(--ease-ritual)] ${visible("friends") ? "opacity-100" : "opacity-0"}`}
           >
             <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-silver-dim">
               Also finished today
@@ -499,7 +499,7 @@ export function SessionCeremony() {
           ref={closeRef}
           type="button"
           onClick={close}
-          className={`mt-10 w-full rounded-full border border-white/15 py-3 font-mono text-[11px] tracking-[0.3em] uppercase text-silver transition-all duration-500 hover:border-ember hover:text-ember ${visible("continue") ? "opacity-100" : "opacity-40"}`}
+          className={`mt-10 w-full rounded-full border border-white/15 py-3 font-mono text-[11px] tracking-[0.3em] uppercase text-silver transition-[opacity,color,border-color] duration-500 ease-[var(--ease-ritual)] hover:border-ember hover:text-ember ${visible("continue") ? "opacity-100" : "opacity-40"}`}
         >
           Continue
         </button>

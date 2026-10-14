@@ -47,7 +47,7 @@ function InsightsPage() {
   // no error, no retry and no way to tell it apart from a slow request.
   if (analytics.isPending || analytics.isError || !data) {
     return (
-      <div className="min-h-screen bg-obsidian text-silver">
+      <div className="min-h-dvh bg-obsidian text-silver">
         <Nav />
         <main className="app-page max-w-4xl">
           <QueryBoundary
@@ -72,7 +72,7 @@ function InsightsPage() {
   if (data.totals.sessions < 3) {
     const left = 3 - data.totals.sessions;
     return (
-      <div className="min-h-screen bg-obsidian text-silver">
+      <div className="min-h-dvh bg-obsidian text-silver">
         <Nav />
         <main className="app-page max-w-2xl">
           <header className="page-heading">
@@ -111,7 +111,7 @@ function InsightsPage() {
   const totalTagSec = data.tagDistribution.reduce((s, t) => s + t.seconds, 0);
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-6xl space-y-16">
         <header className="page-heading">

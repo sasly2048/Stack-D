@@ -39,7 +39,10 @@ function NotFoundComponent() {
         {/* Two ways out, not one: someone who mistyped a room code wants to go
             back, not to the marketing page. */}
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button asChild className="w-full px-8 font-mono text-xs font-bold uppercase tracking-widest sm:w-auto">
+          <Button
+            asChild
+            className="w-full px-8 font-mono text-xs font-bold uppercase tracking-widest sm:w-auto"
+          >
             <Link to="/">Return to Origin</Link>
           </Button>
           <Button
@@ -68,7 +71,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
-      { name: "theme-color", content: "#0A0A0A" },
+      { name: "theme-color", content: "#0E0C0A" },
       {
         name: "google-site-verification",
         content: "sDulKjsnJ8aQiu2O-2aI7QG1jG0pTNVrfwhdchNoUR4",

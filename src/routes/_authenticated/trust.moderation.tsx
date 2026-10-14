@@ -11,9 +11,17 @@ export const Route = createFileRoute("/_authenticated/trust/moderation")({
   head: () => ({
     meta: [
       { title: "Moderation — Stack'd" },
-      { name: "description", content: "Review and resolve reports filed on the Stack'd rooms you host, and keep your sessions safe." },
+      {
+        name: "description",
+        content:
+          "Review and resolve reports filed on the Stack'd rooms you host, and keep your sessions safe.",
+      },
       { property: "og:title", content: "Moderation — Stack'd" },
-      { property: "og:description", content: "Review and resolve reports filed on the Stack'd rooms you host, and keep your sessions safe." },
+      {
+        property: "og:description",
+        content:
+          "Review and resolve reports filed on the Stack'd rooms you host, and keep your sessions safe.",
+      },
     ],
   }),
   component: ModerationPage,
@@ -51,7 +59,7 @@ function ModerationPage() {
   const visible = rows.filter((r) => (filter === "open" ? r.status === "open" : true));
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <div className="app-page max-w-5xl">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">

@@ -1,6 +1,6 @@
 import { haptic } from "@/lib/haptics";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/nav";
@@ -103,6 +103,12 @@ function DurationHero({
     haptic(m === max ? "success" : "tap");
     onPick(m);
   };
+  // The number rolls the way the choice moved: longer rises in, shorter drops in.
+  const prev = useRef(duration);
+  const rise = duration >= prev.current;
+  useEffect(() => {
+    prev.current = duration;
+  }, [duration]);
   const label = duration % 60 === 0 && duration >= 60 ? `${duration / 60}` : `${duration}`;
   const unit = duration % 60 === 0 && duration >= 60 ? (duration === 60 ? "hour" : "hours") : "min";
   return (
@@ -121,7 +127,12 @@ function DurationHero({
           }}
         />
         <p className="relative">
-          <span className="font-serif text-7xl tabular-nums text-silver">{label}</span>
+          <span
+            key={duration}
+            className={`inline-block font-serif text-7xl tabular-nums text-silver ${rise ? "animate-num-rise" : "animate-num-drop"}`}
+          >
+            {label}
+          </span>
           <span className="ml-2 text-muted-foreground">{unit}</span>
         </p>
       </div>
@@ -149,7 +160,7 @@ function DurationHero({
               role="radio"
               aria-checked={on}
               onClick={() => pick(m)}
-              className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors duration-200 ease-[var(--ease-ritual)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember ${on ? "bg-silver text-obsidian" : "bg-white/[0.06] text-silver hover:bg-white/10"}`}
+              className={`rounded-full px-5 py-2 text-sm font-semibold transition-[color,background-color,transform] duration-200 ease-[var(--ease-ritual)] select-none active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember ${on ? "bg-silver text-obsidian" : "bg-white/[0.06] text-silver hover:bg-white/10"}`}
             >
               {m >= 60 && m % 60 === 0 ? `${m / 60}h` : `${m}m`}
               {lastMinutes === m && !on && <span className="ml-1 text-xs text-ember">last</span>}
@@ -272,7 +283,7 @@ function Start() {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-2xl">
         <h1 className="page-title mb-10 font-serif sm:mb-12">Plan a session</h1>
@@ -321,7 +332,7 @@ function Start() {
                   type="button"
                   onClick={() => setTplKey("")}
                   aria-pressed={tplKey === ""}
-                  className={`text-left p-3 rounded-lg border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === "" ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
+                  className={`text-left p-3 rounded-lg border transition-[transform,border-color,background-color] duration-200 ease-[var(--ease-ritual)] active:scale-[0.98] active:duration-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === "" ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
                 >
                   {/* The tick is what carries "selected" for anyone who can't
                       separate the ember border from the neutral one. */}
@@ -339,7 +350,7 @@ function Start() {
                       setDuration(Math.round(t.target_duration_seconds / 60));
                     }}
                     aria-pressed={tplKey === t.key}
-                    className={`text-left p-3 rounded-lg border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === t.key ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
+                    className={`text-left p-3 rounded-lg border transition-[transform,border-color,background-color] duration-200 ease-[var(--ease-ritual)] active:scale-[0.98] active:duration-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === t.key ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
                   >
                     <div className="font-mono text-[10px] tracking-widest uppercase mb-1">
                       {t.title}
@@ -405,21 +416,25 @@ function Start() {
             </div>
           </fieldset>
 
-          <Button
-            onClick={create}
-            disabled={busy}
-            aria-busy={busy}
-            size="lg"
-            className="h-14 w-full bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90"
-          >
-            {busy
-              ? "Creating stack…"
-              : tplKey
-                ? "Create Stack"
-                : duration % 60 === 0
-                  ? `Create ${duration / 60}-hour Stack`
-                  : `Create ${duration}-min Stack`}
-          </Button>
+          {/* On phones the one decision stays under the thumb while the
+              templates and options scroll past (Android pins it the same way). */}
+          <div className="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 -mx-2 rounded-xl bg-obsidian/90 p-2 backdrop-blur-md sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+            <Button
+              onClick={create}
+              disabled={busy}
+              aria-busy={busy}
+              size="lg"
+              className="h-14 w-full bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90"
+            >
+              {busy
+                ? "Creating stack…"
+                : tplKey
+                  ? "Create Stack"
+                  : duration % 60 === 0
+                    ? `Create ${duration / 60}-hour Stack`
+                    : `Create ${duration}-min Stack`}
+            </Button>
+          </div>
           {/* Busy already speaks for itself in the label; anything else that
               greys the button out must say why, or it's a dead end. */}
           {busy && (
@@ -456,7 +471,7 @@ function ModeOption({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`text-left p-5 rounded-xl border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${
+      className={`text-left p-5 rounded-xl border transition-[transform,border-color,background-color] duration-200 ease-[var(--ease-ritual)] active:scale-[0.98] active:duration-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${
         active
           ? "border-silver bg-white/[0.06]"
           : "border-white/10 bg-transparent hover:border-white/30 hover:bg-white/[0.03]"

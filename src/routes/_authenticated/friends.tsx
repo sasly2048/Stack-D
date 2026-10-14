@@ -125,7 +125,7 @@ function FriendsPage() {
   const pendingIds = new Set([...incoming, ...outgoing, ...friends].map((r) => r.user_id));
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-4xl space-y-12">
         <HubTabs />
