@@ -15,7 +15,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,10 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import app.stackd.core.feedback.Sfx
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -68,9 +64,11 @@ fun Modifier.pressFeedback(
             interactionSource.interactions.collect { if (it is PressInteraction.Release) Sfx.play(sound) }
         }
     }
+    // Critically damped: a tap is not a flick, so nothing overshoots. Down is
+    // quick but felt (feedback on touch-down); the return is a touch softer.
     val scale by animateFloatAsState(
         if (pressed) pressedScale else 1f,
-        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        spring(dampingRatio = 1f, stiffness = if (pressed) 1200f else 700f),
         label = "press",
     )
     return this.graphicsLayer { scaleX = scale; scaleY = scale }
@@ -79,17 +77,17 @@ fun Modifier.pressFeedback(
 /** How long the ember fill takes to cross a control (web 1.2s; long enough to be seen, not waited on). */
 private const val FillMs = 650
 
-/** Symmetric ease-in-out: the fill visibly travels instead of jumping on touch-down. */
-private val FillEase = CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
+/** Strong ease-out: the fill leaves the edge the instant the finger lands, then settles. */
+private val FillEase = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
 
 /**
  * Web `.btn-ember` activation on touch: the fill starts growing from the left
- * edge on touch-down and [onClick] fires only once it has crossed the control.
- * ONE continuous animation per press: releasing early never restarts it (that
- * restart was the visible stutter) — the click simply waits for the running
- * fill to finish, holds full for a beat, then fires. Dragged off (Cancel), it
- * retracts and nothing fires. After firing it resets 600ms later in case the
- * control stays on screen; a control that leaves composition starts fresh.
+ * edge on touch-down. [onClick] fires 150ms into the fill — long enough to
+ * see it start, never a wait for it to finish. ONE continuous animation per press: releasing
+ * early never restarts it (that restart was the visible stutter), it just runs
+ * on to full. Dragged off (Cancel), it retracts and nothing fires. Repeat taps
+ * are ignored until the fill completes and resets 600ms later; a control that
+ * leaves composition starts fresh.
  *
  * Returns the fill progress (0..1, read it at draw time) and the click to wire
  * into the control in place of [onClick].
@@ -123,9 +121,9 @@ fun rememberFillClick(interactionSource: InteractionSource, onClick: () -> Unit)
             firing[0] = true
             scope.launch {
                 startFill()          // no-op if the press already started it
-                run[0]?.join()       // wait for the same fill, never restart it
-                delay(120)           // a beat on full so the completion registers
+                delay(150)           // the fill is seen leaving the edge before the screen changes
                 latest()
+                run[0]?.join()       // let the same fill finish, never restart it
                 delay(600)
                 fill.snapTo(0f)
                 firing[0] = false
@@ -170,22 +168,6 @@ fun Modifier.fillSweep(progress: () -> Float, brush: Brush, edge: Color = Color.
             )
         }
     }
-
-/**
- * Web `.btn-ember:hover { letter-spacing: 0.25em }`: the label breathes out
- * while pressed. Returns the label's letter spacing for this frame.
- */
-@Composable
-fun pressedTracking(interactionSource: InteractionSource): TextUnit {
-    val pressed by interactionSource.collectIsPressedAsState()
-    val p by animateFloatAsState(if (pressed) 1f else 0f, tween(300, easing = EaseRitual), label = "tracking")
-    val base = MaterialTheme.typography.labelLarge.letterSpacing
-    return when {
-        base.isEm -> (base.value + 0.08f * p).em
-        base.isSp -> (base.value + 1.2f * p).sp
-        else -> (0.08f * p).em
-    }
-}
 
 /**
  * Web `animate-shake`: a 450ms horizontal judder whenever [trigger] becomes

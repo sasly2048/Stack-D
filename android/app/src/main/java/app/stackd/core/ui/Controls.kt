@@ -114,7 +114,7 @@ fun EmberButton(
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = ink)
             Spacer(Modifier.width(12.dp))
         }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold, letterSpacing = pressedTracking(source))
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -156,7 +156,7 @@ fun AccentButton(
             CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = colors.accent)
             Spacer(Modifier.width(10.dp))
         }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, letterSpacing = pressedTracking(source))
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -193,7 +193,7 @@ fun GhostButton(
             )
             Spacer(Modifier.width(12.dp))
         }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, letterSpacing = pressedTracking(source))
+        Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     }
 }
 

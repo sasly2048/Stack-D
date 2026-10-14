@@ -603,9 +603,12 @@ private fun RoomHero(state: RoomUiState, modifier: Modifier = Modifier) {
         )
         val target = state.room?.targetDurationSeconds ?: 0
         val progress = if (live && target > 0) (state.elapsedSeconds.toFloat() / target).coerceIn(0f, 1f) else 0f
-        // Ticks once a second; ease each step so the arc flows instead of stepping.
+        // Ticks once a second; a linear 1s step joins each tick to the next, so
+        // the arc flows at constant speed instead of surging every second.
         val sweep by androidx.compose.animation.core.animateFloatAsState(
-            progress, androidx.compose.animation.core.tween(900), label = "sweep",
+            progress,
+            androidx.compose.animation.core.tween(1000, easing = androidx.compose.animation.core.LinearEasing),
+            label = "sweep",
         )
         val wait = androidx.compose.animation.core.rememberInfiniteTransition(label = "wait")
         val b by wait.animateFloat(

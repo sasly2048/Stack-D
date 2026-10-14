@@ -51,7 +51,7 @@ data class FeedItem(
     val userId: String,
     val displayName: String?,
     val avatarUrl: String?,
-    /** session_complete | achievement_unlock | challenge_complete | friend_add */
+    /** One of [FEED_KINDS]. */
     val kind: String,
     val payload: JsonObject?,
     val createdAt: String,
@@ -69,10 +69,23 @@ data class FeedItem(
                 "achievement_unlock" -> "unlocked ${str("id")?.let { app.stackd.core.humanizeKey(it) } ?: "an achievement"}"
                 "challenge_complete" -> "finished the ${str("name") ?: "challenge"} rite"
                 "friend_add" -> "formed a new tie"
+                "milestone_unlock" -> "passed ${str("name") ?: "a lifetime milestone"}"
+                "prestige" -> "ascended to a new prestige"
+                "season_join" -> "joined ${str("name") ?: "the season"}"
                 else -> kind.replace('_', ' ')
             }
         }
 }
+
+/**
+ * activity_events also carries product telemetry (session.started,
+ * low_power.toggled, integration.viewed…); only these social moments belong in
+ * the feed. Same list as the web's `FEED_KINDS`.
+ */
+internal val FEED_KINDS = listOf(
+    "session_complete", "achievement_unlock", "challenge_complete", "friend_add",
+    "milestone_unlock", "prestige", "season_join",
+)
 
 enum class PresenceStatus { FOCUSING, IDLE, OFFLINE }
 
@@ -88,6 +101,7 @@ class FeedRepository(private val client: SupabaseClient) {
     suspend fun listFeed(userId: String, limit: Int = 30): List<FeedItem> {
         val events = client.postgrest.from("activity_events")
             .select(Columns.list("id", "user_id", "kind", "payload", "created_at")) {
+                filter { isIn("kind", FEED_KINDS) }
                 order("created_at", Order.DESCENDING)
                 limit(limit.toLong())
             }

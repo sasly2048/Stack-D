@@ -13,6 +13,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -261,9 +264,21 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
                     ),
             )
             Row(Modifier.sessionShared("duration", morph = true), verticalAlignment = Alignment.Bottom) {
+                // The number rolls the way the slider moved (longer rises, shorter
+                // falls) instead of two values cross-fading over each other.
                 AnimatedContent(
                     targetState = state.duration,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    transitionSpec = {
+                        val up = targetState > initialState
+                        val ease = app.stackd.core.theme.EaseRitual
+                        (androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(180, easing = ease)) { if (up) it / 2 else -it / 2 } +
+                            fadeIn(androidx.compose.animation.core.tween(180, easing = ease)))
+                            .togetherWith(
+                                androidx.compose.animation.slideOutVertically(androidx.compose.animation.core.tween(180, easing = ease)) { if (up) -it / 2 else it / 2 } +
+                                    fadeOut(androidx.compose.animation.core.tween(90)),
+                            )
+                            .using(androidx.compose.animation.SizeTransform(clip = false))
+                    },
                     label = "duration",
                 ) { d ->
                     Text(
@@ -287,7 +302,11 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
         }
         AnimatedContent(
             targetState = "${meaningOf(state.duration)} · ends $ends",
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            // Old line leaves before the new one lands, so they never double-expose.
+            transitionSpec = {
+                fadeIn(androidx.compose.animation.core.tween(150, delayMillis = 60)) togetherWith
+                    fadeOut(androidx.compose.animation.core.tween(90))
+            },
             label = "meaning",
         ) { line ->
             Text(line, style = MaterialTheme.typography.bodySmall, color = colors.accent)
@@ -295,15 +314,25 @@ private fun DurationHero(state: StartUiState, onDurationChange: (Int) -> Unit) {
         Spacer(Modifier.height(16.dp))
         val index = stops.indexOf(state.duration).takeIf { it >= 0 }
             ?: stops.indexOf(StartUiState.snap(state.duration))
+        // The thumb swells while held: the control answers the finger directly.
+        val sliderSource = remember { MutableInteractionSource() }
+        val sliderPressed by sliderSource.collectIsPressedAsState()
+        val sliderDragged by sliderSource.collectIsDraggedAsState()
+        val thumbScale by animateFloatAsState(
+            if (sliderPressed || sliderDragged) 1.15f else 1f,
+            androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium),
+            label = "thumb",
+        )
         Slider(
             value = index.toFloat(),
             onValueChange = { pick(stops[it.roundToInt().coerceIn(0, stops.lastIndex)]) },
             valueRange = 0f..stops.lastIndex.toFloat(),
             steps = stops.size - 2,
+            interactionSource = sliderSource,
             // Own thumb + track: M3's default draws a detached bar thumb and a
             // stop dot that read as a broken control at the low end.
             thumb = {
-                Box(contentAlignment = Alignment.Center) {
+                Box(Modifier.graphicsLayer { scaleX = thumbScale; scaleY = thumbScale }, contentAlignment = Alignment.Center) {
                     Box(
                         Modifier
                             .size(44.dp)

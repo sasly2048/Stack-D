@@ -94,6 +94,8 @@ class MainActivity : ComponentActivity() {
         /** Process-lifetime, so rotation (stop -> start in ms) doesn't replay it. 0 = cold start. */
         private var lastStoppedAt = 0L
         private const val REOPEN_AFTER_MS = 30_000L
+        /** A link delivered to the running activity, waiting for the nav graph. */
+        private val pendingLink = androidx.compose.runtime.mutableStateOf<android.content.Intent?>(null)
         /** Debug builds only: ceremony preview toggle. */
         private val debugCeremony = androidx.compose.runtime.mutableStateOf(false)
     }
@@ -129,6 +131,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
+        // The running app receives room links / notification taps here; hand
+        // them to the nav graph (it only reads the launch intent by itself).
+        if (intent.data != null) pendingLink.value = intent
         debugCelebrate(intent)
     }
 
@@ -237,6 +243,13 @@ class MainActivity : ComponentActivity() {
                             else Dest.Auth.route
                             val navController = key(epoch) { rememberNavController() }
                             val uid = if (signedIn) container.auth.currentUserId else null
+                            val link = pendingLink.value
+                            LaunchedEffect(link, navController) {
+                                if (link != null && signedIn) {
+                                    navController.handleDeepLink(link)
+                                    pendingLink.value = null
+                                }
+                            }
 
                             // Pending-finalize count for the queue badge. When
                             // signed out there's nothing to observe, so fall back
