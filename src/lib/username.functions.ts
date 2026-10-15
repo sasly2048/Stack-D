@@ -12,7 +12,12 @@ import {
 
 export type UsernameResult =
   | { ok: true; username: string }
-  | { ok: false; reason: UsernameRejection | "rate_limited"; message: string; retryAfterMinutes?: number };
+  | {
+      ok: false;
+      reason: UsernameRejection | "rate_limited";
+      message: string;
+      retryAfterMinutes?: number;
+    };
 
 const input = (d: unknown) => z.object({ username: z.string().max(64) }).parse(d);
 
@@ -21,11 +26,7 @@ const input = (d: unknown) => z.object({ username: z.string().max(64) }).parse(d
  * an internal decision log (category / matched term / list version). None of
  * that detail is ever returned to the caller.
  */
-async function screen(
-  username: string,
-  userId: string,
-  persist: boolean,
-): Promise<UsernameCheck> {
+async function screen(username: string, userId: string, persist: boolean): Promise<UsernameCheck> {
   const { loadModerationRuleset } = await import("./username/ruleset.server");
   const ruleset = await loadModerationRuleset();
   const result = validateUsername(username, ruleset);
@@ -44,7 +45,9 @@ async function screen(
         match_mode: result.ok ? null : (result.debug?.mode ?? null),
         matched_form: result.ok ? null : (result.debug?.form ?? null),
         confidence: result.ok ? null : (result.debug?.confidence ?? null),
-        list_version: result.ok ? result.listVersion : (result.debug?.listVersion ?? ruleset.version),
+        list_version: result.ok
+          ? result.listVersion
+          : (result.debug?.listVersion ?? ruleset.version),
       });
     } catch {
       // Logging must never block a username decision.
@@ -74,10 +77,7 @@ export const checkUsername = createServerFn({ method: "POST" })
 
     const { data: taken } = await (
       context.supabase as unknown as {
-        rpc: (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{ data: boolean | null }>;
+        rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: boolean | null }>;
       }
     ).rpc("username_is_taken", {
       _canonical: check.canonical,

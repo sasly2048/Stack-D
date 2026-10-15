@@ -96,10 +96,7 @@ describe("shake detection", () => {
   });
 
   it("prunes aged samples so the window stays bounded", () => {
-    const window = [
-      { at: now - SHAKE_WINDOW_MS - 1 },
-      { at: now - 10 },
-    ];
+    const window = [{ at: now - SHAKE_WINDOW_MS - 1 }, { at: now - 10 }];
     expect(pruneWindow(window, now)).toEqual([{ at: now - 10 }]);
   });
 });

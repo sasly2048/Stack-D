@@ -25,7 +25,8 @@ import { JoinRequestGate } from "@/components/rooms/join-request-gate";
 import { LiveActivityRail } from "@/components/rooms/live-activity-rail";
 import { PresenceRoster } from "@/components/rooms/presence-roster";
 import { UserHoverCard } from "@/components/profile/user-hover-card";
-import { SessionWorkspace } from "@/components/session-workspace";
+import { HoldButton } from "@/components/hold-button";
+import { StackArt, EmberRing } from "@/components/stack-art";
 import { setActiveSession } from "@/components/floating-timer";
 import { haptic } from "@/lib/haptics";
 import { copy } from "@/lib/copy";
@@ -116,6 +117,9 @@ function Room() {
   const [now, setNow] = useState(Date.now());
   const [result, setResult] = useState<ScoreResult | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
+  // "What are you stacking for?" — optional, asked back in the ceremony.
+  const [intention, setIntention] = useState("");
+  const [noteOpen, setNoteOpen] = useState(false);
 
   const [mode] = useState<EnforcementMode>(() => readMode());
 
@@ -427,6 +431,8 @@ function Room() {
                   score: payload._score,
                   tier: payload._tier,
                   historyId: hid,
+                  intention: intention.trim() || undefined,
+                  clean: payload._breaches_count === 0,
                 },
               }),
             );
@@ -694,7 +700,7 @@ function Room() {
 
   return (
     <div
-      className={`min-h-screen ${oledMode ? "bg-black" : "bg-obsidian"} text-silver transition-colors`}
+      className={`min-h-dvh ${oledMode ? "bg-black" : "bg-obsidian"} text-silver transition-colors`}
     >
       <Nav />
       <main className="app-page max-w-2xl">
@@ -703,27 +709,27 @@ function Room() {
               grid column — as separate children the confirmation pushed the
               status span onto an implicit second row and the header jumped. */}
           <span className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={copyCode}
-            aria-label={`Copy invite link for room ${room.code}`}
-            className="cursor-pointer rounded transition-all duration-200 ease-[var(--ease-ritual)] hover:text-silver active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
-          >
-            ROOM: {room.code} {copied ? "✓" : "⧉"}
-            {/* Announced separately so the confirmation reaches a screen reader,
-                which cannot infer it from a glyph swap. */}
-            <span role="status" aria-live="polite" className="sr-only">
-              {copied ? "Invite link copied" : ""}
-            </span>
-          </button>
-          {copied && (
-            <span
-              aria-hidden="true"
-              className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-pulse"
+            <button
+              type="button"
+              onClick={copyCode}
+              aria-label={`Copy invite link for room ${room.code}`}
+              className="cursor-pointer rounded transition-all duration-200 ease-[var(--ease-ritual)] hover:text-silver active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
             >
-              Copied
-            </span>
-          )}
+              ROOM: {room.code} {copied ? "✓" : "⧉"}
+              {/* Announced separately so the confirmation reaches a screen reader,
+                which cannot infer it from a glyph swap. */}
+              <span role="status" aria-live="polite" className="sr-only">
+                {copied ? "Invite link copied" : ""}
+              </span>
+            </button>
+            {copied && (
+              <span
+                aria-hidden="true"
+                className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-pulse"
+              >
+                Copied
+              </span>
+            )}
           </span>
           <span className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
             {/* Connection health sits next to the session status because the two
@@ -760,61 +766,98 @@ function Room() {
           </span>
         </div>
 
-        <div className="relative aspect-square flex items-center justify-center mb-12">
-          {lobby && <Ripple className="opacity-70" rings={5} />}
-          {active && !myPart?.breached && <LightRays className="opacity-80" />}
-          <div className="absolute inset-0 border border-white/5 rounded-full" />
-          <div className="absolute inset-4 border border-white/10 rounded-full" />
-          <div
-            className={`absolute inset-8 border border-white/5 rounded-full ${active && !myPart?.breached ? "animate-breathing" : ""}`}
-          />
-
-          <div className="text-center px-6">
-            {lobby && (
-              <>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase mb-3">
-                  Target
-                </div>
-                <div className="mb-3 font-mono text-5xl leading-none sm:text-7xl">
-                  {formatDuration(room.target_duration_seconds)}
-                </div>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
-                  Waiting for {isHost ? "you" : "host"}
-                </div>
-              </>
-            )}
-            {active && (
-              <>
-                <div
-                  className={`mb-3 font-mono text-5xl leading-none sm:text-8xl ${myPart?.breached ? "text-breach" : ""}`}
-                >
-                  {formatDuration(remaining)}
-                </div>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
-                  {myPart?.breached ? "You breached. Don't move others." : "Hold the silence"}
-                </div>
-              </>
-            )}
-            {complete && (
-              <>
-                <div className="mb-3 font-mono text-5xl leading-none text-pulse sm:text-8xl">
-                  {formatDuration(elapsed)}
-                </div>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-pulse uppercase">
-                  Protocol Complete · {tableIntegrity}% integrity
-                </div>
-              </>
-            )}
-            {aborted && (
-              <>
-                <div className="mb-3 font-mono text-5xl leading-none text-breach sm:text-6xl">ABORT</div>
-                <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
-                  Session terminated by host
-                </div>
-              </>
+        {/* The table first (lobby) and the breathing stack inside an ember ring
+            (live) — Android parity. Complete/aborted keep the summary circle. */}
+        {lobby && (
+          <div className="mb-10 flex flex-col items-center text-center">
+            <StackArt phones={participants.length || 1} size={170} />
+            <h1 className="mt-6 font-serif text-4xl text-silver">The table</h1>
+            <p className="mt-2 text-muted-foreground">
+              {Math.round(room.target_duration_seconds / 60)} min ·{" "}
+              {participants.length <= 1 ? "just you so far" : `${participants.length} at the table`}
+            </p>
+            {!isHost && (
+              <p className="mt-3 text-sm text-silver-dim">
+                Waiting for the host to start the stack.
+              </p>
             )}
           </div>
-        </div>
+        )}
+        {active && (
+          <div className="mb-10 flex flex-col items-center text-center">
+            <div className="relative grid size-[280px] place-items-center">
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle, ${myPart?.breached ? "rgba(255,59,48,0.14)" : "rgba(240,169,104,0.14)"}, transparent 70%)`,
+                }}
+              />
+              <EmberRing
+                progress={elapsed / (room.target_duration_seconds || 1)}
+                size={260}
+                stroke={3}
+              />
+              <StackArt
+                phones={participants.length || 1}
+                size={140}
+                breathing={!myPart?.breached}
+              />
+            </div>
+            <div
+              className={`mt-6 font-serif text-6xl tabular-nums ${myPart?.breached ? "text-breach" : "text-silver"}`}
+            >
+              {formatDuration(remaining)}
+            </div>
+            <p className={`mt-1 ${myPart?.breached ? "text-breach" : "text-muted-foreground"}`}>
+              {myPart?.breached ? "Your stack broke" : "Holding"}
+            </p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              {(() => {
+                const others = participants.filter((p) => p.user_id !== me?.id);
+                const broke = participants.filter((p) => p.breached).length;
+                const who =
+                  others.length === 0
+                    ? "Just you at the table"
+                    : others.length === 1
+                      ? `With ${others[0].display_name?.split(" ")[0] ?? "one other"}`
+                      : `With ${others[0].display_name?.split(" ")[0] ?? "someone"} and ${others.length - 1} more`;
+                return broke ? `${who} · ${broke} broke` : who;
+              })()}
+            </p>
+          </div>
+        )}
+        {(complete || aborted) && (
+          <div className="relative aspect-square flex items-center justify-center mb-12">
+            <div className="absolute inset-0 border border-white/5 rounded-full" />
+            <div className="absolute inset-4 border border-white/10 rounded-full" />
+            <div className="absolute inset-8 border border-white/5 rounded-full" />
+
+            <div className="text-center px-6">
+              {" "}
+              {complete && (
+                <>
+                  <div className="mb-3 font-mono text-5xl leading-none text-pulse sm:text-8xl">
+                    {formatDuration(elapsed)}
+                  </div>
+                  <div className="text-[10px] font-mono tracking-[0.4em] text-pulse uppercase">
+                    Protocol Complete · {tableIntegrity}% integrity
+                  </div>
+                </>
+              )}
+              {aborted && (
+                <>
+                  <div className="mb-3 font-mono text-5xl leading-none text-breach sm:text-6xl">
+                    ABORT
+                  </div>
+                  <div className="text-[10px] font-mono tracking-[0.4em] text-muted-foreground uppercase">
+                    Session terminated by host
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {lobby && (
           <>
@@ -830,15 +873,38 @@ function Room() {
                   Invite
                 </p>
                 <p className="mt-2 text-sm text-silver-dim">Scan to join room</p>
-                <p className="mt-1 break-all font-mono text-xl tracking-[0.2em] text-silver sm:text-2xl sm:tracking-[0.3em]">{room.code}</p>
+                <p className="mt-1 break-all font-mono text-xl tracking-[0.2em] text-silver sm:text-2xl sm:tracking-[0.3em]">
+                  {room.code}
+                </p>
               </div>
             </div>
             <div className="mb-10 grid md:grid-cols-2 gap-4">
               <RoomTimeline roomId={room.id} />
               <RoomSchedule roomId={room.id} canManage={isHost} />
             </div>
+            {/* Optional, private, and asked back at the end — never the lead. */}
             <div className="mb-10">
-              <SessionWorkspace roomId={room.id} />
+              {noteOpen ? (
+                <label className="block">
+                  <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Note for yourself
+                  </span>
+                  <input
+                    value={intention}
+                    onChange={(e) => setIntention(e.target.value.slice(0, 80))}
+                    placeholder="finish chapter 3"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-silver placeholder:text-muted-foreground focus:border-ember focus:outline-none"
+                  />
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setNoteOpen(true)}
+                  className="w-full py-2 text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-silver"
+                >
+                  + Add a note for yourself
+                </button>
+              )}
             </div>
           </>
         )}
@@ -872,14 +938,16 @@ function Room() {
           </div>
         )}
 
-        <div className="mb-10 flex gap-3">
+        <div
+          className={`mb-10 flex gap-3 ${lobby && isHost ? "sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 rounded-xl bg-obsidian/90 p-2 backdrop-blur-md" : ""}`}
+        >
           {lobby && isHost && (
             <button
               onClick={startRitual}
               disabled={participants.length === 0}
               className="flex-1 bg-silver text-obsidian py-4 rounded-lg font-mono text-xs uppercase tracking-widest font-bold hover:invert transition-all disabled:opacity-40"
             >
-              Begin Session ({participants.length} present)
+              Start the stack
             </button>
           )}
           {lobby && !isHost && (
@@ -887,21 +955,13 @@ function Room() {
               Waiting for host…
             </div>
           )}
+          {/* Ending a stack is the one thing this screen should never invite:
+              both are quiet hold-to-confirm controls, never a single click. */}
           {active && isHost && (
-            <>
-              <button
-                onClick={endRitual}
-                className="flex-1 border border-silver/40 py-3 rounded-lg font-mono text-xs uppercase tracking-widest hover:bg-silver hover:text-obsidian transition-all"
-              >
-                End Now
-              </button>
-              <button
-                onClick={abortRitual}
-                className="px-5 border border-breach/40 text-breach py-3 rounded-lg font-mono text-xs uppercase tracking-widest hover:bg-breach hover:text-obsidian transition-all"
-              >
-                Abort
-              </button>
-            </>
+            <div className="flex w-full flex-col gap-2">
+              <HoldButton label="Hold to end early" onConfirm={endRitual} />
+              <HoldButton label="Hold to abort" tone="breach" onConfirm={abortRitual} />
+            </div>
           )}
           {(complete || aborted) && (
             <Link
@@ -921,97 +981,104 @@ function Room() {
           )}
         </div>
 
-        <div className="space-y-3 mb-8">
-          <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
-            PARTICIPANTS · {participants.length} · {totalBreached} BREACHED
-          </div>
-          {participants.map((p, idx) => {
-            const isMe = p.user_id === me?.id;
-            const livePct = p.breached
-              ? p.integrity
-              : active
-                ? Math.min(100, Math.round((elapsed / (room.target_duration_seconds || 1)) * 100))
-                : lobby
-                  ? 0
-                  : 100;
-            return (
-              <div
-                key={p.id}
-                className={`flex items-center justify-between p-4 rounded-lg border ${p.breached ? "border-breach/30 bg-breach/5" : "border-white/5 bg-white/5"}`}
-              >
-                <div className="flex items-center gap-4 min-w-0">
-                  <span
-                    className={`font-mono text-xs ${p.breached ? "text-breach" : "text-muted-foreground"}`}
-                  >
-                    {String(idx + 1).padStart(2, "0")}
-                  </span>
-                  <UserHoverCard profileId={p.user_id}>
-                    <button
-                      className={`text-sm font-medium uppercase truncate text-left hover:text-ember transition-colors ${p.breached ? "text-breach" : ""}`}
-                    >
-                      {p.display_name}
-                      {isMe ? " · YOU" : ""}
-                      {p.user_id === room.host_id ? " · HOST" : ""}
-                    </button>
-                  </UserHoverCard>
-                </div>
-                {p.breached ? (
-                  <span className="font-mono text-[10px] text-breach uppercase tracking-widest whitespace-nowrap">
-                    {(p.breach_reason ?? "BREACH").toUpperCase()}
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <div className="w-20 sm:w-24 h-1 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-silver transition-all"
-                        style={{ width: `${livePct}%` }}
-                      />
-                    </div>
-                    <span className="font-mono text-[10px] text-silver w-8 text-right">
-                      {livePct}%
-                    </span>
-                  </div>
-                )}
+        {!active && (
+          <>
+            <div className="space-y-3 mb-8">
+              <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
+                PARTICIPANTS · {participants.length} · {totalBreached} BREACHED
               </div>
-            );
-          })}
-        </div>
-
-        <div className="mb-8 grid gap-4 lg:grid-cols-2">
-          <PresenceRoster
-            roomId={room.id}
-            participants={participants}
-            status={room.status}
-            startedAt={room.started_at}
-            myUserId={me?.id ?? null}
-            targetSeconds={room.target_duration_seconds}
-          />
-          <LiveActivityRail roomId={room.id} />
-        </div>
-
-        {breaks.length > 0 && (
-          <div>
-            <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
-              BREACH_LOG
+              {participants.map((p, idx) => {
+                const isMe = p.user_id === me?.id;
+                const livePct = p.breached
+                  ? p.integrity
+                  : active
+                    ? Math.min(
+                        100,
+                        Math.round((elapsed / (room.target_duration_seconds || 1)) * 100),
+                      )
+                    : lobby
+                      ? 0
+                      : 100;
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center justify-between p-4 rounded-lg border ${p.breached ? "border-breach/30 bg-breach/5" : "border-white/5 bg-white/5"}`}
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <span
+                        className={`font-mono text-xs ${p.breached ? "text-breach" : "text-muted-foreground"}`}
+                      >
+                        {String(idx + 1).padStart(2, "0")}
+                      </span>
+                      <UserHoverCard profileId={p.user_id}>
+                        <button
+                          className={`text-sm font-medium uppercase truncate text-left hover:text-ember transition-colors ${p.breached ? "text-breach" : ""}`}
+                        >
+                          {p.display_name}
+                          {isMe ? " · YOU" : ""}
+                          {p.user_id === room.host_id ? " · HOST" : ""}
+                        </button>
+                      </UserHoverCard>
+                    </div>
+                    {p.breached ? (
+                      <span className="font-mono text-[10px] text-breach uppercase tracking-widest whitespace-nowrap">
+                        {(p.breach_reason ?? "BREACH").toUpperCase()}
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <div className="w-20 sm:w-24 h-1 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full w-full origin-left bg-silver transition-transform duration-1000 ease-linear"
+                            style={{ transform: `scaleX(${livePct / 100})` }}
+                          />
+                        </div>
+                        <span className="font-mono text-[10px] text-silver w-8 text-right">
+                          {livePct}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="space-y-2">
-              {breaks.slice(0, 8).map((b) => (
-                <div
-                  key={b.id}
-                  className="flex justify-between items-center text-xs font-mono text-muted-foreground py-2 border-b border-white/5"
-                >
-                  <span className={b.severity === "severe" ? "text-breach" : "text-silver"}>
-                    {b.display_name}
-                  </span>
-                  <span className="uppercase tracking-widest">
-                    {b.severity === "minor" ? "minor · " : ""}
-                    {b.reason}
-                  </span>
-                  <span className="text-[10px]">{new Date(b.at).toLocaleTimeString()}</span>
+
+            <div className="mb-8 grid gap-4 lg:grid-cols-2">
+              <PresenceRoster
+                roomId={room.id}
+                participants={participants}
+                status={room.status}
+                startedAt={room.started_at}
+                myUserId={me?.id ?? null}
+                targetSeconds={room.target_duration_seconds}
+              />
+              <LiveActivityRail roomId={room.id} />
+            </div>
+
+            {breaks.length > 0 && (
+              <div>
+                <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
+                  BREACH_LOG
                 </div>
-              ))}
-            </div>
-          </div>
+                <div className="space-y-2">
+                  {breaks.slice(0, 8).map((b) => (
+                    <div
+                      key={b.id}
+                      className="flex justify-between items-center text-xs font-mono text-muted-foreground py-2 border-b border-white/5"
+                    >
+                      <span className={b.severity === "severe" ? "text-breach" : "text-silver"}>
+                        {b.display_name}
+                      </span>
+                      <span className="uppercase tracking-widest">
+                        {b.severity === "minor" ? "minor · " : ""}
+                        {b.reason}
+                      </span>
+                      <span className="text-[10px]">{new Date(b.at).toLocaleTimeString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
@@ -1020,7 +1087,7 @@ function Room() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-2xl">{children}</main>
     </div>

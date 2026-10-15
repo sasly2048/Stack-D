@@ -7,6 +7,7 @@ import {
   type RewardStatus,
 } from "@/lib/daily-rewards.functions";
 import { feedback } from "@/lib/feedback";
+import { haptic } from "@/lib/haptics";
 import { notifyXpChanged, useXpSync } from "@/lib/xp-sync";
 
 export function DailyRewardCard() {
@@ -43,44 +44,38 @@ export function DailyRewardCard() {
     }
   };
 
+  // Claimed: one quiet line, never a card competing with Start.
+  if (status.claimedToday) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Today's reward claimed · Day {status.nextDayOfStreak} of 7
+      </p>
+    );
+  }
+
+  // Unclaimed: a slim solid-ember pill (Android parity). The glow sweeping
+  // across while it claims is the XP landing.
   return (
-    <div className="border border-ember/30 rounded-md p-5 bg-ember/[0.04]">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Daily</p>
-          <p className="mt-2 text-xl font-serif text-silver">
-            {status.claimedToday ? "Claimed" : `+${status.nextRewardXp} XP waiting`}
-          </p>
-          <p className="mt-1 text-xs text-silver-dim">
-            Streak · <span className="text-silver">{status.streak}</span> days · Day{" "}
-            {status.nextDayOfStreak}/7 in cycle
-          </p>
-        </div>
-        <button
-          onClick={onClaim}
-          disabled={status.claimedToday || claiming}
-          className="px-4 py-2 rounded-full border border-ember/50 text-ember font-mono text-xs uppercase tracking-widest disabled:opacity-40 hover:bg-ember/10 transition"
-        >
-          {status.claimedToday ? "Come back tomorrow" : claiming ? "Claiming…" : "Claim"}
-        </button>
-      </div>
-      <div className="mt-4 grid grid-cols-7 gap-1">
-        {[10, 20, 40, 60, 80, 100, 200].map((xp, i) => {
-          const active = i + 1 === status.nextDayOfStreak && !status.claimedToday;
-          return (
-            <div
-              key={i}
-              className={`h-8 rounded flex items-center justify-center text-[9px] font-mono ${
-                active
-                  ? "bg-ember/30 text-ember border border-ember"
-                  : "bg-white/[0.03] text-silver-dim"
-              }`}
-            >
-              {xp}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={() => {
+        haptic("success");
+        void onClaim();
+      }}
+      disabled={claiming}
+      className="group relative flex w-full items-center gap-3 overflow-hidden rounded-full bg-ember px-5 py-3 text-left text-obsidian transition-transform duration-200 ease-[var(--ease-ritual)] active:scale-[0.98]"
+    >
+      <span
+        aria-hidden="true"
+        className={`absolute inset-y-0 left-0 bg-[#FFC48A] transition-[width] duration-[650ms] ease-[var(--ease-ritual)] ${claiming ? "w-full" : "w-0"}`}
+      />
+      <span className="relative" aria-hidden="true">
+        🎁
+      </span>
+      <span className="relative flex-1 font-semibold">
+        {claiming ? "Claiming…" : `Claim today's +${status.nextRewardXp} XP`}
+      </span>
+      <span className="relative text-sm text-obsidian/70">Day {status.nextDayOfStreak} of 7</span>
+    </button>
   );
 }

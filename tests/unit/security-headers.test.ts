@@ -34,8 +34,9 @@ describe("CSP allows every origin the app genuinely uses", () => {
     expect(directive("font-src")).toContain("https://fonts.gstatic.com");
   });
 
-  it("permits the AI gateway", () => {
-    expect(directive("connect-src")).toContain("https://ai.gateway.lovable.dev");
+  it("keeps the AI provider server-side (not reachable from the browser)", () => {
+    expect(directive("connect-src")).not.toContain("generativelanguage.googleapis.com");
+    expect(directive("connect-src")).not.toContain("lovable");
   });
 
   it("permits Razorpay Checkout to load, frame and call home", () => {
@@ -94,9 +95,7 @@ describe("CSP keeps the dangerous directives locked", () => {
 
   it("is enforcing, not report-only", () => {
     expect(Object.keys(SECURITY_HEADERS)).toContain("Content-Security-Policy");
-    expect(Object.keys(SECURITY_HEADERS)).not.toContain(
-      "Content-Security-Policy-Report-Only",
-    );
+    expect(Object.keys(SECURITY_HEADERS)).not.toContain("Content-Security-Policy-Report-Only");
   });
 });
 

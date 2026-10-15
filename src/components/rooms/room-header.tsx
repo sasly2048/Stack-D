@@ -236,8 +236,8 @@ export function RoomHeader({ roomId, isHost }: { roomId: string; isHost: boolean
               </div>
               <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-ember transition-all"
-                  style={{ width: `${stats.progress_pct}%` }}
+                  className="h-full w-full origin-left bg-ember transition-transform duration-500 ease-[var(--ease-ritual)]"
+                  style={{ transform: `scaleX(${stats.progress_pct / 100})` }}
                 />
               </div>
             </div>

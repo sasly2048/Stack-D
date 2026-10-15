@@ -5,14 +5,23 @@ import { Nav } from "@/components/nav";
 import { getDayReplay, type ReplayEvent } from "@/lib/replay.functions";
 import { useSwipe } from "@/hooks/use-swipe";
 import { haptic } from "@/lib/haptics";
+import { HubTabs } from "@/components/hub-tabs";
 
 export const Route = createFileRoute("/_authenticated/replay")({
   head: () => ({
     meta: [
       { title: "Replay — Stack'd" },
-      { name: "description", content: "Play back any day of focus minute by minute and see exactly where your attention held or broke." },
+      {
+        name: "description",
+        content:
+          "Play back any day of focus minute by minute and see exactly where your attention held or broke.",
+      },
       { property: "og:title", content: "Replay — Stack'd" },
-      { property: "og:description", content: "Play back any day of focus minute by minute and see exactly where your attention held or broke." },
+      {
+        property: "og:description",
+        content:
+          "Play back any day of focus minute by minute and see exactly where your attention held or broke.",
+      },
     ],
   }),
   component: ReplayPage,
@@ -78,9 +87,10 @@ function ReplayPage() {
   const progress = events.length ? (cursor / events.length) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main ref={swipeRef} className="app-page max-w-3xl">
+        <HubTabs />
         <h1 className="text-3xl font-serif mb-2">Focus Replay</h1>
         <p className="text-sm text-muted-foreground mb-6">
           Scrub through any day. Swipe left/right on mobile to change days.
@@ -119,8 +129,8 @@ function ReplayPage() {
 
         <div className="h-1 bg-white/5 rounded-full overflow-hidden mb-4">
           <div
-            className="h-full bg-ember transition-all duration-500"
-            style={{ width: `${progress}%` }}
+            className="h-full w-full origin-left bg-ember transition-transform duration-500 ease-[var(--ease-ritual)]"
+            style={{ transform: `scaleX(${progress / 100})` }}
           />
         </div>
 

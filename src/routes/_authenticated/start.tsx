@@ -1,5 +1,6 @@
+import { haptic } from "@/lib/haptics";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/nav";
@@ -47,7 +48,129 @@ export const Route = createFileRoute("/_authenticated/start")({
  * "Recommended" badge and the initial state can never drift apart.
  */
 const RECOMMENDED_MINUTES = 30;
-const QUICK_DURATIONS = [15, 25, 30, 45, 60, 90];
+/** The only lengths on offer: the slider snaps to these, so it and the chips always agree. */
+const STOPS = [15, 25, 30, 45, 60, 90, 120, 180];
+/** The few shortcuts shown as chips; the slider reaches every stop. */
+const CHIPS = [25, 45, 90];
+const snap = (m: number) =>
+  STOPS.reduce((best, s) => (Math.abs(s - m) < Math.abs(best - m) ? s : best), STOPS[0]);
+
+function meaningOf(m: number): string {
+  switch (m) {
+    case 15:
+      return "A quick reset";
+    case 25:
+      return "One classic focus block";
+    case 30:
+      return "A steady half hour";
+    case 45:
+      return "A proper deep-work block";
+    case 60:
+      return "A full hour of deep work";
+    case 90:
+      return "One full deep-work cycle";
+    case 120:
+      return "A long haul";
+    case 180:
+      return "The deep end";
+    default:
+      return "Your own length";
+  }
+}
+
+/**
+ * The headline choice (Android parity): a big serif number with its meaning,
+ * a slider that snaps to the same stops as the chips (a light haptic per
+ * stop), and an ember halo that blooms every time it reaches the longest stack.
+ */
+function DurationHero({
+  duration,
+  lastMinutes,
+  onPick,
+}: {
+  duration: number;
+  lastMinutes: number | null;
+  onPick: (m: number) => void;
+}) {
+  const max = STOPS[STOPS.length - 1];
+  const atMax = duration === max;
+  const ends = new Date(Date.now() + duration * 60_000).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const pick = (m: number) => {
+    if (m === duration) return;
+    haptic(m === max ? "success" : "tap");
+    onPick(m);
+  };
+  // The number rolls the way the choice moved: longer rises in, shorter drops in.
+  const prev = useRef(duration);
+  const rise = duration >= prev.current;
+  useEffect(() => {
+    prev.current = duration;
+  }, [duration]);
+  const label = duration % 60 === 0 && duration >= 60 ? `${duration / 60}` : `${duration}`;
+  const unit = duration % 60 === 0 && duration >= 60 ? (duration === 60 ? "hour" : "hours") : "min";
+  return (
+    <div className="rounded-3xl bg-gradient-to-b from-ember/10 to-white/[0.03] px-6 py-8 text-center">
+      <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+        Focus for
+      </p>
+      <div className="relative mx-auto mt-2 grid place-items-center">
+        <div
+          aria-hidden="true"
+          className="absolute h-32 w-60 rounded-full transition-opacity duration-700"
+          style={{
+            opacity: atMax ? 1 : 0,
+            background:
+              "radial-gradient(ellipse, rgba(255,196,138,0.45), rgba(240,169,104,0.15) 45%, transparent 70%)",
+          }}
+        />
+        <p className="relative">
+          <span
+            key={duration}
+            className={`inline-block font-serif text-7xl tabular-nums text-silver ${rise ? "animate-num-rise" : "animate-num-drop"}`}
+          >
+            {label}
+          </span>
+          <span className="ml-2 text-muted-foreground">{unit}</span>
+        </p>
+      </div>
+      <p className="mt-2 text-sm text-ember">
+        {meaningOf(duration)} · ends {ends}
+      </p>
+      <input
+        type="range"
+        min={0}
+        max={STOPS.length - 1}
+        step={1}
+        value={STOPS.indexOf(snap(duration))}
+        onChange={(e) => pick(STOPS[Number(e.target.value)])}
+        aria-label="Focus length"
+        aria-valuetext={`${duration} minutes`}
+        className={`mt-6 w-full accent-[var(--color-ember)] ${atMax ? "drop-shadow-[0_0_10px_rgba(255,196,138,0.8)]" : ""}`}
+      />
+      <div role="radiogroup" aria-label="Quick lengths" className="mt-5 flex justify-center gap-2">
+        {CHIPS.map((m) => {
+          const on = duration === m;
+          return (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => pick(m)}
+              className={`rounded-full px-5 py-2 text-sm font-semibold transition-[color,background-color,transform] duration-200 ease-[var(--ease-ritual)] select-none active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember ${on ? "bg-silver text-obsidian" : "bg-white/[0.06] text-silver hover:bg-white/10"}`}
+            >
+              {m >= 60 && m % 60 === 0 ? `${m / 60}h` : `${m}m`}
+              {lastMinutes === m && !on && <span className="ml-1 text-xs text-ember">last</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function Start() {
   const navigate = useNavigate();
@@ -73,7 +196,7 @@ function Start() {
     const last = getLastSessionMinutes();
     if (last !== null) {
       setLastMinutes(last);
-      setDuration(last);
+      setDuration(snap(last));
     }
     // First-run coaching only: someone who has already held a room knows what
     // one is, and a permanently-repeating explainer reads as nagging.
@@ -160,13 +283,10 @@ function Start() {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-2xl">
-        <div className="ritual-label mb-4 text-muted-foreground">
-          NEW / CONFIGURE
-        </div>
-        <h1 className="page-title mb-10 sm:mb-12">Set the protocol.</h1>
+        <h1 className="page-title mb-10 font-serif sm:mb-12">Plan a session</h1>
 
         {showIntro && (
           <div className="mb-10 flex items-start justify-between gap-4 rounded-lg border border-ember/25 bg-ember/[0.06] px-4 py-3">
@@ -174,23 +294,34 @@ function Start() {
               A room is a shared timer — everyone stacks their phones face-down and holds the
               silence until it runs out.
             </p>
-              <Button
+            <Button
               type="button"
-                variant="ghost"
-                size="sm"
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 dismissTip("start-intro");
                 setShowIntro(false);
               }}
               aria-label="Dismiss the explainer"
-                className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-silver"
+              className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-silver"
             >
               Got it
-              </Button>
+            </Button>
           </div>
         )}
 
         <div className="space-y-10">
+          <DurationHero
+            duration={duration}
+            lastMinutes={lastMinutes}
+            onPick={(m) => {
+              // Picking a length means "my own length": a template that pinned
+              // it gives way to Custom instead of greying the controls out.
+              setTplKey("");
+              setDuration(m);
+            }}
+          />
+
           {templates.length > 0 && (
             <div>
               <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-3">
@@ -201,7 +332,7 @@ function Start() {
                   type="button"
                   onClick={() => setTplKey("")}
                   aria-pressed={tplKey === ""}
-                  className={`text-left p-3 rounded-lg border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === "" ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
+                  className={`text-left p-3 rounded-lg border transition-[transform,border-color,background-color] duration-200 ease-[var(--ease-ritual)] active:scale-[0.98] active:duration-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === "" ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
                 >
                   {/* The tick is what carries "selected" for anyone who can't
                       separate the ember border from the neutral one. */}
@@ -219,7 +350,7 @@ function Start() {
                       setDuration(Math.round(t.target_duration_seconds / 60));
                     }}
                     aria-pressed={tplKey === t.key}
-                    className={`text-left p-3 rounded-lg border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === t.key ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
+                    className={`text-left p-3 rounded-lg border transition-[transform,border-color,background-color] duration-200 ease-[var(--ease-ritual)] active:scale-[0.98] active:duration-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${tplKey === t.key ? "border-ember bg-ember/5" : "border-white/10 hover:border-white/30 hover:bg-white/[0.03]"}`}
                   >
                     <div className="font-mono text-[10px] tracking-widest uppercase mb-1">
                       {t.title}
@@ -265,85 +396,6 @@ function Start() {
             />
           </div>
 
-          <div>
-            <div className="flex justify-between items-end mb-4">
-              <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
-                Target Duration
-              </span>
-              <span className="font-mono text-2xl">
-                {duration}
-                <span className="text-xs text-muted-foreground ml-2">MIN</span>
-              </span>
-            </div>
-            <input
-              type="range"
-              min={5}
-              max={240}
-              step={5}
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="w-full accent-silver"
-              disabled={!!tplKey}
-            />
-            <div className="flex justify-between font-mono text-[10px] text-muted-foreground mt-2 uppercase tracking-widest">
-              <span>5m</span>
-              <span>30m</span>
-              <span>1h</span>
-              <span>2h</span>
-              <span>4h</span>
-            </div>
-
-            {/* Quick picks alongside the slider: a slider alone can't say which
-                value is the sensible default or which one you chose last, and
-                dragging to an exact minute on a phone is fiddly. */}
-            <div
-              role="radiogroup"
-              aria-label="Quick duration presets"
-              className="mt-5 flex flex-wrap gap-2"
-            >
-              {QUICK_DURATIONS.map((m) => {
-                const selected = duration === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={!!tplKey}
-                    onClick={() => setDuration(m)}
-                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-mono text-[10px] uppercase tracking-widest cursor-pointer transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${
-                      selected
-                        ? "border-silver bg-white/[0.08] text-silver"
-                        : "border-white/10 text-muted-foreground hover:border-white/30 hover:text-silver hover:bg-white/[0.03]"
-                    }`}
-                  >
-                    <span>
-                      {selected && <span aria-hidden="true">✓ </span>}
-                      {m}m
-                    </span>
-                    {m === RECOMMENDED_MINUTES && (
-                      <BadgeHint tone="accent" title="The length most sessions settle on">
-                        Recommended
-                      </BadgeHint>
-                    )}
-                    {lastMinutes === m && m !== RECOMMENDED_MINUTES && (
-                      <BadgeHint tone="neutral" title="The length you started last time">
-                        Last used
-                      </BadgeHint>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {/* A remembered value that isn't one of the presets would otherwise
-                be silently restored with no explanation for the odd number. */}
-            {lastMinutes !== null && !QUICK_DURATIONS.includes(lastMinutes) && (
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                {lastMinutes}m <BadgeHint tone="neutral">Last used</BadgeHint>
-              </p>
-            )}
-          </div>
-
           <fieldset>
             <legend className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-4">
               Enforcement Profile
@@ -364,15 +416,25 @@ function Start() {
             </div>
           </fieldset>
 
-          <Button
-            onClick={create}
-            disabled={busy}
-            aria-busy={busy}
-            size="lg"
-            className="h-14 w-full bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90"
-          >
-            {busy ? "Forging key..." : "Forge Room Key"}
-          </Button>
+          {/* On phones the one decision stays under the thumb while the
+              templates and options scroll past (Android pins it the same way). */}
+          <div className="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 -mx-2 rounded-xl bg-obsidian/90 p-2 backdrop-blur-md sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+            <Button
+              onClick={create}
+              disabled={busy}
+              aria-busy={busy}
+              size="lg"
+              className="h-14 w-full bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90"
+            >
+              {busy
+                ? "Creating stack…"
+                : tplKey
+                  ? "Create Stack"
+                  : duration % 60 === 0
+                    ? `Create ${duration / 60}-hour Stack`
+                    : `Create ${duration}-min Stack`}
+            </Button>
+          </div>
           {/* Busy already speaks for itself in the label; anything else that
               greys the button out must say why, or it's a dead end. */}
           {busy && (
@@ -409,7 +471,7 @@ function ModeOption({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`text-left p-5 rounded-xl border transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${
+      className={`text-left p-5 rounded-xl border transition-[transform,border-color,background-color] duration-200 ease-[var(--ease-ritual)] active:scale-[0.98] active:duration-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian ${
         active
           ? "border-silver bg-white/[0.06]"
           : "border-white/10 bg-transparent hover:border-white/30 hover:bg-white/[0.03]"

@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Virtuoso } from "react-virtuoso";
 import { Nav } from "@/components/nav";
 import { QueryBoundary, SkeletonList } from "@/components/query-states";
+import { HubTabs } from "@/components/hub-tabs";
 import {
   listFeed,
   friendsPresence,
@@ -18,9 +19,17 @@ export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({
     meta: [
       { title: "Feed — Stack'd" },
-      { name: "description", content: "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with." },
+      {
+        name: "description",
+        content:
+          "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with.",
+      },
       { property: "og:title", content: "Feed — Stack'd" },
-      { property: "og:description", content: "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with." },
+      {
+        property: "og:description",
+        content:
+          "Signal from your circle: live sessions, fresh unlocks and new ties across everyone you focus with.",
+      },
     ],
   }),
   component: FeedPage,
@@ -62,9 +71,10 @@ function FeedPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page grid max-w-5xl gap-10 md:grid-cols-[minmax(0,1fr)_260px]">
+        <HubTabs className="md:col-span-2" />
         <section className="space-y-6">
           <header className="page-heading">
             <p className="ritual-label text-ember">Signal</p>
@@ -86,7 +96,9 @@ function FeedPage() {
               /* An empty state that only states the problem is a dead end —
                  both routes out of it are one tap away, so offer them. */
               <div className="border border-white/10 rounded-md px-4 py-8 text-center">
-                <p className="text-silver-dim/60">No signal yet. Complete a session or add friends.</p>
+                <p className="text-silver-dim/60">
+                  No signal yet. Complete a session or add friends.
+                </p>
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                   <Link
                     to="/start"
@@ -182,6 +194,8 @@ function FeedRow({ r }: { r: FeedItem }) {
   const name = r.display_name ?? "Anonymous";
   const initial = name.slice(0, 1).toUpperCase();
   const line = describe(r);
+  // A row with nothing to say is noise, not signal.
+  if (!line) return null;
   const time = new Date(r.created_at);
   const rel = timeAgo(time);
   return (
@@ -229,6 +243,14 @@ function describe(r: FeedItem) {
       return `finished the ${r.payload.name ?? "challenge"} rite`;
     case "friend_add":
       return "formed a new tie";
+    case "milestone_unlock":
+      return `passed ${r.payload.name ? String(r.payload.name) : "a lifetime milestone"}`;
+    case "prestige":
+      return "ascended to a new prestige";
+    case "season_join":
+      return `joined ${r.payload.name ? String(r.payload.name) : "the season"}`;
+    default:
+      return null;
   }
 }
 function timeAgo(d: Date) {

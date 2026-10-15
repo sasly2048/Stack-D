@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/nav";
 import { QueryBoundary, SkeletonCards } from "@/components/query-states";
@@ -47,7 +47,7 @@ function InsightsPage() {
   // no error, no retry and no way to tell it apart from a slow request.
   if (analytics.isPending || analytics.isError || !data) {
     return (
-      <div className="min-h-screen bg-obsidian text-silver">
+      <div className="min-h-dvh bg-obsidian text-silver">
         <Nav />
         <main className="app-page max-w-4xl">
           <QueryBoundary
@@ -66,12 +66,52 @@ function InsightsPage() {
     );
   }
 
+  // Under three stacks the dashboard is a wall of zeros and empty charts.
+  // Show the progress already made toward the point where patterns mean
+  // something, never a bar starting at 0 (Android parity).
+  if (data.totals.sessions < 3) {
+    const left = 3 - data.totals.sessions;
+    return (
+      <div className="min-h-dvh bg-obsidian text-silver">
+        <Nav />
+        <main className="app-page max-w-2xl">
+          <header className="page-heading">
+            <h1 className="page-title font-serif">Your progress</h1>
+          </header>
+          <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-8">
+            <p className="text-sm font-semibold text-ember">{data.totals.sessions} of 3 stacks</p>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-ember"
+                style={{ width: `${(data.totals.sessions / 3) * 100}%` }}
+              />
+            </div>
+            <h2 className="mt-6 font-serif text-2xl text-silver">
+              {left === 1
+                ? "One more stack and your patterns appear"
+                : `${left} more stacks and your patterns appear`}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              When you focus best, how clean your holds are, and where your hours are heading.
+            </p>
+            <Link
+              to="/start"
+              className="mt-6 inline-block rounded-lg bg-silver px-6 py-3 text-sm font-semibold text-obsidian transition-all duration-200 ease-[var(--ease-ritual)] active:scale-[0.99]"
+            >
+              Start a Stack
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   const maxHour = Math.max(1, ...data.hourBuckets.map((h) => h.seconds));
   const maxHeat = Math.max(1, ...data.heatmap.map((c) => c.seconds));
   const totalTagSec = data.tagDistribution.reduce((s, t) => s + t.seconds, 0);
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-6xl space-y-16">
         <header className="page-heading">

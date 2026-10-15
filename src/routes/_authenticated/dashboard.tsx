@@ -1,20 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/nav";
 import { MyRoomsPanel } from "@/components/my-rooms-panel";
 import { formatDuration, formatHours } from "@/lib/room";
 import { tierForScore, TIERS, type Tier } from "@/lib/focus-score";
-import {
-  recommendNextSession,
-  generateDashboardInsights,
-  type SessionRecommendation,
-  type DashboardInsights,
-} from "@/lib/ai.functions";
-import { DynamicGreeting } from "@/components/home/dynamic-greeting";
 import { CsvExportButton } from "@/components/csv-export-button";
 import { DailyRewardCard } from "@/components/rewards/daily-reward-card";
+import { StackArt, EmberRing } from "@/components/stack-art";
 import { UpgradeCard } from "@/components/premium/upgrade-card";
 import { useXpSync } from "@/lib/xp-sync";
 import { AtlasWhisper } from "@/components/atlas-whisper";
@@ -99,41 +92,15 @@ function Dashboard() {
     name: string;
     lifetime_xp: number;
     streak: number;
+    freezes: number;
+    lastDay: string | null;
   } | null>(null);
-  const [rec, setRec] = useState<SessionRecommendation | null>(null);
-  const [recLoading, setRecLoading] = useState(true);
-  const [recError, setRecError] = useState(false);
-  const fetchRec = useServerFn(recommendNextSession);
-
-  const [insights, setInsights] = useState<DashboardInsights | null>(null);
-  const [insightsLoading, setInsightsLoading] = useState(true);
-  const [insightsError, setInsightsError] = useState(false);
-  const fetchInsights = useServerFn(generateDashboardInsights);
-
-  const loadRec = () => {
-    setRecLoading(true);
-    setRecError(false);
-    fetchRec({ data: undefined })
-      .then((r) => setRec(r))
-      .catch(() => setRecError(true))
-      .finally(() => setRecLoading(false));
-  };
-
-  const loadInsights = () => {
-    setInsightsLoading(true);
-    setInsightsError(false);
-    fetchInsights({ data: undefined })
-      .then((r) => setInsights(r))
-      .catch(() => setInsightsError(true))
-      .finally(() => setInsightsLoading(false));
-  };
-
   const refreshProgress = async () => {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
     const { data: p } = await supabase
       .from("profiles")
-      .select("display_name, lifetime_xp, current_focus_streak")
+      .select("display_name, lifetime_xp, current_focus_streak, streak_freezes, streak_last_day")
       .eq("id", u.user.id)
       .maybeSingle();
     setMe((prev) =>
@@ -143,6 +110,8 @@ function Dashboard() {
             name: p?.display_name ?? prev.name,
             lifetime_xp: p?.lifetime_xp ?? prev.lifetime_xp,
             streak: p?.current_focus_streak ?? prev.streak,
+            freezes: p?.streak_freezes ?? prev.freezes,
+            lastDay: p?.streak_last_day ?? prev.lastDay,
           }
         : prev,
     );
@@ -161,7 +130,9 @@ function Dashboard() {
       const [{ data: p }, { data: hist }, { data: parts }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("display_name, lifetime_xp, current_focus_streak")
+          .select(
+            "display_name, lifetime_xp, current_focus_streak, streak_freezes, streak_last_day",
+          )
           .eq("id", u.user.id)
           .maybeSingle(),
         supabase
@@ -185,6 +156,8 @@ function Dashboard() {
         name: p?.display_name ?? "You",
         lifetime_xp: p?.lifetime_xp ?? 0,
         streak: p?.current_focus_streak ?? 0,
+        freezes: p?.streak_freezes ?? 0,
+        lastDay: p?.streak_last_day ?? null,
       });
       setHistory((hist ?? []) as unknown as HistoryRow[]);
       const liveRows: LiveRow[] = [];
@@ -210,8 +183,6 @@ function Dashboard() {
       setLive(liveRows);
       setLoading(false);
     })();
-    loadRec();
-    loadInsights();
 
     return () => {
       mounted = false;
@@ -228,11 +199,18 @@ function Dashboard() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-7xl">
+        <Launcher
+          name={me?.name ?? ""}
+          history={history}
+          streak={me?.streak ?? 0}
+          freezes={me?.freezes ?? 0}
+          lastDay={me?.lastDay ?? null}
+        />
         <div className="mb-8">
-          <DynamicGreeting />
+          <DailyRewardCard />
         </div>
         <div className="mb-8">
           <AtlasWhisper context="dashboard" />
@@ -242,16 +220,10 @@ function Dashboard() {
             <div className="ritual-label mb-2 text-muted-foreground">
               ANALYTICS / {me?.name?.toUpperCase()}
             </div>
-            <h1 className="page-title">Your discipline.</h1>
+            <h2 className="font-serif text-3xl text-silver">Your discipline.</h2>
           </div>
           <div className="hidden shrink-0 items-center gap-3 sm:flex">
             <CsvExportButton />
-            <Button asChild variant="outline" className="font-mono text-xs font-bold uppercase tracking-widest">
-              <Link to="/leaderboard">Leaderboard</Link>
-            </Button>
-            <Button asChild className="bg-silver font-mono text-xs font-bold uppercase tracking-widest text-obsidian hover:bg-silver/90">
-              <Link to="/start">New Session</Link>
-            </Button>
           </div>
         </div>
 
@@ -260,7 +232,6 @@ function Dashboard() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <DailyRewardCard />
           <PrestigeCeremony />
         </div>
 
@@ -342,12 +313,17 @@ function Dashboard() {
                       <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-4">
                         CURRENT_STREAK
                       </h3>
-                      <div className="text-4xl font-bold">
+                      <div className="text-4xl font-bold tabular-nums">
                         {me?.streak ?? 0}{" "}
                         <span className="text-base font-mono text-muted-foreground">
-                          {me?.streak === 1 ? "Session" : "Sessions"}
+                          {me?.streak === 1 ? "Day" : "Days"}
                         </span>
                       </div>
+                      <StreakNote
+                        streak={me?.streak ?? 0}
+                        freezes={me?.freezes ?? 0}
+                        lastDay={me?.lastDay ?? null}
+                      />
                     </div>
                     <div className="p-8 border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200 ease-[var(--ease-ritual)]">
                       <div>
@@ -373,139 +349,6 @@ function Dashboard() {
                 </>
               )}
 
-              {/* AI-recommended next session — based on focus_history */}
-              <div className="md:col-span-6 lg:col-span-3 relative p-8 border border-ember/25 rounded-2xl bg-gradient-to-br from-ember/[0.06] via-transparent to-transparent overflow-hidden">
-                <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="size-1.5 rounded-full bg-ember animate-pulse" />
-                    <h3 className="font-mono text-[10px] tracking-[0.3em] text-ember uppercase">
-                      AI / NEXT_SESSION
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={loadRec}
-                    disabled={recLoading}
-                    className="font-mono text-[10px] uppercase tracking-widest text-silver-dim hover:text-ember transition-colors disabled:opacity-50"
-                    aria-label="Regenerate recommendation"
-                  >
-                    {recLoading ? "Thinking…" : "Regenerate →"}
-                  </button>
-                </div>
-
-                {recLoading && !rec ? (
-                  <div className="space-y-4">
-                    <div className="h-16 w-32 bg-white/5 rounded animate-pulse" />
-                    <div className="h-4 bg-white/5 rounded animate-pulse" />
-                    <div className="h-10 w-36 bg-white/5 rounded animate-pulse" />
-                  </div>
-                ) : recError ? (
-                  <div className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
-                    Signal lost.{" "}
-                    <button type="button" onClick={loadRec} className="underline hover:text-ember">
-                      Retry
-                    </button>
-                  </div>
-                ) : rec ? (
-                  <div className="space-y-5">
-                    <div>
-                      <div className="text-6xl md:text-7xl font-extrabold tracking-tighter text-silver leading-none">
-                        {rec.durationMinutes}
-                        <span className="text-2xl font-mono text-muted-foreground ml-2 tracking-normal font-normal">
-                          min
-                        </span>
-                      </div>
-                      <div className="font-mono text-[10px] tracking-[0.3em] text-ember mt-3 uppercase">
-                        {rec.topic}
-                      </div>
-                    </div>
-                    <p className="text-sm text-silver-dim leading-relaxed text-balance">
-                      {rec.rationale}
-                    </p>
-                    <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
-                      <span>
-                        Confidence · <span className="text-silver">{rec.confidence}</span>
-                      </span>
-                      <span className="text-muted-foreground/40">|</span>
-                      <span>
-                        Basis ·{" "}
-                        <span className="text-silver">
-                          {rec.basedOnSessions} {rec.basedOnSessions === 1 ? "session" : "sessions"}
-                        </span>
-                      </span>
-                    </div>
-                    <Link
-                      to="/start"
-                      className="btn-ember inline-flex items-center justify-center px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-widest font-bold border border-ember/50 text-silver hover:text-ember whitespace-nowrap"
-                    >
-                      Start {rec.durationMinutes}m →
-                    </Link>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* AI-written personalized insights — sits beside the recommendation card */}
-              <div className="md:col-span-6 lg:col-span-3 relative p-8 border border-white/10 rounded-2xl bg-white/[0.02] overflow-hidden">
-                <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="size-1.5 rounded-full bg-silver animate-pulse" />
-                    <h3 className="font-mono text-[10px] tracking-[0.3em] text-silver uppercase">
-                      AI / LEDGER_READING
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={loadInsights}
-                    disabled={insightsLoading}
-                    className="font-mono text-[10px] uppercase tracking-widest text-silver-dim hover:text-silver transition-colors disabled:opacity-50"
-                    aria-label="Regenerate insights"
-                  >
-                    {insightsLoading ? "Reading…" : "Regenerate →"}
-                  </button>
-                </div>
-
-                {insightsLoading && !insights ? (
-                  <div className="space-y-3">
-                    <div className="h-4 w-3/4 bg-white/5 rounded animate-pulse" />
-                    <div className="h-3 bg-white/5 rounded animate-pulse" />
-                    <div className="h-3 bg-white/5 rounded animate-pulse" />
-                    <div className="h-3 w-5/6 bg-white/5 rounded animate-pulse" />
-                    <div className="h-3 bg-white/5 rounded animate-pulse" />
-                  </div>
-                ) : insightsError ? (
-                  <div className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
-                    Signal lost.{" "}
-                    <button
-                      type="button"
-                      onClick={loadInsights}
-                      className="underline hover:text-silver"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : insights ? (
-                  <div className="space-y-4">
-                    <p className="text-xl font-bold tracking-tight text-silver text-balance">
-                      {insights.headline}
-                    </p>
-                    <div className="space-y-3">
-                      {insights.paragraphs.map((p, i) => (
-                        <p key={i} className="text-sm text-silver-dim leading-relaxed text-balance">
-                          {p}
-                        </p>
-                      ))}
-                    </div>
-                    <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 pt-2 border-t border-white/5">
-                      Basis ·{" "}
-                      <span className="text-silver">
-                        {insights.basedOnSessions}{" "}
-                        {insights.basedOnSessions === 1 ? "session" : "sessions"}
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
               {live.length > 0 && (
                 <div className="md:col-span-6 p-8 bg-white/2 border border-white/10 rounded-2xl">
                   <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-6">
@@ -521,7 +364,7 @@ function Dashboard() {
 
               <MyRoomsPanel />
 
-              <div className="md:col-span-6 p-8 bg-white/2 border border-white/5 rounded-2xl">
+              <div className="md:col-span-6 p-5 sm:p-8 bg-white/2 border border-white/5 rounded-2xl">
                 <h3 className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-8">
                   SESSION_HISTORY
                 </h3>
@@ -534,7 +377,7 @@ function Dashboard() {
                   </p>
                 ) : (
                   <div className="space-y-0.5">
-                    <div className="grid grid-cols-6 py-4 border-b border-white/5 text-[11px] font-mono text-muted-foreground uppercase tracking-widest">
+                    <div className="hidden sm:grid grid-cols-6 py-4 border-b border-white/5 text-[11px] font-mono text-muted-foreground uppercase tracking-widest">
                       <span>Date</span>
                       <span>Code</span>
                       <span>Duration</span>
@@ -553,12 +396,14 @@ function Dashboard() {
                           <span className="text-sm">
                             {new Date(h.created_at).toLocaleDateString()}
                           </span>
-                          <span className="text-sm font-mono text-muted-foreground">{code}</span>
+                          <span className="text-sm font-mono text-muted-foreground max-sm:text-right">
+                            {code}
+                          </span>
                           <span className="text-sm font-mono tabular-nums">
                             {formatDuration(h.duration_seconds)}
                           </span>
                           <span
-                            className="text-sm font-mono tabular-nums"
+                            className="text-sm font-mono tabular-nums max-sm:text-right"
                             style={{ color: tier.hex }}
                           >
                             {h.score}
@@ -588,12 +433,15 @@ function Dashboard() {
                           to="/room/$code"
                           params={{ code: h.room.code }}
                           key={h.id}
-                          className="grid grid-cols-6 py-4 items-center hover:bg-white/5 rounded transition-colors"
+                          className="grid grid-cols-2 gap-y-1 border-b border-white/5 py-3 items-center last:border-0 sm:grid-cols-6 sm:gap-y-0 sm:border-0 sm:py-4 hover:bg-white/5 rounded transition-colors"
                         >
                           {inner}
                         </Link>
                       ) : (
-                        <div key={h.id} className="grid grid-cols-6 py-4 items-center">
+                        <div
+                          key={h.id}
+                          className="grid grid-cols-2 gap-y-1 border-b border-white/5 py-3 items-center last:border-0 sm:grid-cols-6 sm:gap-y-0 sm:border-0 sm:py-4"
+                        >
                           {inner}
                         </div>
                       );
@@ -606,5 +454,116 @@ function Dashboard() {
         )}
       </main>
     </div>
+  );
+}
+
+/**
+ * The day after a miss is designed (daily streak, earned freeze): shows a held
+ * freeze, or after 5pm that a live streak ends at midnight if nothing clean
+ * lands today. Mirrors Android's Home streak line.
+ */
+function StreakNote({
+  streak,
+  freezes,
+  lastDay,
+}: {
+  streak: number;
+  freezes: number;
+  lastDay: string | null;
+}) {
+  const now = new Date();
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const ymd = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  const atRisk = streak > 0 && lastDay === ymd && now.getHours() >= 17;
+  if (atRisk)
+    return <p className="mt-3 text-sm text-red-400">Ends at midnight. One clean stack keeps it.</p>;
+  if (streak > 0 && freezes > 0)
+    return (
+      <p className="mt-3 text-sm text-muted-foreground">
+        1 freeze held: a missed day won't break it.
+      </p>
+    );
+  return (
+    <p className="mt-3 text-sm text-muted-foreground">3 clean stacks in a week earn a freeze.</p>
+  );
+}
+
+const DAILY_GOAL_MIN = 60;
+
+/**
+ * Home as a launcher, not a letter (Android parity): one greeting line,
+ * today's goal as an ember ring around the breathing stack, and the one
+ * action the app exists for.
+ */
+function Launcher({
+  name,
+  history,
+  streak,
+  freezes,
+  lastDay,
+}: {
+  name: string;
+  history: HistoryRow[];
+  streak: number;
+  freezes: number;
+  lastDay: string | null;
+}) {
+  const now = new Date();
+  const h = now.getHours();
+  const part =
+    h < 5 ? "Late night" : h < 12 ? "Morning" : h < 17 ? "Afternoon" : h < 21 ? "Evening" : "Night";
+  const first = name.split(" ")[0] || "you";
+  const todayMin = Math.round(
+    history
+      .filter((r) => new Date(r.created_at).toDateString() === now.toDateString())
+      .reduce((a, r) => a + (r.duration_seconds ?? 0), 0) / 60,
+  );
+  const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yKey = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
+  const atRisk = streak > 0 && lastDay === yKey && h >= 17;
+  const streakLine = atRisk
+    ? `${streak}-day streak ends at midnight`
+    : streak > 0 && freezes > 0
+      ? `${streak}-day streak · 1 freeze`
+      : streak > 0
+        ? `${streak}-day streak`
+        : "Day one";
+  return (
+    <section className="mb-10">
+      <p className="text-sm text-muted-foreground">
+        {now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} ·{" "}
+        {now.toLocaleDateString([], { weekday: "long" })}
+      </p>
+      <h1 className="mt-1 font-serif text-4xl text-silver sm:text-5xl">
+        {part}, {first}.
+      </h1>
+      <div className="relative mx-auto my-8 grid size-[260px] place-items-center">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(240,169,104,0.16), transparent 70%)" }}
+        />
+        <EmberRing progress={todayMin / DAILY_GOAL_MIN} size={240} />
+        <StackArt phones={1} size={130} breathing />
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="text-muted-foreground">
+          <span className="font-serif text-5xl tabular-nums text-silver">{todayMin}</span> of{" "}
+          {DAILY_GOAL_MIN} min today
+        </p>
+        <p className={`pb-2 text-sm ${atRisk ? "text-red-400" : "text-muted-foreground"}`}>
+          {streakLine}
+        </p>
+      </div>
+      <Link
+        to="/start"
+        className="mt-6 flex w-full items-center justify-between rounded-full bg-silver py-3 pl-7 pr-3 text-lg font-semibold text-obsidian transition-transform duration-200 ease-[var(--ease-ritual)] active:scale-[0.98] sm:max-w-md"
+      >
+        Start a Stack
+        <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-[#FFC48A] to-[#F0A968]">
+          ▶
+        </span>
+      </Link>
+    </section>
   );
 }

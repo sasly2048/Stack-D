@@ -13,13 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CatalogRouteImport } from './routes/catalog'
-import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PhilosophyRouteImport } from './routes/philosophy'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SdkRouteImport } from './routes/sdk'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAchievementsRouteImport } from './routes/_authenticated/achievements'
 import { Route as AuthenticatedCapsuleRouteImport } from './routes/_authenticated/capsule'
 import { Route as AuthenticatedChallengesRouteImport } from './routes/_authenticated/challenges'
@@ -43,8 +40,6 @@ import { Route as AuthenticatedTrustRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
 import { Route as AuthenticatedWebhooksRouteImport } from './routes/_authenticated/webhooks'
 import { Route as AuthenticatedWrappedRouteImport } from './routes/_authenticated/wrapped'
-import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedProfileIdRouteImport } from './routes/_authenticated/profile.$id'
 import { Route as AuthenticatedRoomCodeRouteImport } from './routes/_authenticated/room.$code'
 import { Route as AuthenticatedTrustModerationRouteImport } from './routes/_authenticated/trust.moderation'
@@ -66,7 +61,6 @@ import { Route as ApiPublicWebhooksDeliveriesRouteImport } from './routes/api/pu
 import { Route as ApiPublicWebhooksListRouteImport } from './routes/api/public/webhooks/list'
 import { Route as ApiPublicWebhooksTestRouteImport } from './routes/api/public/webhooks/test'
 import { Route as ApiPublicWebhooksToggleRouteImport } from './routes/api/public/webhooks/toggle'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -85,11 +79,6 @@ const AuthRoute = AuthRouteImport.update({
 const CatalogRoute = CatalogRouteImport.update({
   id: '/catalog',
   path: '/catalog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PhilosophyRoute = PhilosophyRouteImport.update({
@@ -112,18 +101,6 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AuthenticatedAchievementsRoute =
   AuthenticatedAchievementsRouteImport.update({
     id: '/achievements',
@@ -242,17 +219,6 @@ const AuthenticatedWrappedRoute = AuthenticatedWrappedRouteImport.update({
   path: '/wrapped',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AuthenticatedProfileIdRoute = AuthenticatedProfileIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -365,24 +331,15 @@ const ApiPublicWebhooksToggleRoute = ApiPublicWebhooksToggleRouteImport.update({
   path: '/api/public/webhooks/toggle',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
-  '/mcp': typeof McpRoute
   '/philosophy': typeof PhilosophyRoute
   '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/achievements': typeof AuthenticatedAchievementsRoute
   '/capsule': typeof AuthenticatedCapsuleRoute
   '/challenges': typeof AuthenticatedChallengesRoute
@@ -406,8 +363,6 @@ export interface FileRoutesByFullPath {
   '/vault': typeof AuthenticatedVaultRoute
   '/webhooks': typeof AuthenticatedWebhooksRoute
   '/wrapped': typeof AuthenticatedWrappedRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
   '/room/$code': typeof AuthenticatedRoomCodeRoute
   '/trust/moderation': typeof AuthenticatedTrustModerationRoute
@@ -429,19 +384,15 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/list': typeof ApiPublicWebhooksListRoute
   '/api/public/webhooks/test': typeof ApiPublicWebhooksTestRoute
   '/api/public/webhooks/toggle': typeof ApiPublicWebhooksToggleRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
-  '/mcp': typeof McpRoute
   '/philosophy': typeof PhilosophyRoute
   '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/achievements': typeof AuthenticatedAchievementsRoute
   '/capsule': typeof AuthenticatedCapsuleRoute
   '/challenges': typeof AuthenticatedChallengesRoute
@@ -465,8 +416,6 @@ export interface FileRoutesByTo {
   '/vault': typeof AuthenticatedVaultRoute
   '/webhooks': typeof AuthenticatedWebhooksRoute
   '/wrapped': typeof AuthenticatedWrappedRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
   '/room/$code': typeof AuthenticatedRoomCodeRoute
   '/trust/moderation': typeof AuthenticatedTrustModerationRoute
@@ -488,7 +437,6 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/list': typeof ApiPublicWebhooksListRoute
   '/api/public/webhooks/test': typeof ApiPublicWebhooksTestRoute
   '/api/public/webhooks/toggle': typeof ApiPublicWebhooksToggleRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -496,13 +444,10 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
-  '/mcp': typeof McpRoute
   '/philosophy': typeof PhilosophyRoute
   '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/achievements': typeof AuthenticatedAchievementsRoute
   '/_authenticated/capsule': typeof AuthenticatedCapsuleRoute
   '/_authenticated/challenges': typeof AuthenticatedChallengesRoute
@@ -526,8 +471,6 @@ export interface FileRoutesById {
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
   '/_authenticated/webhooks': typeof AuthenticatedWebhooksRoute
   '/_authenticated/wrapped': typeof AuthenticatedWrappedRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/profile/$id': typeof AuthenticatedProfileIdRoute
   '/_authenticated/room/$code': typeof AuthenticatedRoomCodeRoute
   '/_authenticated/trust/moderation': typeof AuthenticatedTrustModerationRoute
@@ -549,7 +492,6 @@ export interface FileRoutesById {
   '/api/public/webhooks/list': typeof ApiPublicWebhooksListRoute
   '/api/public/webhooks/test': typeof ApiPublicWebhooksTestRoute
   '/api/public/webhooks/toggle': typeof ApiPublicWebhooksToggleRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -557,13 +499,10 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/catalog'
-    | '/mcp'
     | '/philosophy'
     | '/privacy'
     | '/sdk'
     | '/sitemap.xml'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
     | '/achievements'
     | '/capsule'
     | '/challenges'
@@ -587,8 +526,6 @@ export interface FileRouteTypes {
     | '/vault'
     | '/webhooks'
     | '/wrapped'
-    | '/.lovable/oauth/consent'
-    | '/.mcp/invoke-tool/$tool'
     | '/profile/$id'
     | '/room/$code'
     | '/trust/moderation'
@@ -610,19 +547,15 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/list'
     | '/api/public/webhooks/test'
     | '/api/public/webhooks/toggle'
-    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/catalog'
-    | '/mcp'
     | '/philosophy'
     | '/privacy'
     | '/sdk'
     | '/sitemap.xml'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
     | '/achievements'
     | '/capsule'
     | '/challenges'
@@ -646,8 +579,6 @@ export interface FileRouteTypes {
     | '/vault'
     | '/webhooks'
     | '/wrapped'
-    | '/.lovable/oauth/consent'
-    | '/.mcp/invoke-tool/$tool'
     | '/profile/$id'
     | '/room/$code'
     | '/trust/moderation'
@@ -669,20 +600,16 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/list'
     | '/api/public/webhooks/test'
     | '/api/public/webhooks/toggle'
-    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/catalog'
-    | '/mcp'
     | '/philosophy'
     | '/privacy'
     | '/sdk'
     | '/sitemap.xml'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/achievements'
     | '/_authenticated/capsule'
     | '/_authenticated/challenges'
@@ -706,8 +633,6 @@ export interface FileRouteTypes {
     | '/_authenticated/vault'
     | '/_authenticated/webhooks'
     | '/_authenticated/wrapped'
-    | '/.lovable/oauth/consent'
-    | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/profile/$id'
     | '/_authenticated/room/$code'
     | '/_authenticated/trust/moderation'
@@ -729,7 +654,6 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/list'
     | '/api/public/webhooks/test'
     | '/api/public/webhooks/toggle'
-    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -737,15 +661,10 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   CatalogRoute: typeof CatalogRoute
-  McpRoute: typeof McpRoute
   PhilosophyRoute: typeof PhilosophyRoute
   PrivacyRoute: typeof PrivacyRoute
   SdkRoute: typeof SdkRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
-  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
-  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicAuthGuardRoute: typeof ApiPublicAuthGuardRouteWithChildren
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
@@ -763,7 +682,6 @@ export interface RootRouteChildren {
   ApiPublicWebhooksListRoute: typeof ApiPublicWebhooksListRoute
   ApiPublicWebhooksTestRoute: typeof ApiPublicWebhooksTestRoute
   ApiPublicWebhooksToggleRoute: typeof ApiPublicWebhooksToggleRoute
-  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -796,13 +714,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/philosophy': {
       id: '/philosophy'
       path: '/philosophy'
@@ -829,20 +740,6 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/achievements': {
@@ -1006,20 +903,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWrappedRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/profile/$id': {
       id: '/_authenticated/profile/$id'
       path: '/$id'
@@ -1167,13 +1050,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksToggleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -1272,16 +1148,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   CatalogRoute: CatalogRoute,
-  McpRoute: McpRoute,
   PhilosophyRoute: PhilosophyRoute,
   PrivacyRoute: PrivacyRoute,
   SdkRoute: SdkRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
-  Char91DotwellKnownChar93OauthProtectedResourceRoute:
-    Char91DotwellKnownChar93OauthProtectedResourceRoute,
-  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
-  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicAuthGuardRoute: ApiPublicAuthGuardRouteWithChildren,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
@@ -1299,7 +1169,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebhooksListRoute: ApiPublicWebhooksListRoute,
   ApiPublicWebhooksTestRoute: ApiPublicWebhooksTestRoute,
   ApiPublicWebhooksToggleRoute: ApiPublicWebhooksToggleRoute,
-  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -37,8 +37,8 @@ export function AiUsageMeter({ className = "" }: { className?: string }) {
       </div>
       <div className="mt-2 h-1 rounded-full bg-white/[0.06] overflow-hidden">
         <div
-          className={`h-full transition-all ${low ? "bg-breach/70" : "bg-ember/70"}`}
-          style={{ width: `${pct}%` }}
+          className={`h-full w-full origin-left transition-transform duration-500 ease-[var(--ease-ritual)] ${low ? "bg-breach/70" : "bg-ember/70"}`}
+          style={{ transform: `scaleX(${pct / 100})` }}
         />
       </div>
       <p className="mt-1.5 text-[10px] text-silver-dim">Resets when your subscription renews.</p>

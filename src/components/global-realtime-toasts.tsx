@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { feedback } from "@/lib/feedback";
 import { copy } from "@/lib/copy";
+import { isCeremonyOpen } from "@/components/session-ceremony";
 
 interface ActivityEvent {
   id: string;
@@ -37,28 +38,39 @@ export function GlobalRealtimeToasts() {
           },
           (payload) => {
             const evt = payload.new as ActivityEvent;
+            // The ceremony already shows this session's own results; a toast
+            // on top repeats them under a different name.
+            const own =
+              evt.kind === "achievement_unlock" ||
+              evt.kind === "challenge_complete" ||
+              evt.kind === "session_complete";
+            if (own && isCeremonyOpen()) return;
             switch (evt.kind) {
               case "achievement_unlock":
                 feedback("achievement");
-                toast.success("🏅 Achievement unlocked", {
-                  description: evt.payload.id ? humanizeKey(String(evt.payload.id)) : "",
+                toast.success("Achievement unlocked", {
+                  description: evt.payload.name
+                    ? String(evt.payload.name)
+                    : evt.payload.id
+                      ? humanizeKey(String(evt.payload.id))
+                      : "",
                   id: evt.id,
                 });
                 break;
               case "challenge_complete":
                 feedback("achievement");
-                toast.success("🎯 Challenge complete", {
+                toast.success("Challenge complete", {
                   description: `${evt.payload.name ?? ""} · +${evt.payload.xp ?? 0} XP`,
                   id: evt.id,
                 });
                 break;
               case "friend_add":
                 feedback("notify");
-                toast(`🤝 ${copy.realtime.friendAdded}`, { id: evt.id });
+                toast(copy.realtime.friendAdded, { id: evt.id });
                 break;
               case "session_complete":
                 feedback("success");
-                toast(`✅ ${copy.realtime.sessionComplete(Number(evt.payload.xp ?? 0))}`, {
+                toast(copy.realtime.sessionComplete(Number(evt.payload.xp ?? 0)), {
                   id: evt.id,
                 });
                 break;

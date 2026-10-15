@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
-import { reportLovableError } from "@/lib/lovable-error-reporting";
 import { classifyRouteError, reloadOnceForStaleChunk } from "@/lib/error-recovery";
 import { Button } from "@/components/ui/button";
 
@@ -61,7 +60,6 @@ export function RouteErrorBoundary({ error, reset }: { error: Error; reset: () =
 
     setPhase("fatal");
     console.error(error);
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error, reset, router]);
 
   if (phase === "recovering") return <RecoveringScreen />;
@@ -88,7 +86,11 @@ export function RouteErrorBoundary({ error, reset }: { error: Error; reset: () =
           >
             Retry
           </Button>
-          <Button asChild variant="outline" className="w-full px-6 font-mono text-xs uppercase tracking-widest sm:w-auto">
+          <Button
+            asChild
+            variant="outline"
+            className="w-full px-6 font-mono text-xs uppercase tracking-widest sm:w-auto"
+          >
             <a href="/">Origin</a>
           </Button>
         </div>

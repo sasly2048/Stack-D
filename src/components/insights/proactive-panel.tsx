@@ -6,23 +6,46 @@ export function ProactivePanel() {
   const load = useServerFn(getProactiveInsights);
   const [data, setData] = useState<ProactiveInsight | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    load()
+    setLoading(true);
+    setFailed(false);
+    // A model call can hang; after 20s say so instead of "Reading…" forever.
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 20_000),
+    );
+    Promise.race([load(), timeout])
       .then((d) => alive && setData(d))
-      .catch(() => {})
+      .catch(() => alive && setFailed(true))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [load]);
+  }, [load, attempt]);
 
-  if (loading) {
+  if (loading || failed) {
     return (
       <section className="glass rounded-md p-6">
         <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Proactive AI</p>
-        <p className="mt-4 text-xs text-silver-dim">Reading your signal…</p>
+        <p className="mt-4 text-xs text-silver-dim">
+          {loading ? (
+            "Reading your signal…"
+          ) : (
+            <>
+              Signal lost.{" "}
+              <button
+                type="button"
+                onClick={() => setAttempt((n) => n + 1)}
+                className="underline hover:text-ember"
+              >
+                Retry
+              </button>
+            </>
+          )}
+        </p>
       </section>
     );
   }

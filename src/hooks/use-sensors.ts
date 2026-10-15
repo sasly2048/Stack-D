@@ -1,11 +1,6 @@
 import { useEffect, useRef } from "react";
 import { getSensorAdapter } from "@/lib/sensor-adapter";
-import {
-  computeBaseline,
-  isCalibrationComplete,
-  isShake,
-  pruneWindow,
-} from "@/lib/sensor-rules";
+import { computeBaseline, isCalibrationComplete, isShake, pruneWindow } from "@/lib/sensor-rules";
 
 export type BreachReason = "tilt" | "lift" | "shake" | "tab-hidden" | "wake-lost" | "manual";
 
@@ -38,7 +33,6 @@ interface Options {
    */
   onWakeLockState?: (state: WakeLockState) => void;
 }
-
 
 type WakeLockSentinel = EventTarget & { release: () => Promise<void> };
 

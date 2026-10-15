@@ -109,7 +109,10 @@ function MyProfile() {
         .upload(path, file, { contentType: file.type, upsert: true });
       if (up.error) throw up.error;
       const url = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
-      const { error } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: url })
+        .eq("id", user.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -128,7 +131,7 @@ function MyProfile() {
   // on every visit until the fetch landed, and permanently if it failed.
   if (!p || !user) {
     return (
-      <div className="min-h-screen bg-obsidian text-silver">
+      <div className="min-h-dvh bg-obsidian text-silver">
         <Nav />
         <main className="app-page max-w-3xl">
           <QueryBoundary
@@ -167,7 +170,7 @@ function MyProfile() {
   }, null);
 
   return (
-    <div className="min-h-screen bg-obsidian text-silver">
+    <div className="min-h-dvh bg-obsidian text-silver">
       <Nav />
       <main className="app-page max-w-3xl space-y-10 sm:space-y-12">
         <header className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 sm:gap-6">

@@ -13,7 +13,6 @@ export default tseslint.config(
       ".vinxi",
       "src/routeTree.gen.ts",
       "src/integrations/**",
-      "src/routes/lovable/**",
       "src/routes/mcp.ts",
       "src/routes/[[].mcp[]]/**",
       "src/routes/[[].well-known[]]/**",

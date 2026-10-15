@@ -4,15 +4,31 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* TeX Gyre Pagella (GUST Font License), shared with the Android app. */
+@font-face {
+  font-family: "Stack Serif";
+  src: url("/fonts/stack-serif-regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Stack Serif";
+  src: url("/fonts/stack-serif-bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ============================================================
    STACK'D — Obsidian Ritualist
    Hard, monochrome, ceremonial. Display sans + monospace.
    ============================================================ */
 
 @theme inline {
-  --color-obsidian: #0a0a0a;
-  --color-obsidian-2: #111111;
-  --color-obsidian-3: #181818;
+  --color-obsidian: #0e0c0a;
+  --color-obsidian-2: #15120f;
+  --color-obsidian-3: #1d1915;
   --color-silver: #e2e2e2;
   --color-silver-dim: #9a9a9a;
   --color-muted: #404040;
@@ -24,13 +40,12 @@
 
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  /* `font-serif` is used as an editorial accent in ~10 components (insights
-     narratives, milestone numerals, the SDK headings). It had no token, so it
-     resolved to Tailwind's default stack — i.e. whatever serif the OS happened
-     to supply, which differs across Windows, macOS and Android. Pinned to a
-     consistent high-quality stack rather than shipping a third webfont for an
-     accent face. */
-  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+  /* The serif is now a headline face (greeting, planner number, lobby, live
+     timer), not just an accent, so it ships: the same TeX Gyre Pagella the
+     Android app bundles (@font-face below). The system Palatino stack was a
+     fallback Android phones don't have — they fell back to Noto Serif. */
+  --font-serif:
+    "Stack Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
 
   --ease-ritual: cubic-bezier(0.32, 0.72, 0, 1);
 
@@ -119,17 +134,17 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #0a0a0a;
+  --background: #0e0c0a;
   --foreground: #e2e2e2;
-  --card: #111111;
+  --card: #15120f;
   --card-foreground: #e2e2e2;
-  --popover: #111111;
+  --popover: #15120f;
   --popover-foreground: #e2e2e2;
   --primary: #e2e2e2;
-  --primary-foreground: #0a0a0a;
-  --secondary: #181818;
+  --primary-foreground: #0e0c0a;
+  --secondary: #1d1915;
   --secondary-foreground: #e2e2e2;
-  --muted-bg: #181818;
+  --muted-bg: #1d1915;
   --muted-foreground: #9a9a9a;
   --accent: #c9874a;
   --accent-foreground: #0a0a0a;
@@ -283,6 +298,18 @@
   }
   80% {
     transform: translateX(4px);
+  }
+}
+@keyframes num-rise {
+  from {
+    opacity: 0;
+    transform: translateY(40%);
+  }
+}
+@keyframes num-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-40%);
   }
 }
 @keyframes caret-blink {
@@ -533,6 +560,39 @@
   .animate-pulse {
     animation: none;
   }
+  /* Slow loops and flicker (the live stack's breathing, glitch, pulse rings,
+     ceremony glow) hold still; the view-transition keeps its fade, drops the
+     slide; anchor jumps cut instead of scrolling. */
+  .animate-breathing,
+  .animate-glitch,
+  .animate-pulse-ring {
+    animation: none;
+  }
+  @keyframes ceremony-glow {
+    from,
+    to {
+      opacity: 1;
+    }
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  /* The Explore drawer appears in place instead of sliding across the screen. */
+  [data-vaul-drawer],
+  [data-vaul-overlay] {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+  @keyframes num-rise {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes num-drop {
+    from {
+      opacity: 0;
+    }
+  }
 }
 
 /* Fluid vertical padding for full-height landing sections. Fixed pt-36/pb-28
@@ -653,7 +713,8 @@
   background: color-mix(in oklab, var(--color-silver) 5%, transparent);
   padding: var(--space-3) var(--space-4);
   color: var(--color-silver);
-  font-size: 0.875rem;
+  /* 16px minimum: iOS zooms the page into any smaller input and never zooms back. */
+  font-size: 1rem;
   line-height: 1.5;
   outline: none;
   transition:
@@ -709,6 +770,13 @@
 @utility animate-shake {
   animation: shake 0.45s var(--ease-ritual);
 }
+/* Planner number roll: rises in for a longer stack, drops in for a shorter one. */
+@utility animate-num-rise {
+  animation: num-rise 180ms var(--ease-ritual) both;
+}
+@utility animate-num-drop {
+  animation: num-drop 180ms var(--ease-ritual) both;
+}
 @utility animate-caret-blink {
   animation: caret-blink 1s steps(1) infinite;
 }
@@ -750,22 +818,27 @@
     opacity: 0;
     transition: opacity 0.2s var(--ease-ritual);
   }
-  &:hover {
-    color: var(--color-obsidian);
-    border-color: var(--color-ember-glow);
-    letter-spacing: 0.25em;
-  }
-  &:hover::before {
-    opacity: 1;
-    animation: ember-sweep 1.2s var(--ease-ritual) forwards;
-  }
-  &:hover::after {
-    opacity: 1;
-    /* delay matches sweep, longer fade smooths the lock-in */
-    transition: opacity 0.6s var(--ease-ritual) 0.95s;
+  /* Hover only where a real pointer can hover: on touch a tap would leave
+     the sweep, fill and wide tracking stuck on until the next tap elsewhere. */
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: var(--color-obsidian);
+      border-color: var(--color-ember-glow);
+      letter-spacing: 0.25em;
+    }
+    &:hover::before {
+      opacity: 1;
+      animation: ember-sweep 1.2s var(--ease-ritual) forwards;
+    }
+    &:hover::after {
+      opacity: 1;
+      /* delay matches sweep, longer fade smooths the lock-in */
+      transition: opacity 0.6s var(--ease-ritual) 0.95s;
+    }
   }
   &:active {
     transform: scale(0.97);
+    transition-duration: 0.16s;
   }
 }
 
@@ -810,22 +883,24 @@
     opacity: 0;
     transition: opacity 0.2s var(--ease-ritual);
   }
-  &:hover {
-    color: var(--join-text-hover);
-    border-color: var(--join-border-hover);
-    letter-spacing: 0.25em;
-    box-shadow:
-      0 0 32px var(--join-glow),
-      inset 0 0 12px var(--join-glow-inner);
-    text-shadow: none;
-  }
-  &:hover::before {
-    opacity: 1;
-    animation: ember-sweep 1.2s var(--ease-ritual) forwards;
-  }
-  &:hover::after {
-    opacity: 1;
-    transition: opacity 0.6s var(--ease-ritual) 0.95s;
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: var(--join-text-hover);
+      border-color: var(--join-border-hover);
+      letter-spacing: 0.25em;
+      box-shadow:
+        0 0 32px var(--join-glow),
+        inset 0 0 12px var(--join-glow-inner);
+      text-shadow: none;
+    }
+    &:hover::before {
+      opacity: 1;
+      animation: ember-sweep 1.2s var(--ease-ritual) forwards;
+    }
+    &:hover::after {
+      opacity: 1;
+      transition: opacity 0.6s var(--ease-ritual) 0.95s;
+    }
   }
   &:focus-visible {
     outline: none;
@@ -849,7 +924,7 @@
 /* Responsive QA — keep glow/border legible on mobile + high-DPI.
    Slightly tighten the hover glow on small screens (less bloom on
    OLED panels) and crispen the border on >=2x DPR. */
-@media (max-width: 640px) {
+@media (max-width: 640px) and (hover: hover) and (pointer: fine) {
   .btn-silver-sweep:hover {
     box-shadow:
       0 0 22px var(--join-glow),
@@ -909,6 +984,14 @@
   button,
   textarea {
     font-family: inherit;
+  }
+  /* Controls never double-tap-zoom, so the browser fires the tap at once. */
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  [role="radio"] {
+    touch-action: manipulation;
   }
   /* Global focus outline — parallax + orbit transforms never suppress it.
      Overrides any `outline:none` inside translated containers so keyboard
@@ -980,5 +1063,20 @@
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+}
+
+/* Reduced motion: the page change keeps its fade and drops the slide. Placed
+   after the definitions above, since the last @keyframes of a name wins. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes vt-fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes vt-fade-in {
+    from {
+      opacity: 0;
+    }
   }
 }

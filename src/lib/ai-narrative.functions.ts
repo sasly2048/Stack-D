@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { withAiBudget } from "@/lib/require-ai-budget";
+import { callAIText } from "@/lib/ai.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -9,29 +10,10 @@ type AiSupabase = SupabaseClient<Database>;
 
 /**
  * AI narrative functions: pattern discovery, weekly story, group coach.
- * Uses Lovable AI Gateway with gemini-3.5-flash for speed.
+ * Uses Gemini Flash (free tier) via the shared helper in ai.server.ts.
  */
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-
-async function ai(prompt: string, system: string): Promise<string> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("Missing LOVABLE_API_KEY");
-  const res = await fetch(GATEWAY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-    body: JSON.stringify({
-      model: "google/gemini-3.5-flash",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`AI ${res.status}`);
-  const j = await res.json();
-  return j.choices?.[0]?.message?.content ?? "";
-}
+const ai = (prompt: string, system: string) => callAIText(system, prompt);
 
 export async function getWeeklyStoryCore(
   supabase: AiSupabase,

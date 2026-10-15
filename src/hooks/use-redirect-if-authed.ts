@@ -28,7 +28,10 @@ export function useRedirectIfAuthed(to = "/dashboard", options?: { initialOnly?:
 
     // On the login page a session appearing mid-flow is the user signing in
     // right now, which has its own confirmation step — don't hijack it.
-    if (initialOnly) return () => { mounted = false; };
+    if (initialOnly)
+      return () => {
+        mounted = false;
+      };
 
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session) go();
@@ -40,4 +43,3 @@ export function useRedirectIfAuthed(to = "/dashboard", options?: { initialOnly?:
     };
   }, [navigate, to, initialOnly]);
 }
-

@@ -17,7 +17,6 @@ const SUPABASE_WS = "wss://*.supabase.co";
 const TURNSTILE = "https://challenges.cloudflare.com";
 const GOOGLE_FONTS_CSS = "https://fonts.googleapis.com";
 const GOOGLE_FONTS_FILES = "https://fonts.gstatic.com";
-const AI_GATEWAY = "https://ai.gateway.lovable.dev";
 // Razorpay Checkout: the script loads from checkout.razorpay.com, opens its
 // card/UPI form in an iframe from api.razorpay.com, and makes API + telemetry
 // calls to *.razorpay.com. All three CSP directives below need these hosts or
@@ -60,7 +59,7 @@ const CSP_DIRECTIVES = [
   // https: on img-src because avatars are user-supplied and come from arbitrary
   // hosts; blob:/data: cover generated share images and inline icons.
   "img-src 'self' data: blob: https:",
-  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} ${TURNSTILE} ${AI_GATEWAY} ${RAZORPAY_ALL}`,
+  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} ${TURNSTILE} ${RAZORPAY_ALL}`,
   `frame-src ${TURNSTILE} ${RAZORPAY_API} ${RAZORPAY_SCRIPT}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",

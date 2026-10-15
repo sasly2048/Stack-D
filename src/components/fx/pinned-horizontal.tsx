@@ -83,7 +83,6 @@ export function PinnedHorizontal({
       };
     }
 
-
     const ctx = gsap.context(() => {
       // ScrollTrigger's own pinSpacing reserves exactly the scroll length the
       // pin consumes. Setting the wrapper height by hand on top of that added
@@ -95,8 +94,24 @@ export function PinnedHorizontal({
         return distance;
       };
 
-
       let distance = setSize();
+
+      // Phones: a card is ~86vw, so a free stop almost always leaves two cards
+      // cut in half. Once the scroll settles, ease to the nearest card centred
+      // in view. Points are read off the live layout, so a rotate stays right.
+      const nearestCard = (value: number) => {
+        if (distance <= 0) return value;
+        const points = Array.from(track.children as HTMLCollectionOf<HTMLElement>).map((c) =>
+          Math.min(
+            1,
+            Math.max(0, (c.offsetLeft + c.offsetWidth / 2 - window.innerWidth / 2) / distance),
+          ),
+        );
+        return points.reduce(
+          (best, p) => (Math.abs(p - value) < Math.abs(best - value) ? p : best),
+          value,
+        );
+      };
 
       const tween = gsap.to(track, {
         x: () => `-${distance}px`,
@@ -108,6 +123,15 @@ export function PinnedHorizontal({
           end: () => `+=${distance + window.innerHeight * extraPin}`,
           scrub: 0.6,
           invalidateOnRefresh: true,
+          snap:
+            window.innerWidth < 640
+              ? {
+                  snapTo: nearestCard,
+                  duration: { min: 0.2, max: 0.45 },
+                  delay: 0.08,
+                  ease: "power2.out",
+                }
+              : undefined,
         },
       });
 
@@ -134,11 +158,7 @@ export function PinnedHorizontal({
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>
-      <div
-        ref={pinRef}
-        className="flex h-screen w-full items-center overflow-hidden"
-      >
-
+      <div ref={pinRef} className="flex h-screen w-full items-center overflow-hidden">
         <div ref={trackRef} className={`flex will-change-transform ${trackClassName}`}>
           {children}
         </div>

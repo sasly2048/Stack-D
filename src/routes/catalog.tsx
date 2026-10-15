@@ -747,7 +747,9 @@ toast.success("Session complete");`}
       </main>
 
       <footer className="app-gutter border-t border-white/10 py-10 text-center safe-bottom">
-        <span className="ritual-label text-muted-foreground">Component catalog · Stack'd design system</span>
+        <span className="ritual-label text-muted-foreground">
+          Component catalog · Stack'd design system
+        </span>
       </footer>
     </div>
   );

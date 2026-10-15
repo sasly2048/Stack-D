@@ -188,10 +188,7 @@ let inFlight: Promise<void> | null = null;
  * user pressing "Retry" is asking for an attempt *now* — honouring backoff
  * there would make the button appear broken.
  */
-export function flushFinalizeQueue(
-  ownerId: string,
-  opts: { force?: boolean } = {},
-): Promise<void> {
+export function flushFinalizeQueue(ownerId: string, opts: { force?: boolean } = {}): Promise<void> {
   // Reuse the running flush rather than starting a second parallel drain.
   if (inFlight) return inFlight;
   inFlight = runFlush(ownerId, opts).finally(() => {
@@ -205,9 +202,7 @@ async function runFlush(
   { force = false }: { force?: boolean } = {},
 ): Promise<void> {
   const now = Date.now();
-  const rows = (await readAll()).filter(
-    (r) => r._owner === ownerId && (force || isDue(r, now)),
-  );
+  const rows = (await readAll()).filter((r) => r._owner === ownerId && (force || isDue(r, now)));
   if (rows.length === 0) return;
 
   for (const r of rows) {

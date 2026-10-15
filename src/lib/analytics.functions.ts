@@ -165,14 +165,10 @@ export const getAnalytics = createServerFn({ method: "GET" })
         breaches: totalBreaches,
         clean_sessions: cleanSessions,
         // Share of sessions finished without a single breach, 0-100.
-        clean_rate: rows.length
-          ? Math.round((cleanSessions / rows.length) * 100)
-          : 0,
+        clean_rate: rows.length ? Math.round((cleanSessions / rows.length) * 100) : 0,
         // Mean breaches per session, kept at one decimal so a user with 0.4
         // is visibly different from one with 0.
-        breaches_per_session: rows.length
-          ? Math.round((totalBreaches / rows.length) * 10) / 10
-          : 0,
+        breaches_per_session: rows.length ? Math.round((totalBreaches / rows.length) * 10) / 10 : 0,
         current_streak: profile?.current_focus_streak ?? 0,
         best_streak: profile?.best_streak ?? 0,
       },

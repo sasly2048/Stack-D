@@ -29,7 +29,10 @@ export const Route = createFileRoute("/api/public/auth-guard/signin")({
         const userAgent = getUserAgent();
 
         if (!email || !password) {
-          return json({ ok: false, code: "invalid_input", message: "Email and password are required." }, 400);
+          return json(
+            { ok: false, code: "invalid_input", message: "Email and password are required." },
+            400,
+          );
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -97,7 +100,6 @@ export const Route = createFileRoute("/api/public/auth-guard/signin")({
         } catch (e) {
           console.error("auth_guard_signin_log_failed", e);
         }
-
 
         if (!success) return json(INVALID, 401);
 
