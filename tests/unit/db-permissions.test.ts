@@ -29,9 +29,11 @@ function securityDefinerFunctions(): Set<string> {
   const found = new Set<string>();
   for (const { body } of sql) {
     // Match the CREATE ... FUNCTION header through to SECURITY DEFINER, which
-    // may sit several option-lines below the signature.
+    // may sit several option-lines below the signature (or after the body),
+    // but never past the statement's own closing `$$;` / `$tag$;` — otherwise
+    // a plain helper (league_week) inherits the NEXT function's DEFINER.
     const re =
-      /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z0-9_]+)\s*\([\s\S]*?SECURITY\s+DEFINER/gi;
+      /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z0-9_]+)\s*\((?:(?!\$[a-z0-9_]*\$\s*;)[\s\S])*?SECURITY\s+DEFINER/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(body)) !== null) found.add(m[1].toLowerCase());
   }
@@ -79,7 +81,13 @@ describe("SECURITY DEFINER permission hygiene", () => {
       .filter((fn) => !INTENTIONALLY_UNREVOKED.has(fn))
       // Trigger functions are recognisable by returning a trigger; they are
       // never client-callable regardless of grants.
-      .filter((fn) => !new RegExp(`FUNCTION public\\.${fn}\\s*\\(\\s*\\)[\\s\\S]{0,120}RETURNS\\s+trigger`, "i").test(allSql));
+      .filter(
+        (fn) =>
+          !new RegExp(
+            `FUNCTION public\\.${fn}\\s*\\(\\s*\\)[\\s\\S]{0,120}RETURNS\\s+trigger`,
+            "i",
+          ).test(allSql),
+      );
 
     expect(exposed).toEqual([]);
   });

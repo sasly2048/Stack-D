@@ -35,7 +35,11 @@ const FALLBACK: ProactiveInsight = {
 export function hourInZone(timeZone: string | null | undefined): (iso: string) => number {
   let fmt: Intl.DateTimeFormat;
   try {
-    fmt = new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: timeZone || "UTC" });
+    fmt = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hourCycle: "h23",
+      timeZone: timeZone || "UTC",
+    });
   } catch {
     fmt = new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "UTC" });
   }
@@ -113,8 +117,7 @@ export async function getProactiveInsightsCore(
     void dayNames;
 
     // Optional AI polish for copy — falls back to deterministic text
-    const scheduleLabel =
-      bestHour !== null ? `${String(bestHour).padStart(2, "0")}:00 window` : "";
+    const scheduleLabel = bestHour !== null ? `${String(bestHour).padStart(2, "0")}:00 window` : "";
     let scheduleRationale =
       bestHour !== null ? `Your average score in this hour is ${Math.round(bestAvg)}.` : "";
     let burnoutRec =

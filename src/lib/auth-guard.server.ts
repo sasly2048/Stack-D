@@ -64,9 +64,7 @@ export function getUserAgent(): string {
   }
 }
 
-type AdminClient = Awaited<
-  typeof import("@/integrations/supabase/client.server")
->["supabaseAdmin"];
+type AdminClient = Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"];
 
 /** Fails open: an RPC error must never lock legitimate users out. */
 async function hitLimited(
@@ -89,11 +87,7 @@ async function hitLimited(
 }
 
 /** Fails open: returns 0 on any error. */
-async function recentEmailFailures(
-  admin: AdminClient,
-  email: string,
-  ip: string,
-): Promise<number> {
+async function recentEmailFailures(admin: AdminClient, email: string, ip: string): Promise<number> {
   try {
     const { data, error } = await admin.rpc("recent_auth_failures", {
       _provider: "email",
@@ -122,7 +116,11 @@ export async function runGuardGates(opts: {
   const { admin, provider, email, fp, ip } = opts;
 
   if (await hitLimited(admin, `signin:${provider}:${ip}`, SIGNIN_WINDOW_SEC, SIGNIN_MAX_HITS)) {
-    return { ok: false, code: "rate_limited", message: "Too many attempts. Wait a minute and retry." };
+    return {
+      ok: false,
+      code: "rate_limited",
+      message: "Too many attempts. Wait a minute and retry.",
+    };
   }
 
   if (await hitLimited(admin, `signin:${provider}:${ip}:${fp}`, FP_WINDOW_SEC, FP_MAX_HITS)) {

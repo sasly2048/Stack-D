@@ -40,11 +40,13 @@ const meta = await page.evaluate(() => {
 });
 
 report("twitter:site attributes the account", meta.site === `@${HANDLE}`, String(meta.site));
-report("twitter:creator attributes the account", meta.creator === `@${HANDLE}`, String(meta.creator));
+report(
+  "twitter:creator attributes the account",
+  meta.creator === `@${HANDLE}`,
+  String(meta.creator),
+);
 
-const org = meta.ld
-  .flatMap((d) => d["@graph"] ?? [d])
-  .find((n) => n?.["@type"] === "Organization");
+const org = meta.ld.flatMap((d) => d["@graph"] ?? [d]).find((n) => n?.["@type"] === "Organization");
 report(
   "Organization sameAs links the X profile",
   Array.isArray(org?.sameAs) && org.sameAs.includes(URL_),
@@ -100,7 +102,11 @@ for (const [label, url, platform] of [
   report(`${label}: opens in a new tab`, l.target === "_blank", String(l.target));
   // noopener stops the opened page reaching back via window.opener; rel=me is
   // the identity convention for a site's own account.
-  report(`${label}: carries rel=me and noopener`, /me/.test(l.rel) && /noopener/.test(l.rel), l.rel);
+  report(
+    `${label}: carries rel=me and noopener`,
+    /me/.test(l.rel) && /noopener/.test(l.rel),
+    l.rel,
+  );
   report(
     `${label}: announces the platform and new tab`,
     new RegExp(platform).test(l.text) && /new tab/i.test(l.text),

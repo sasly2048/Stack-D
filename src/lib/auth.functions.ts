@@ -197,4 +197,3 @@ export const logAuthAttempt = createServerFn({ method: "POST" })
       return { logged: false };
     }
   });
-

@@ -78,7 +78,9 @@ function SdkPage() {
       <main id="main" className="app-gutter public-main mx-auto max-w-4xl space-y-16">
         <header>
           <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-ember">Developers</p>
-          <h1 className="mt-4 text-4xl font-extrabold leading-[1.05] tracking-tighter md:text-6xl">Stack'd SDK</h1>
+          <h1 className="mt-4 text-4xl font-extrabold leading-[1.05] tracking-tighter md:text-6xl">
+            Stack'd SDK
+          </h1>
           <p className="mt-4 max-w-xl text-silver-dim">
             Tiny, zero-dependency TypeScript client for the Stack'd webhook surface. Runs in Node,
             Deno, Bun, browsers, and edge workers.
@@ -106,7 +108,10 @@ function SdkPage() {
           <h2 className="text-2xl font-bold tracking-tight">Event types</h2>
           <ul className="mt-4 border border-white/10 rounded-md divide-y divide-white/5">
             {EVENTS.map(([name, desc]) => (
-              <li key={name} className="flex flex-col items-start gap-1 p-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <li
+                key={name}
+                className="flex flex-col items-start gap-1 p-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+              >
                 <code className="font-mono text-ember">{name}</code>
                 <span className="text-silver-dim">{desc}</span>
               </li>

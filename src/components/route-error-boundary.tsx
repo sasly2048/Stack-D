@@ -86,7 +86,11 @@ export function RouteErrorBoundary({ error, reset }: { error: Error; reset: () =
           >
             Retry
           </Button>
-          <Button asChild variant="outline" className="w-full px-6 font-mono text-xs uppercase tracking-widest sm:w-auto">
+          <Button
+            asChild
+            variant="outline"
+            className="w-full px-6 font-mono text-xs uppercase tracking-widest sm:w-auto"
+          >
             <a href="/">Origin</a>
           </Button>
         </div>

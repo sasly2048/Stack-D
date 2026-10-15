@@ -81,9 +81,7 @@ function Philosophy() {
       {/* Single per-page landmark: everything between the nav and the footer. */}
       <main id="main">
         <header className="app-gutter public-main mx-auto max-w-6xl animate-entrance">
-          <div className="ritual-label mb-8 text-ember">
-            Manifesto / Protocol.00
-          </div>
+          <div className="ritual-label mb-8 text-ember">Manifesto / Protocol.00</div>
           <h1 className="mb-10 max-w-4xl text-balance text-5xl font-extrabold leading-[0.94] tracking-tighter sm:text-6xl lg:text-[88px]">
             We did not lose
             <br /> our attention.

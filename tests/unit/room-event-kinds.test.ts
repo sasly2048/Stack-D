@@ -15,7 +15,14 @@ const migration = readFileSync(
 
 describe("record_room_event kind restriction", () => {
   it("treats the authoritative kinds as privileged", () => {
-    for (const k of ["moderator_added", "moderator_removed", "join_approved", "join_denied", "completed", "started"]) {
+    for (const k of [
+      "moderator_added",
+      "moderator_removed",
+      "join_approved",
+      "join_denied",
+      "completed",
+      "started",
+    ]) {
       expect(migration).toContain(`'${k}'`);
     }
     expect(migration).toMatch(/_privileged CONSTANT TEXT\[\]/);
@@ -28,10 +35,14 @@ describe("record_room_event kind restriction", () => {
   });
 
   it("rejects unknown / free-form kinds", () => {
-    expect(migration).toMatch(/NOT \(_kind = ANY\(_member_ok\)\)[\s\S]*?RAISE EXCEPTION 'unknown_event_kind'/);
+    expect(migration).toMatch(
+      /NOT \(_kind = ANY\(_member_ok\)\)[\s\S]*?RAISE EXCEPTION 'unknown_event_kind'/,
+    );
   });
 
   it("still requires the caller to be in the room at all", () => {
-    expect(migration).toMatch(/is_room_participant\(_room_id, _uid\)[\s\S]*?RAISE EXCEPTION 'not_room_member'/);
+    expect(migration).toMatch(
+      /is_room_participant\(_room_id, _uid\)[\s\S]*?RAISE EXCEPTION 'not_room_member'/,
+    );
   });
 });

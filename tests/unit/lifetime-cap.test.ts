@@ -15,12 +15,7 @@ import { describe, expect, it } from "vitest";
  *      redemptions consume a seat).
  */
 const migration = readFileSync(
-  join(
-    process.cwd(),
-    "supabase",
-    "migrations",
-    "20260817050000_subscriptions_entitlements.sql",
-  ),
+  join(process.cwd(), "supabase", "migrations", "20260817050000_subscriptions_entitlements.sql"),
   "utf8",
 );
 

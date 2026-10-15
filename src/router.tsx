@@ -33,7 +33,6 @@ export const getRouter = () => {
           description: message.slice(0, 140),
         });
       },
-
     }),
     defaultOptions: {
       queries: {
@@ -72,7 +71,6 @@ export const getRouter = () => {
       />
     ),
   });
-
 
   return router;
 };

@@ -18,11 +18,13 @@ export function EmptyState({
       <div aria-hidden="true" className="mb-3 text-4xl leading-none">
         {icon}
       </div>
-      <div className="ritual-label text-muted-foreground">
-        A quiet space
+      <div className="ritual-label text-muted-foreground">A quiet space</div>
+      <div className="mx-auto mt-2 max-w-md text-lg font-semibold leading-snug text-silver">
+        {title}
       </div>
-      <div className="mx-auto mt-2 max-w-md text-lg font-semibold leading-snug text-silver">{title}</div>
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">{description}</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
       {action && <div className="mt-6">{action}</div>}
     </div>
   );
