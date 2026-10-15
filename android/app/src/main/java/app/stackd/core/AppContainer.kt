@@ -1,0 +1,98 @@
+package app.stackd.core
+
+import android.content.Context
+import app.stackd.core.settings.SettingsStore
+import app.stackd.core.supabase.SupabaseModule
+import app.stackd.core.workmanager.FinalizeQueue
+import app.stackd.data.auth.AuthRepository
+import app.stackd.data.premium.PremiumRepository
+import app.stackd.data.profile.ProfileRepository
+import app.stackd.data.room.RoomRepository
+import app.stackd.data.progression.ProgressionRepository
+import app.stackd.data.recap.RecapRepository
+import app.stackd.data.social.FeedRepository
+import app.stackd.data.social.FriendsRepository
+import app.stackd.data.social.GroupsRepository
+import app.stackd.data.social.LeaderboardRepository
+import app.stackd.data.social.PartnersRepository
+import app.stackd.data.timeline.TimelineRepository
+import app.stackd.data.trust.TrustRepository
+import app.stackd.data.vault.VaultRepository
+import io.github.jan.supabase.SupabaseClient
+
+/**
+ * Manual dependency container — no Hilt.
+ *
+ * The graph is a handful of stateless repositories over one Supabase client;
+ * annotation processing would cost more build time than it saves. Repositories
+ * are concrete classes, one per web `*.functions.ts` file, so porting stays a
+ * mechanical read-and-translate rather than a redesign.
+ */
+class AppContainer(context: Context) {
+
+    private val appContext: Context = context.applicationContext
+
+    /** For WorkManager enqueues, which need an application Context. */
+    val appContextForWork: Context get() = appContext
+
+    val client: SupabaseClient get() = SupabaseModule.client
+
+    val settings: SettingsStore = SettingsStore(appContext)
+
+    /**
+     * Process-wide stale-while-revalidate cache shared by all feature
+     * ViewModels, so navigating back to a screen shows its last data instantly
+     * instead of blanking to a spinner. Lives here because the container
+     * outlives the per-destination ViewModels.
+     */
+    val snapshots: app.stackd.core.cache.DiskSnapshots = app.stackd.core.cache.DiskSnapshots(appContext)
+
+    /** Clearing it (sign-out) also wipes [snapshots]. */
+    val cache: app.stackd.core.cache.MemoryCache = app.stackd.core.cache.MemoryCache(onClear = snapshots::clear)
+
+    val finalizeQueue: FinalizeQueue = FinalizeQueue(appContext)
+
+    /**
+     * Process-lifetime scope for work that must finish even after the screen that
+     * started it is gone — removing a realtime channel from onCleared (when
+     * viewModelScope is already cancelled), or sending a parked breach.
+     */
+    val appScope: kotlinx.coroutines.CoroutineScope =
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+
+    val auth: AuthRepository by lazy { AuthRepository(settings) }
+
+    val profiles: ProfileRepository by lazy { ProfileRepository(client) }
+
+    val rooms: RoomRepository by lazy { RoomRepository(client) }
+
+    val premium: PremiumRepository by lazy { PremiumRepository(client) }
+
+    val leaderboard: LeaderboardRepository by lazy { LeaderboardRepository(client) }
+
+    val vault: VaultRepository by lazy { VaultRepository(client) }
+
+    val friends: FriendsRepository by lazy { FriendsRepository(client) }
+
+    val progression: ProgressionRepository by lazy { ProgressionRepository(client) }
+
+    val feed: FeedRepository by lazy { FeedRepository(client) }
+
+    val timeline: TimelineRepository by lazy { TimelineRepository(client) }
+
+    val groups: GroupsRepository by lazy { GroupsRepository(client) }
+
+    val trust: TrustRepository by lazy { TrustRepository(client) }
+
+    val recap: RecapRepository by lazy { RecapRepository(client) }
+
+    val partners: PartnersRepository by lazy { PartnersRepository(client) }
+
+    /** Webhooks via the web app's public routes (server holds the service-role writes). */
+    val webhooks: app.stackd.data.webhooks.WebhooksRepository by lazy {
+        app.stackd.data.webhooks.WebhooksRepository(client)
+    }
+
+    /** Calls the web app's public AI routes; every method degrades to null. */
+    val ai: app.stackd.data.ai.AiRepository by lazy { app.stackd.data.ai.AiRepository(client) }
+}
